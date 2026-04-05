@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>大マップ町づくりゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            font-family: Arial;
+            background: #333;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameArea {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-size: 13px;
+            z-index: 10;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+
+        #toggleBtn {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        #toggleBtn:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #gameView {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #ddd;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(180deg, #87ceeb, #e0f6ff);
+        }
+
+        #minimap {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            border: 2px solid #667eea;
+            background: white;
+            border-radius: 4px;
+            z-index: 100;
+            display: block;
+        }
+
+        #minimapToggle {
+            display: none;
+        }
+
+        #info {
+            background: #222;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 11px;
+            z-index: 10;
+        }
+
+        #sidebar {
+            width: 180px;
+            background: white;
+            border-left: 3px solid #667eea;
+            overflow-y: auto;
+            padding: 10px;
+            transition: all 0.3s;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #sidebar.hidden {
+            display: none;
+        }
+
+        .tab-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .tab-btn {
+            padding: 6px;
+            background: #ddd;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 3px;
+            font-size: 10px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .tab-content {
+            display: none;
+            font-size: 10px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        h3 {
+            color: #333;
+            margin: 0 0 8px 0;
+            border-bottom: 1px solid #667eea;
+            padding-bottom: 4px;
+            font-size: 11px;
+        }
+
+        .resident-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+
+        .resident-card {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 4px;
+            text-align: center;
+            border-radius: 3px;
+            font-size: 9px;
+        }
+
+        .resident-emoji {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        .resident-name {
+            font-weight: bold;
+            font-size: 8px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 5px;
+            margin: 3px 0;
+            background: #84fab0;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            font-size: 10px;
+        }
+
+        .button:hover {
+            background: #6ce5a0;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .material-box {
+            display: inline-block;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 4px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 8px;
+            text-align: center;
+        }
+
+        .material-emoji {
+            font-size: 14px;
+        }
+
+        .quest-item {
+            background: #fffacd;
+            border-left: 3px solid #ffc107;
+            padding: 6px;
+            margin: 4px 0;
+            border-radius: 2px;
+            font-size: 9px;
+        }
+
+        .quest-item.completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+
+        .notification {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            font-size: 11px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); }
+            to { transform: translateX(0); }
+        }
+
+        .recipe-item {
+            background: #f0f0f0;
+            padding: 6px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            font-size: 9px;
+        }
+
+        .building-item {
+            background: #f0f0f0;
+            padding: 6px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            font-size: 9px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="header">
+            <div class="stat-item">📅 <span id="day">1</span>日</div>
+            <div class="stat-item">💰 <span id="money">5000</span>円</div>
+            <div class="stat-item">🐾 <span id="pop">5</span>匹</div>
+            <div class="stat-item">🏠 <span id="build">0</span>棟</div>
+            <button id="toggleBtn" onclick="toggleSidebar()">◀ 非表示</button>
+        </div>
+        <div id="gameView">
+            <canvas id="canvas"></canvas>
+            <button id="minimapToggle" onclick="toggleMinimap()">📍 マップ</button>
+            <canvas id="minimap"></canvas>
+        </div>
+        <div id="info">⬆️⬅️⬇️➡️ / WASD: 移動 | スペース: 会話 | B: 建設 | Z: 花/釣 | X: アイテム | 🔨DIY台で作業 | ◀/▶: パネル</div>
+    </div>
+
+    <div id="sidebar">
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="showTab('residents')">🐾</button>
+            <button class="tab-btn" onclick="showTab('diy')">🔨</button>
+            <button class="tab-btn" onclick="showTab('inventory')">🎒</button>
+            <button class="tab-btn" onclick="showTab('build')">🏗️</button>
+            <button class="tab-btn" onclick="showTab('fishpedia')">🎣</button>
+            <button class="tab-btn" onclick="showTab('quests')">📋</button>
+        </div>
+
+        <div id="residents" class="tab-content active">
+            <h3>住民</h3>
+            <div class="resident-grid" id="residentList"></div>
+        </div>
+
+        <div id="diy" class="tab-content">
+            <h3>ｱｸﾃｨﾋﾞﾃｨ</h3>
+            <button class="button" onclick="doActivity('bug')">🦋虫</button>
+            <button class="button" onclick="doActivity('wood')">🪵木</button>
+            <button class="button" onclick="doActivity('stone')">🪨石</button>
+            <button class="button" onclick="doActivity('flower')">🌸花</button>
+            <button class="button" onclick="rest()">😴休息</button>
+
+            <h3>素材(体<span id="energy">100</span>)</h3>
+            <div id="materials"></div>
+
+            <h3>ｸﾗﾌﾄ</h3>
+            <div id="recipes"></div>
+        </div>
+
+        <div id="inventory" class="tab-content">
+            <h3>アイテム<span id="invCount">0</span>/40</h3>
+            <div id="inventoryList" style="font-size: 9px; max-height: 200px; overflow-y: auto;"></div>
+        </div>
+
+        <div id="build" class="tab-content">
+            <h3>建築</h3>
+            <div id="buildings"></div>
+        </div>
+
+        <div id="fishpedia" class="tab-content">
+            <h3>魚図鑑</h3>
+            <div id="fishList" style="font-size: 9px;"></div>
+        </div>
+
+        <div id="quests" class="tab-content">
+            <h3>ｸｴｽﾄ</h3>
+            <div id="questList"></div>
+        </div>
+    </div>
+
+    <script>
+        // マップサイズを大きく設定
+        const MAP_WIDTH = 2400;
+        const MAP_HEIGHT = 1800;
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        let sidebarVisible = true;
+        const takenFlowers = new Set(); // 採取済みの花を記録
+
+        // ビューポート（画面に見える範囲）
+        const viewport = {
+            width: 0,
+            height: 0,
+            x: 0,
+            y: 0
+        };
+
+        function resizeCanvas() {
+            const gameView = document.getElementById('gameView');
+            viewport.width = gameView.clientWidth;
+            viewport.height = gameView.clientHeight;
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            minimapCanvas.width = 150;
+            minimapCanvas.height = 120;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const game = {
+            day: 1,
+            money: 5000,
+            energy: 100,
+            animals: [],
+            buildings: [],
+            materials: { fish: 0, bug: 0, wood: 0, stone: 0, flower: 0 },
+            crafted: 0,
+            tools: { fishingRod: false },
+            caughtFish: {}, // 釣った魚の記録
+            inventory: [] // アイテムインベントリ（最大40）
+        };
+
+        const player = { x: 300, y: 300 };
+        const diyStation = { x: 400, y: 300 }; // DIY作業台の位置
+
+        const animalEmojis = ['🐕', '🐱', '🐰', '🐦', '🐑', '🐻', '🦊', '🐿️', '🦌', '🦝'];
+        const animalNames = ['ポチ', 'ミケ', 'ホップ', 'ツイート', 'モコ', 'ベア', 'キツネ', 'リス', 'シカ', 'ラッキー'];
+
+        function addAnimal() {
+            if (game.animals.length >= 30) return;
+            const i = game.animals.length;
+            game.animals.push({
+                emoji: animalEmojis[i % animalEmojis.length],
+                name: animalNames[i % animalNames.length],
+                x: Math.random() * (MAP_WIDTH - 200) + 100,
+                y: Math.random() * (MAP_HEIGHT - 200) + 100,
+                happiness: 50
+            });
+        }
+
+        for (let i = 0; i < 5; i++) addAnimal();
+
+        // 魚の種類（20種類）
+        const fishSpecies = [
+            { name: 'メダカ', emoji: '🐟', rarity: 0.20, value: 100 },
+            { name: 'グッピー', emoji: '🐟', rarity: 0.18, value: 120 },
+            { name: 'コイ', emoji: '🐟', rarity: 0.12, value: 200 },
+            { name: 'ヒラメ', emoji: '🐟', rarity: 0.08, value: 250 },
+            { name: 'マス', emoji: '🐟', rarity: 0.10, value: 180 },
+            { name: 'ウナギ', emoji: '🐟', rarity: 0.07, value: 300 },
+            { name: 'カツオ', emoji: '🐟', rarity: 0.05, value: 350 },
+            { name: 'マグロ', emoji: '🐟', rarity: 0.03, value: 500 },
+            { name: 'クマノミ', emoji: '🐠', rarity: 0.06, value: 280 },
+            { name: 'ブダイ', emoji: '🐟', rarity: 0.04, value: 400 },
+            { name: 'フグ', emoji: '🐡', rarity: 0.02, value: 600 },
+            { name: 'タイ', emoji: '🐟', rarity: 0.05, value: 320 },
+            { name: 'スズキ', emoji: '🐟', rarity: 0.06, value: 290 },
+            { name: 'サケ', emoji: '🐟', rarity: 0.04, value: 380 },
+            { name: 'イワナ', emoji: '🐟', rarity: 0.05, value: 260 },
+            { name: 'トラフグ', emoji: '🐡', rarity: 0.01, value: 800 },
+            { name: 'アユ', emoji: '🐟', rarity: 0.08, value: 150 },
+            { name: 'ドジョウ', emoji: '🐟', rarity: 0.06, value: 140 },
+            { name: 'オイカワ', emoji: '🐟', rarity: 0.09, value: 130 },
+            { name: 'ニジマス', emoji: '🐟', rarity: 0.07, value: 220 }
+        ];
+
+        const recipes = [
+            { name: '🪑椅', materials: { wood: 5 }, value: 200 },
+            { name: '💡灯', materials: { wood: 3, flower: 5 }, value: 250 },
+            { name: '🗿像', materials: { stone: 10 }, value: 400 },
+            { name: '🎣釣竿', materials: { wood: 8, stone: 3 }, value: 0, isTool: true }
+        ];
+
+        const buildings = {
+            house: { emoji: '🏠', name: 'おうち', cost: 600 },
+            shop: { emoji: '🏪', name: 'お店', cost: 1000 },
+            park: { emoji: '🌳', name: '公園', cost: 400 }
+        };
+
+        const quests = [
+            { title: '最初の建物', condition: () => game.buildings.length >= 1, reward: 500, completed: false },
+            { title: '10住民', condition: () => game.animals.length >= 10, reward: 800, completed: false },
+            { title: '3ｸﾗﾌﾄ', condition: () => game.crafted >= 3, reward: 700, completed: false }
+        ];
+
+        // カメラを更新（プレイヤーを中心に）
+        function updateCamera() {
+            viewport.x = player.x - viewport.width / 2;
+            viewport.y = player.y - viewport.height / 2;
+
+            // 境界チェック
+            viewport.x = Math.max(0, Math.min(viewport.x, MAP_WIDTH - viewport.width));
+            viewport.y = Math.max(0, Math.min(viewport.y, MAP_HEIGHT - viewport.height));
+        }
+
+        // 画面座標へ変換
+        function worldToScreen(x, y) {
+            return {
+                x: x - viewport.x,
+                y: y - viewport.y
+            };
+        }
+
+        function update() {
+            if (Math.random() < 0.0002) {
+                game.day++;
+
+                if (game.day === 10 || (game.day > 30 && game.day % 40 === 0)) {
+                    if (game.animals.length < 30) {
+                        addAnimal();
+                        showNotification('🎉 新住民！');
+                    }
+                }
+
+                quests.forEach(q => {
+                    if (!q.completed && q.condition()) {
+                        q.completed = true;
+                        game.money += q.reward;
+                        showNotification(`達成: +${q.reward}円`);
+                    }
+                });
+            }
+        }
+
+        // シンプルなシード付きランダム関数
+        function seededRandom(x, y, seed) {
+            const n = Math.sin(x * 12.9898 + y * 78.233 + seed * 43.14122) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        // 座標が水の上にあるかチェック
+        function isInWater(x, y) {
+            // 海の判定（浜辺外側）
+            const beachWidth = 100;
+            if (x < beachWidth || x > MAP_WIDTH - beachWidth || y < beachWidth || y > MAP_HEIGHT - beachWidth) {
+                return true; // 海
+            }
+
+            // 川の判定
+            const waveX = 1200 + Math.sin(y / 300) * 150;
+            if (Math.abs(x - waveX) < 60 && y >= 0 && y < MAP_HEIGHT) {
+                return true;
+            }
+
+            // 池の判定
+            const ponds = [
+                { x: 300, y: 500, r: 100 },
+                { x: 1700, y: 800, r: 120 },
+                { x: 2100, y: 200, r: 90 },
+                { x: 600, y: 1400, r: 110 }
+            ];
+
+            for (let pond of ponds) {
+                const dx = x - pond.x;
+                const dy = y - pond.y;
+                if (Math.sqrt(dx * dx + dy * dy) < pond.r) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // DIY作業台が近いかチェック
+        function isDIYStationNear() {
+            const dx = player.x - diyStation.x;
+            const dy = player.y - diyStation.y;
+            return Math.sqrt(dx * dx + dy * dy) < 120;
+        }
+
+        function drawNatureMap() {
+            // 海を背景に描画
+            ctx.fillStyle = '#0066cc';
+            ctx.fillRect(0, 0, viewport.width, viewport.height);
+
+            // 浜辺を描画
+            drawBeach();
+
+            // 背景：島の草の色
+            ctx.fillStyle = '#7cb342';
+            const screen1 = worldToScreen(100, 100);
+            const screen2 = worldToScreen(MAP_WIDTH - 100, MAP_HEIGHT - 100);
+            ctx.fillRect(
+                screen1.x, screen1.y,
+                screen2.x - screen1.x, screen2.y - screen1.y
+            );
+
+            // 川と池を描画
+            drawWater();
+
+            // 自然要素を描画（最適化版）
+            const tileSize = 100;
+            const startX = Math.floor(viewport.x / tileSize) * tileSize;
+            const startY = Math.floor(viewport.y / tileSize) * tileSize;
+
+            ctx.font = '40px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let wx = startX; wx < viewport.x + viewport.width + tileSize; wx += tileSize) {
+                for (let wy = startY; wy < viewport.y + viewport.height + tileSize; wy += tileSize) {
+                    const elemX = wx + 50;
+                    const elemY = wy + 50;
+
+                    // 水の上には描画しない
+                    if (isInWater(elemX, elemY)) continue;
+
+                    const rand = seededRandom(wx, wy, 1);
+                    const screen = worldToScreen(elemX, elemY);
+
+                    if (screen.x > -60 && screen.x < viewport.width + 60 && screen.y > -60 && screen.y < viewport.height + 60) {
+                        // 木を描画（3種類）
+                        if (rand < 0.25) {
+                            const treeRand = seededRandom(wx, wy, 10);
+                            if (treeRand < 0.33) ctx.fillText('🌲', screen.x, screen.y);      // 三角の木
+                            else if (treeRand < 0.66) ctx.fillText('🌳', screen.x, screen.y);  // 丸い木
+                            else ctx.fillText('🌴', screen.x, screen.y);                        // ヤシの木（果実）
+                        }
+                        // 花を描画（取られていない場合のみ）
+                        else if (rand < 0.45) {
+                            const flowerKey = `${Math.floor(elemX)},${Math.floor(elemY)}`;
+                            if (!takenFlowers.has(flowerKey)) {
+                                const flowerRand = seededRandom(wx, wy, 2);
+                                if (flowerRand < 0.33) ctx.fillText('🌸', screen.x, screen.y);
+                                else if (flowerRand < 0.66) ctx.fillText('🌼', screen.x, screen.y);
+                                else ctx.fillText('🌺', screen.x, screen.y);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawBeach() {
+            // 浜辺を島の周囲に描画
+            ctx.fillStyle = '#daa520';
+            ctx.globalAlpha = 0.8;
+
+            const beachWidth = 100;
+
+            // 上の浜辺
+            const topBeachScreen1 = worldToScreen(0, 0);
+            const topBeachScreen2 = worldToScreen(MAP_WIDTH, beachWidth);
+            ctx.fillRect(topBeachScreen1.x, topBeachScreen1.y, viewport.width, topBeachScreen2.y - topBeachScreen1.y);
+
+            // 下の浜辺
+            const bottomBeachScreen1 = worldToScreen(0, MAP_HEIGHT - beachWidth);
+            const bottomBeachScreen2 = worldToScreen(MAP_WIDTH, MAP_HEIGHT);
+            ctx.fillRect(bottomBeachScreen1.x, bottomBeachScreen1.y, viewport.width, bottomBeachScreen2.y - bottomBeachScreen1.y);
+
+            // 左の浜辺
+            const leftBeachScreen1 = worldToScreen(0, 0);
+            const leftBeachScreen2 = worldToScreen(beachWidth, MAP_HEIGHT);
+            ctx.fillRect(leftBeachScreen1.x, leftBeachScreen1.y, leftBeachScreen2.x - leftBeachScreen1.x, viewport.height);
+
+            // 右の浜辺
+            const rightBeachScreen1 = worldToScreen(MAP_WIDTH - beachWidth, 0);
+            const rightBeachScreen2 = worldToScreen(MAP_WIDTH, MAP_HEIGHT);
+            ctx.fillRect(rightBeachScreen1.x, rightBeachScreen1.y, rightBeachScreen2.x - rightBeachScreen1.x, viewport.height);
+
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawWater() {
+            // 川を描画（蛇行パターン）
+            ctx.fillStyle = '#1e90ff';
+            ctx.globalAlpha = 0.8;
+
+            // 縦走する川（右から左へ蛇行）
+            for (let y = 0; y < MAP_HEIGHT; y += 80) {
+                const waveX = 1200 + Math.sin(y / 300) * 150;
+                const screen = worldToScreen(waveX, y);
+                if (screen.x > -120 && screen.x < viewport.width + 120 && screen.y > -80 && screen.y < viewport.height + 80) {
+                    ctx.fillRect(screen.x - 60, screen.y - 40, 120, 80);
+                }
+            }
+
+            // 池をいくつか配置
+            const ponds = [
+                { x: 300, y: 500, r: 100 },
+                { x: 1700, y: 800, r: 120 },
+                { x: 2100, y: 200, r: 90 },
+                { x: 600, y: 1400, r: 110 }
+            ];
+
+            ponds.forEach(pond => {
+                const screen = worldToScreen(pond.x, pond.y);
+                if (screen.x > -200 && screen.x < viewport.width + 200 && screen.y > -200 && screen.y < viewport.height + 200) {
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, pond.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            ctx.globalAlpha = 1.0;
+        }
+
+        function draw() {
+            // メインキャンバス描画
+            ctx.fillStyle = '#d4e8ff';
+            ctx.fillRect(0, 0, viewport.width, viewport.height);
+
+            // 自然あふれるマップを描画
+            drawNatureMap();
+
+            // DIY作業台描画
+            const diyScreen = worldToScreen(diyStation.x, diyStation.y);
+            if (diyScreen.x > -50 && diyScreen.x < viewport.width + 50 && diyScreen.y > -50 && diyScreen.y < viewport.height + 50) {
+                ctx.fillStyle = '#8b6f47';
+                ctx.fillRect(diyScreen.x - 30, diyScreen.y - 30, 60, 60);
+                ctx.strokeStyle = '#654321';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(diyScreen.x - 30, diyScreen.y - 30, 60, 60);
+                ctx.font = '28px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔨', diyScreen.x, diyScreen.y);
+            }
+
+            // 建築物描画
+            game.buildings.forEach(b => {
+                const screen = worldToScreen(b.x, b.y);
+                if (screen.x > -50 && screen.x < viewport.width + 50 && screen.y > -50 && screen.y < viewport.height + 50) {
+                    ctx.fillStyle = '#c98a7c';
+                    ctx.fillRect(screen.x - 25, screen.y - 25, 50, 50);
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(b.emoji, screen.x, screen.y);
+                }
+            });
+
+            // 動物描画
+            game.animals.forEach(a => {
+                const screen = worldToScreen(a.x, a.y);
+                if (screen.x > -40 && screen.x < viewport.width + 40 && screen.y > -40 && screen.y < viewport.height + 40) {
+                    ctx.fillStyle = '#ffcc99';
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.font = 'bold 20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(a.emoji, screen.x, screen.y);
+
+                    ctx.font = 'bold 10px Arial';
+                    ctx.fillText(a.name, screen.x, screen.y - 30);
+                }
+            });
+
+            // プレイヤー描画
+            const playerScreen = worldToScreen(player.x, player.y);
+            ctx.fillStyle = '#ff69b4';
+            ctx.beginPath();
+            ctx.arc(playerScreen.x, playerScreen.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ff1493';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('👤', playerScreen.x, playerScreen.y);
+
+            // ミニマップ描画（常に表示）
+            minimapCtx.fillStyle = '#9ccc65';
+            minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            const scaleX = minimapCanvas.width / MAP_WIDTH;
+            const scaleY = minimapCanvas.height / MAP_HEIGHT;
+
+            // ミニマップ上に海を描画
+            minimapCtx.fillStyle = '#0066cc';
+            minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height * 0.08);
+            minimapCtx.fillRect(0, minimapCanvas.height * 0.92, minimapCanvas.width, minimapCanvas.height * 0.08);
+            minimapCtx.fillRect(0, 0, minimapCanvas.width * 0.08, minimapCanvas.height);
+            minimapCtx.fillRect(minimapCanvas.width * 0.92, 0, minimapCanvas.width * 0.08, minimapCanvas.height);
+
+            // ミニマップ上に川を描画
+            minimapCtx.fillStyle = '#1e90ff';
+            for (let y = 0; y < MAP_HEIGHT; y += 100) {
+                const waveX = 1200 + Math.sin(y / 300) * 150;
+                minimapCtx.fillRect(waveX * scaleX - 6, y * scaleY, 12, 100 * scaleY);
+            }
+
+            // ミニマップ上に池を描画
+            minimapCtx.fillStyle = '#1e90ff';
+            const ponds = [
+                { x: 300, y: 500, r: 100 },
+                { x: 1700, y: 800, r: 120 },
+                { x: 2100, y: 200, r: 90 },
+                { x: 600, y: 1400, r: 110 }
+            ];
+            ponds.forEach(pond => {
+                minimapCtx.beginPath();
+                minimapCtx.arc(pond.x * scaleX, pond.y * scaleY, pond.r * scaleX, 0, Math.PI * 2);
+                minimapCtx.fill();
+            });
+
+            // ミニマップ上の建築物
+            minimapCtx.fillStyle = '#8B4513';
+            game.buildings.forEach(b => {
+                minimapCtx.fillRect(b.x * scaleX - 2, b.y * scaleY - 2, 4, 4);
+            });
+
+            // ミニマップ上の動物
+            minimapCtx.fillStyle = '#FFA500';
+            game.animals.forEach(a => {
+                minimapCtx.fillRect(a.x * scaleX - 2, a.y * scaleY - 2, 4, 4);
+            });
+
+            // ミニマップ上のプレイヤー
+            minimapCtx.fillStyle = '#FF1493';
+            minimapCtx.fillRect(player.x * scaleX - 3, player.y * scaleY - 3, 6, 6);
+
+            // ミニマップ上のビューポート枠
+            minimapCtx.strokeStyle = '#667eea';
+            minimapCtx.lineWidth = 2;
+            minimapCtx.strokeRect(
+                viewport.x * scaleX,
+                viewport.y * scaleY,
+                viewport.width * scaleX,
+                viewport.height * scaleY
+            );
+        }
+
+        function updateUI() {
+            document.getElementById('day').textContent = game.day;
+            document.getElementById('money').textContent = game.money;
+            document.getElementById('pop').textContent = game.animals.length;
+            document.getElementById('build').textContent = game.buildings.length;
+            document.getElementById('energy').textContent = game.energy;
+
+            const list = document.getElementById('residentList');
+            list.innerHTML = '';
+            game.animals.forEach(a => {
+                const card = document.createElement('div');
+                card.className = 'resident-card';
+                card.innerHTML = `<div class="resident-emoji">${a.emoji}</div><div class="resident-name">${a.name}</div>`;
+                list.appendChild(card);
+            });
+
+            const mat = document.getElementById('materials');
+            mat.innerHTML = '';
+            for (const [k, v] of Object.entries(game.materials)) {
+                const box = document.createElement('div');
+                box.className = 'material-box';
+                const emojis = { fish: '🐟', bug: '🦋', wood: '🪵', stone: '🪨', flower: '🌸' };
+                box.innerHTML = `<div class="material-emoji">${emojis[k]}</div>${v}`;
+                mat.appendChild(box);
+            }
+
+            const rec = document.getElementById('recipes');
+            rec.innerHTML = '';
+            recipes.forEach(r => {
+                let can = true;
+                let materialsText = '';
+                for (const [m, n] of Object.entries(r.materials)) {
+                    if ((game.materials[m] || 0) < n) can = false;
+                    const emojis = { fish: '🐟', bug: '🦋', wood: '🪵', stone: '🪨', flower: '🌸' };
+                    materialsText += `${emojis[m]}×${n} `;
+                }
+                const div = document.createElement('div');
+                div.className = 'recipe-item';
+                const diyNear = isDIYStationNear() ? '✓' : '✗';
+                div.innerHTML = `<div>${r.name}</div><small style="color:#666;">${materialsText}</small><br><small>${diyNear}DIY台</small><br><button class="button" onclick="craft('${r.name}')" ${!can ? 'disabled' : ''}>作</button>`;
+                rec.appendChild(div);
+            });
+
+            const bld = document.getElementById('buildings');
+            bld.innerHTML = '';
+            for (const [k, b] of Object.entries(buildings)) {
+                const div = document.createElement('div');
+                div.className = 'building-item';
+                div.innerHTML = `<div>${b.emoji} ${b.cost}円</div><button class="button" onclick="selectBuilding('${k}')" ${game.money < b.cost ? 'disabled' : ''}>建</button>`;
+                bld.appendChild(div);
+            }
+
+            // インベントリを更新
+            const inventoryList = document.getElementById('inventoryList');
+            inventoryList.innerHTML = '';
+            document.getElementById('invCount').textContent = game.inventory.length;
+
+            game.inventory.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '4px';
+                div.style.padding = '4px';
+                div.style.backgroundColor = '#f5f5f5';
+                div.style.borderRadius = '3px';
+                div.innerHTML = `${item.emoji} ${item.name}${item.value ? ' (¥' + item.value + ')' : ''}`;
+                inventoryList.appendChild(div);
+            });
+
+            // 図鑑を更新
+            const fishList = document.getElementById('fishList');
+            fishList.innerHTML = '';
+            let caughtCount = 0;
+            fishSpecies.forEach(f => {
+                const isCaught = game.caughtFish[f.name];
+                if (isCaught) caughtCount++;
+                const div = document.createElement('div');
+                div.style.marginBottom = '4px';
+                div.innerHTML = `${isCaught ? f.emoji : '？'} ${f.name}${isCaught ? '' : '（未取得）'}`;
+                div.style.color = isCaught ? '#333' : '#999';
+                fishList.appendChild(div);
+            });
+            const header = document.createElement('div');
+            header.style.marginBottom = '6px';
+            header.style.fontWeight = 'bold';
+            header.innerHTML = `${caughtCount}/${fishSpecies.length}`;
+            fishList.insertBefore(header, fishList.firstChild);
+
+            const quest = document.getElementById('questList');
+            quest.innerHTML = '';
+            quests.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'quest-item' + (q.completed ? ' completed' : '');
+                div.innerHTML = `<div>${q.completed ? '✓' : '○'} ${q.title}</div>`;
+                quest.appendChild(div);
+            });
+        }
+
+        function doActivity(type) {
+            const costs = { bug: 15, wood: 20, stone: 25, flower: 10 };
+            if (game.energy < costs[type]) {
+                showNotification('体力不足');
+                return;
+            }
+            game.energy -= costs[type];
+            const amount = Math.random() > 0.5 ? 2 : 1;
+            game.materials[type] += amount;  // 材料を追加
+            addToInventory({ type: type, name: type, emoji: { bug: '🦋', wood: '🪵', stone: '🪨', flower: '🌸' }[type], amount: amount });
+            showNotification(`${type}獲得`);
+            updateUI();
+        }
+
+        function rest() {
+            game.energy = 100;
+            showNotification('回復');
+            updateUI();
+        }
+
+        function craft(name) {
+            // DIY作業台の近くかチェック
+            if (!isDIYStationNear()) {
+                showNotification('📍DIY作業台が近くにありません');
+                return;
+            }
+
+            const recipe = recipes.find(r => r.name === name);
+            for (const [m, n] of Object.entries(recipe.materials)) {
+                if ((game.materials[m] || 0) < n) {
+                    showNotification('材料不足');
+                    return;
+                }
+            }
+            for (const [m, n] of Object.entries(recipe.materials)) {
+                game.materials[m] -= n;
+            }
+
+            // 道具の場合
+            if (recipe.isTool) {
+                // 特定の道具のフラグを設定
+                if (name === '🎣釣竿') {
+                    game.tools.fishingRod = true;
+                }
+                // すべての道具をインベントリに追加
+                if (!addToInventory({ type: 'tool', name: recipe.name.substring(1), emoji: recipe.name.substring(0, 1), tool: true })) {
+                    return;
+                }
+                showNotification(`${recipe.name}をゲット！`);
+            } else {
+                if (!addToInventory({ type: 'craft', name: name, emoji: name.substring(0, 1), value: recipe.value })) {
+                    return;
+                }
+                showNotification(`${name}完成！`);
+            }
+
+            game.crafted++;
+            updateUI();
+        }
+
+        let buildMode = null;
+
+        function selectBuilding(type) {
+            buildMode = type;
+            showNotification('場所をクリック');
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (!buildMode) return;
+            const x = e.offsetX + viewport.x;
+            const y = e.offsetY + viewport.y;
+            const b = buildings[buildMode];
+            if (game.money < b.cost) {
+                showNotification('金不足');
+                return;
+            }
+            game.buildings.push({ emoji: b.emoji, x, y });
+            game.money -= b.cost;
+            buildMode = null;
+            showNotification(`建築！`);
+            updateUI();
+        });
+
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                game.animals.forEach(a => {
+                    const dx = a.x - player.x;
+                    const dy = a.y - player.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < 50) {
+                        a.happiness = Math.min(100, a.happiness + 5);
+                        showNotification(`会話`);
+                    }
+                });
+            }
+            if (e.key.toUpperCase() === 'B') showTab('build');
+            if (e.key.toUpperCase() === 'Z') pickFlower();
+            if (e.key.toUpperCase() === 'X') showTab('inventory');
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function move() {
+            let newX = player.x;
+            let newY = player.y;
+
+            if (keys['arrowup'] || keys['w']) newY -= 3;
+            if (keys['arrowdown'] || keys['s']) newY += 3;
+            if (keys['arrowleft'] || keys['a']) newX -= 3;
+            if (keys['arrowright'] || keys['d']) newX += 3;
+
+            newX = Math.max(0, Math.min(MAP_WIDTH, newX));
+            newY = Math.max(0, Math.min(MAP_HEIGHT, newY));
+
+            // 水上には移動しない
+            if (!isInWater(newX, newY)) {
+                player.x = newX;
+                player.y = newY;
+            }
+        }
+
+        function pickFlower() {
+            // 釣り竿を持っている場合は釣り機能を優先
+            if (game.tools.fishingRod) {
+                fish();
+                return;
+            }
+
+            // プレイヤーの周辺（60px以内）の花を探す
+            const tileSize = 100;
+            const searchRadius = 80;
+            let foundFlower = false;
+
+            const startX = Math.floor((player.x - searchRadius) / tileSize) * tileSize;
+            const startY = Math.floor((player.y - searchRadius) / tileSize) * tileSize;
+
+            for (let wx = startX; wx < player.x + searchRadius; wx += tileSize) {
+                for (let wy = startY; wy < player.y + searchRadius; wy += tileSize) {
+                    const rand = seededRandom(wx, wy, 1);
+
+                    // この位置が花の位置かチェック
+                    if (rand >= 0.25 && rand < 0.45) {
+                        const flowerX = wx + 50;
+                        const flowerY = wy + 50;
+                        const dx = flowerX - player.x;
+                        const dy = flowerY - player.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < searchRadius) {
+                            const flowerKey = `${Math.floor(flowerX)},${Math.floor(flowerY)}`;
+                            if (!takenFlowers.has(flowerKey)) {
+                                takenFlowers.add(flowerKey);
+                                const flowerRand = seededRandom(flowerX, flowerY, 2);
+                                let flowerName = '花';
+                                let flowerEmoji = '🌸';
+                                if (flowerRand < 0.33) { flowerName = '桜'; flowerEmoji = '🌸'; }
+                                else if (flowerRand < 0.66) { flowerName = 'ひまわり'; flowerEmoji = '🌼'; }
+                                else { flowerName = 'ハイビスカス'; flowerEmoji = '🌺'; }
+
+                                if (addToInventory({ type: 'flower', name: flowerName, emoji: flowerEmoji })) {
+                                    showNotification(`🌸${flowerName}獲得！`);
+                                    foundFlower = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!foundFlower) {
+                showNotification('周辺に花がありません');
+            }
+        }
+
+        function fish() {
+            // 進行方向に川があるかチェック（上下左右、より広範囲）
+            const checkDistance = 250;
+            const directions = [
+                { dx: 0, dy: -checkDistance, name: '上' },
+                { dx: 0, dy: checkDistance, name: '下' },
+                { dx: -checkDistance, dy: 0, name: '左' },
+                { dx: checkDistance, dy: 0, name: '右' }
+            ];
+
+            let foundWater = false;
+            for (let dir of directions) {
+                const checkX = player.x + dir.dx;
+                const checkY = player.y + dir.dy;
+                if (isInWater(checkX, checkY)) {
+                    foundWater = true;
+                    break;
+                }
+            }
+
+            if (!foundWater) {
+                showNotification('川が見当たりません');
+                return;
+            }
+
+            // 魚を釣る
+            let totalRarity = 0;
+            fishSpecies.forEach(f => totalRarity += f.rarity);
+
+            let rand = Math.random() * totalRarity;
+            let caughtFish = fishSpecies[0];
+
+            for (let fish of fishSpecies) {
+                rand -= fish.rarity;
+                if (rand <= 0) {
+                    caughtFish = fish;
+                    break;
+                }
+            }
+
+            // 釣った魚をインベントリに追加
+            const message = !game.caughtFish[caughtFish.name] ? `🎣新種！${caughtFish.name}` : `🎣${caughtFish.name}`;
+            game.caughtFish[caughtFish.name] = true;
+            addToInventory({ type: 'fish', name: caughtFish.name, emoji: caughtFish.emoji, value: caughtFish.value });
+            showNotification(message);
+            updateUI();
+        }
+
+        function addToInventory(item) {
+            if (game.inventory.length >= 40) {
+                showNotification('⚠️ アイテムがいっぱいです！');
+                return false;
+            }
+            game.inventory.push(item);
+            return true;
+        }
+
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+            event.target?.classList.add('active');
+        }
+
+        function toggleSidebar() {
+            sidebarVisible = !sidebarVisible;
+            const sidebar = document.getElementById('sidebar');
+            const btn = document.getElementById('toggleBtn');
+            if (sidebarVisible) {
+                sidebar.classList.remove('hidden');
+                btn.textContent = '◀ 非表示';
+                resizeCanvas();
+            } else {
+                sidebar.classList.add('hidden');
+                btn.textContent = '▶ 表示';
+                resizeCanvas();
+            }
+        }
+
+
+        function showNotification(msg) {
+            const n = document.createElement('div');
+            n.className = 'notification';
+            n.textContent = msg;
+            document.body.appendChild(n);
+            setTimeout(() => n.remove(), 1500);
+        }
+
+        function gameLoop() {
+            update();
+            move();
+            updateCamera();
+            draw();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        updateUI();
+        gameLoop();
+    </script>
+</body>
+</html>
