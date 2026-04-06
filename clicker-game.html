@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クリッカーゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .game-section {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stats {
+            text-align: center;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .stat-box {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-value.secondary {
+            font-size: 18px;
+            color: #764ba2;
+            margin-top: 5px;
+        }
+
+        .click-button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 30px 0;
+            transition: all 0.1s;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .click-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .click-button:active {
+            transform: scale(0.95);
+        }
+
+        .floating-text {
+            position: fixed;
+            pointer-events: none;
+            font-weight: bold;
+            color: #667eea;
+            font-size: 24px;
+            animation: float-up 1s ease-out;
+        }
+
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px);
+            }
+        }
+
+        .shop-section {
+            flex: 0 0 300px;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+            max-height: 600px;
+        }
+
+        .shop-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upgrade-item {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upgrade-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .upgrade-item.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .upgrade-item.disabled:hover {
+            border-color: #e0e0e0;
+            box-shadow: none;
+        }
+
+        .upgrade-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .upgrade-effect {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .upgrade-cost {
+            font-size: 14px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .upgrade-count {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .info-section {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .shop-section {
+                flex: 1;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-section">
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">現在のコイン</div>
+                    <div class="stat-value" id="coins">0</div>
+                    <div class="stat-value secondary" id="perSecond">毎秒: 0</div>
+                </div>
+            </div>
+            <button class="click-button" id="clickButton">クリック！</button>
+            <div class="info-section">
+                右側のショップからアップグレードを購入して、<br>クリック力と自動生産を強化しよう！
+            </div>
+        </div>
+
+        <div class="shop-section">
+            <div class="shop-title">ショップ</div>
+            <div id="upgradesList"></div>
+        </div>
+    </div>
+
+    <script>
+        const game = {
+            coins: 0,
+            clickPower: 1,
+            autoClickers: 0,
+            upgrades: [
+                {
+                    id: 'click-power-1',
+                    name: 'クリック力 +1',
+                    cost: 10,
+                    description: '1クリック当たり +1',
+                    type: 'click-power',
+                    amount: 1,
+                    count: 0
+                },
+                {
+                    id: 'click-power-2',
+                    name: 'クリック力 +5',
+                    cost: 100,
+                    description: '1クリック当たり +5',
+                    type: 'click-power',
+                    amount: 5,
+                    count: 0
+                },
+                {
+                    id: 'worker-1',
+                    name: 'ワーカー',
+                    cost: 50,
+                    description: '毎秒 +1 自動獲得',
+                    type: 'auto-clicker',
+                    amount: 1,
+                    count: 0
+                },
+                {
+                    id: 'worker-2',
+                    name: 'ロボット',
+                    cost: 500,
+                    description: '毎秒 +10 自動獲得',
+                    type: 'auto-clicker',
+                    amount: 10,
+                    count: 0
+                },
+                {
+                    id: 'worker-3',
+                    name: 'ファクトリー',
+                    cost: 5000,
+                    description: '毎秒 +100 自動獲得',
+                    type: 'auto-clicker',
+                    amount: 100,
+                    count: 0
+                },
+                {
+                    id: 'click-power-3',
+                    name: 'クリック力 +50',
+                    cost: 1000,
+                    description: '1クリック当たり +50',
+                    type: 'click-power',
+                    amount: 50,
+                    count: 0
+                }
+            ]
+        };
+
+        const elements = {
+            coins: document.getElementById('coins'),
+            perSecond: document.getElementById('perSecond'),
+            clickButton: document.getElementById('clickButton'),
+            upgradesList: document.getElementById('upgradesList')
+        };
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function updateDisplay() {
+            elements.coins.textContent = formatNumber(game.coins);
+            const perSecond = game.upgrade_data ? game.upgrade_data.reduce((sum, u) => {
+                return sum + (u.type === 'auto-clicker' ? u.amount * u.count : 0);
+            }, 0) : game.upgrades.reduce((sum, u) => {
+                return sum + (u.type === 'auto-clicker' ? u.amount * u.count : 0);
+            }, 0);
+            elements.perSecond.textContent = `毎秒: ${formatNumber(perSecond)}`;
+            renderUpgrades();
+        }
+
+        function click() {
+            game.coins += game.clickPower;
+            updateDisplay();
+            showFloatingText(game.clickPower);
+        }
+
+        function showFloatingText(amount) {
+            const text = document.createElement('div');
+            text.className = 'floating-text';
+            text.textContent = '+' + formatNumber(amount);
+            const rect = elements.clickButton.getBoundingClientRect();
+            text.style.left = (rect.left + rect.width / 2) + 'px';
+            text.style.top = (rect.top + rect.height / 2) + 'px';
+            document.body.appendChild(text);
+            setTimeout(() => text.remove(), 1000);
+        }
+
+        function buyUpgrade(upgradeId) {
+            const upgrade = game.upgrades.find(u => u.id === upgradeId);
+            if (!upgrade) return;
+
+            if (game.coins >= upgrade.cost) {
+                game.coins -= upgrade.cost;
+                upgrade.count++;
+
+                if (upgrade.type === 'click-power') {
+                    game.clickPower += upgrade.amount;
+                }
+
+                updateDisplay();
+            }
+        }
+
+        function renderUpgrades() {
+            elements.upgradesList.innerHTML = game.upgrades.map(upgrade => `
+                <div class="upgrade-item ${game.coins < upgrade.cost ? 'disabled' : ''}" onclick="buyUpgrade('${upgrade.id}')">
+                    <div class="upgrade-name">
+                        ${upgrade.name}
+                        ${upgrade.count > 0 ? `<span class="upgrade-count">${upgrade.count}</span>` : ''}
+                    </div>
+                    <div class="upgrade-effect">${upgrade.description}</div>
+                    <div class="upgrade-cost">💰 ${formatNumber(upgrade.cost)}</div>
+                </div>
+            `).join('');
+        }
+
+        function autoProduction() {
+            const perSecond = game.upgrades.reduce((sum, u) => {
+                return sum + (u.type === 'auto-clicker' ? u.amount * u.count : 0);
+            }, 0);
+
+            if (perSecond > 0) {
+                game.coins += perSecond / 10;
+                updateDisplay();
+            }
+        }
+
+        // イベントリスナー
+        elements.clickButton.addEventListener('click', click);
+
+        // 自動生産 (100ms = 0.1秒ごと)
+        setInterval(autoProduction, 100);
+
+        // 初期表示
+        updateDisplay();
+    </script>
+</body>
+</html>
