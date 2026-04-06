@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クリッカーゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .clicker-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .click-button {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+            display: inline-block;
+        }
+
+        .click-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(245, 87, 108, 0.6);
+        }
+
+        .click-button:active {
+            transform: scale(0.95);
+        }
+
+        .click-info {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .upgrades-section {
+            margin-top: 30px;
+        }
+
+        .upgrades-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .upgrade-button {
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .upgrade-button:hover {
+            background: #e8e8e8;
+            border-color: #667eea;
+        }
+
+        .upgrade-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+
+        .upgrade-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .upgrade-cost {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .upgrade-info {
+            color: #999;
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .reset-button {
+            width: 100%;
+            background: #999;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .reset-button:hover {
+            background: #777;
+        }
+
+        .floating-text {
+            position: fixed;
+            pointer-events: none;
+            font-weight: bold;
+            color: #f5576c;
+            z-index: 1000;
+            animation: float-up 1s ease-out forwards;
+        }
+
+        @keyframes float-up {
+            to {
+                transform: translateY(-60px);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .click-button {
+                width: 120px;
+                height: 120px;
+                font-size: 18px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 クリッカーゲーム</h1>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">所持金</div>
+                <div class="stat-value" id="money">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">毎秒獲得</div>
+                <div class="stat-value" id="perSecond">0</div>
+            </div>
+        </div>
+
+        <div class="clicker-section">
+            <button class="click-button" id="clickButton">クリック!</button>
+            <div class="click-info">
+                1クリック = <span id="clickValue">1</span>円
+            </div>
+        </div>
+
+        <div class="upgrades-section">
+            <div class="upgrades-title">アップグレード</div>
+            <div class="upgrades-grid" id="upgradesGrid"></div>
+            <button class="reset-button" onclick="resetGame()">ゲームをリセット</button>
+        </div>
+    </div>
+
+    <script>
+        let money = 0;
+        let clickValue = 1;
+        let perSecond = 0;
+
+        const upgrades = [
+            {
+                id: 'cursor',
+                name: '💻 カーソル',
+                baseCost: 10,
+                level: 0,
+                onBuy: () => {
+                    clickValue += 1;
+                    document.getElementById('clickValue').textContent = clickValue;
+                }
+            },
+            {
+                id: 'grandma',
+                name: '👵 おばあちゃん',
+                baseCost: 100,
+                level: 0,
+                onBuy: () => {
+                    perSecond += 0.1;
+                }
+            },
+            {
+                id: 'farm',
+                name: '🌾 農場',
+                baseCost: 500,
+                level: 0,
+                onBuy: () => {
+                    perSecond += 1;
+                }
+            },
+            {
+                id: 'factory',
+                name: '🏭 工場',
+                baseCost: 2000,
+                level: 0,
+                onBuy: () => {
+                    perSecond += 5;
+                }
+            },
+            {
+                id: 'bank',
+                name: '🏦 銀行',
+                baseCost: 5000,
+                level: 0,
+                onBuy: () => {
+                    perSecond += 10;
+                }
+            },
+            {
+                id: 'casino',
+                name: '🎰 カジノ',
+                baseCost: 10000,
+                level: 0,
+                onBuy: () => {
+                    perSecond += 20;
+                }
+            }
+        ];
+
+        const clickButton = document.getElementById('clickButton');
+        const moneyDisplay = document.getElementById('money');
+        const perSecondDisplay = document.getElementById('perSecond');
+
+        function getCost(upgrade) {
+            return Math.floor(upgrade.baseCost * Math.pow(1.15, upgrade.level));
+        }
+
+        function updateDisplay() {
+            moneyDisplay.textContent = Math.floor(money);
+            perSecondDisplay.textContent = (Math.floor(perSecond * 100) / 100).toFixed(2);
+            renderUpgrades();
+        }
+
+        function renderUpgrades() {
+            const grid = document.getElementById('upgradesGrid');
+            grid.innerHTML = '';
+
+            upgrades.forEach(upgrade => {
+                const cost = getCost(upgrade);
+                const button = document.createElement('button');
+                button.className = 'upgrade-button';
+                button.disabled = money < cost;
+                button.innerHTML = `
+                    <div class="upgrade-name">${upgrade.name}</div>
+                    <div class="upgrade-info">Lv ${upgrade.level}</div>
+                    <div class="upgrade-cost">費用: ${cost}円</div>
+                `;
+
+                button.onclick = () => {
+                    if (money >= cost) {
+                        money -= cost;
+                        upgrade.level += 1;
+                        upgrade.onBuy();
+                        updateDisplay();
+                    }
+                };
+
+                grid.appendChild(button);
+            });
+        }
+
+        function createFloatingText(x, y, text) {
+            const element = document.createElement('div');
+            element.className = 'floating-text';
+            element.textContent = text;
+            element.style.left = (x - 20) + 'px';
+            element.style.top = (y - 20) + 'px';
+            document.body.appendChild(element);
+
+            setTimeout(() => element.remove(), 1000);
+        }
+
+        clickButton.addEventListener('click', (e) => {
+            money += clickValue;
+            createFloatingText(e.clientX, e.clientY, '+' + clickValue + '円');
+            updateDisplay();
+        });
+
+        // 自動獲得
+        setInterval(() => {
+            if (perSecond > 0) {
+                money += perSecond / 10;
+                updateDisplay();
+            }
+        }, 100);
+
+        // 初期表示
+        updateDisplay();
+
+        function resetGame() {
+            if (confirm('ゲームをリセットしてもよろしいですか？')) {
+                money = 0;
+                clickValue = 1;
+                perSecond = 0;
+                upgrades.forEach(upgrade => {
+                    upgrade.level = 0;
+                });
+                document.getElementById('clickValue').textContent = '1';
+                updateDisplay();
+            }
+        }
+
+        // ゲーム状態を保存
+        function saveGame() {
+            const gameState = {
+                money,
+                clickValue,
+                perSecond,
+                upgrades: upgrades.map(u => ({ id: u.id, level: u.level }))
+            };
+            localStorage.setItem('clickerGameState', JSON.stringify(gameState));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('clickerGameState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                money = state.money;
+                clickValue = state.clickValue;
+                perSecond = state.perSecond;
+                state.upgrades.forEach(savedUpgrade => {
+                    const upgrade = upgrades.find(u => u.id === savedUpgrade.id);
+                    if (upgrade) {
+                        upgrade.level = savedUpgrade.level;
+                    }
+                });
+                document.getElementById('clickValue').textContent = clickValue;
+                updateDisplay();
+            }
+        }
+
+        // 定期的にゲーム状態を保存
+        setInterval(saveGame, 5000);
+
+        // ゲーム開始時にロード
+        loadGame();
+    </script>
+</body>
+</html>
