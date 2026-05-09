@@ -4529,9 +4529,6 @@ class Fighter {
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
     this._sealTimer = 0;
-    this._comboCount = 0;
-    this._comboWindow = 0;
-    this._comboWindowMax = 0;
     this._midnightWeightDebuff = 1.0;
     this._equippedSkills = [null, null];
     this._skillUses = {};
@@ -4587,6 +4584,7 @@ class Fighter {
       if (Math.abs(this.vx) < 0.1) this.vx = 0;
     }
     this.x += this.vx;
+    const wasOnGround = this.onGround;
     // vy > 0（下方向）で高速移動する場合、大きな足場を飛び越えないかチェック
     if (this.vy > 4 && this.hitstun > 0) { // ふっ飛ばし中のみ
       const prevY = this.y;
@@ -4608,7 +4606,6 @@ class Fighter {
       }
     }
     this.y += this.vy;
-    const wasOnGround = this.onGround;
     const fallingSpeed = this.vy;
     this.onGround = false;
     // divingInWater中（水中↓キー）は全足場の着地判定をスキップ
@@ -4969,11 +4966,6 @@ class Fighter {
         }
       }
     }
-    if ((this._comboWindow || 0) > 0) {
-      this._comboWindow--;
-      if (this._comboWindow === 0) this._comboCount = 0;
-    }
-
     if (this._hasStar && this.respawnTimer === 0) {
       // 技発生速度：attackCooldownをわずかに早める
       if (this.attackCooldown > 0) this.attackCooldown = Math.max(0, this.attackCooldown - 0.3);
@@ -5342,13 +5334,6 @@ class Fighter {
       return;
     }
 
-    if (keys['z'] && keys['x'] && this.attackCooldown === 0 && !this.zHeld && !this.xHeld) {
-      this.doComboAttack();
-      this.zHeld = true;
-      this.xHeld = true;
-      return;
-    }
-
     if (keys['x'] && keys['c'] && !this.xHeld && !this.cHeld && this.attackCooldown === 0 && (this.skillCooldown || 0) === 0) {
       this.doSkillMove();
       this.xHeld = true;
@@ -5408,178 +5393,6 @@ class Fighter {
     if (!keys['c']) this.cHeld = false;
   }
 
-  // キャラ専用特性技（Cキー）
-  doComboAttack() {
-    const opp = this.isPlayer ? cpu : player;
-    if (!opp || opp.respawnTimer > 0) return;
-
-    const atkMul = this.stats.atk;
-    const dx = opp.x - this.x;
-    const dy = (opp.y - opp.h/2) - (this.y - this.h/2);
-    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-    const isClose = dist < 120;
-
-    // コンボ継続条件：ウィンドウ内かつ相手が落下中
-    const isComboChain = (this._comboWindow || 0) > 0 && opp.vy > 0 && this._comboCount > 0;
-
-    // 5回達成 → フィニッシュアッパー（近距離必須）
-    if (isComboChain && this._comboCount >= 5) {
-      if (!isClose) { this._showTooFar(); return; }
-      this._doComboFinisher(opp, atkMul);
-      return;
-    }
-
-    // 近距離でないと発動しない
-    if (!isClose) {
-      this._showTooFar();
-      return;
-    }
-
-    this._doComboClose(opp, atkMul, isComboChain);
-  }
-
-  _showTooFar() {
-    effects.push({ type:'text', x:this.x, y:this.y-this.h-15,
-      text:'もっと近くで！', color:'#ef9a9a', size:12, life:45, maxLife:45, vy:-0.3 });
-  }
-
-  // コンボ：銃で打ち上げ
-  _doComboShot(opp, atkMul, isChain) {
-    const dmg = 8 * atkMul * (isChain ? 1.1 : 1);
-    const count = isChain ? this._comboCount : 0;
-    // 弾を発射
-    projectiles.push({
-      x: this.x + this.facing * 25,
-      y: this.y - this.h * 0.5,
-      vx: this.facing * 12,
-      vy: -3,
-      gravity: 0.05,
-      life: 40,
-      damage: dmg,
-      kb: 0, // KB0（vy直接操作で打ち上げ）
-      owner: this,
-      color: '#ffd54f',
-      isComboShot: true,
-      comboCount: count,
-    });
-    this.attackCooldown = 25;
-    this._comboWindow = 0; // ウィンドウは命中時にセット
-    this._showComboCount(count + 1);
-    // エフェクト
-    effects.push({ x:this.x+this.facing*30, y:this.y-this.h*0.5,
-      vx:this.facing*5, vy:-2, life:12, maxLife:12, color:'#ffd54f', size:10 });
-    playSound('jab');
-  }
-
-  // コンボ：近接パンチで打ち上げ
-  _doComboClose(opp, atkMul, isChain) {
-    const count = isChain ? this._comboCount : 0;
-    // ダメージは控えめ（回数でゆっくり増加）
-    const dmg = 7 * atkMul * (1 + count * 0.08);
-    if (opp.respawnTimer === 0 && opp.invincible === 0) {
-      opp.damage += dmg;
-      opp.vy = -(10 + count * 2.5); // 1発目-10、2→-12.5、3→-15…
-      opp.vx = (opp.x > this.x ? 1 : -1) * (1 + count * 0.4);
-      opp.hitstun = 15 + count * 2;
-      // 得意技オーラ中はタイプ追加効果を付与
-      if ((this.skillBuffTimer || 0) > 0 && this.skillBuffType) {
-        const td = SKILL_TYPES[this.skillBuffType];
-        if (td) {
-          if (td.effect === 'burn')  opp._burnTimer = Math.max(opp._burnTimer||0, 60);
-          if (td.effect === 'soak')  opp._slowTimer = Math.max(opp._slowTimer||0, 45);
-          if (td.effect === 'drain') this.damage = Math.max(0, this.damage - 1.5);
-          if (td.effect === 'kb')    opp.vy *= 1.15;
-          if (td.effect === 'regen') this.damage = Math.max(0, this.damage - 0.5);
-          effects.push({ x:opp.x, y:opp.y-opp.h,
-            vx:(Math.random()-0.5)*3, vy:-2,
-            life:12, maxLife:12, color:td.color, size:8+Math.random()*4 });
-        }
-      }
-      this._onComboHit(opp, count);
-    }
-    this.attackCooldown = 24;
-    const effCount = 5 + count * 2;
-    const col = count === 0 ? '#fff' : count < 3 ? '#ffd54f' : '#ff8f00';
-    for (let k = 0; k < effCount; k++) {
-      effects.push({
-        x: opp.x + (Math.random()-0.5)*22, y: opp.y - opp.h*0.5,
-        vx: (Math.random()-0.5)*4, vy: -2-Math.random()*2.5,
-        life: 12+count, maxLife: 12+count, color: col,
-        size: 6+count*1.2+Math.random()*3
-      });
-    }
-    this._showComboCount(count + 1);
-    playSound('smash');
-    addShake(3 + count * 1.5);
-  }
-
-  // コンボ：接近してパンチ（不使用だが残す）
-  _doComboApproach(opp, atkMul, isChain) {
-    const dx = opp.x - this.x;
-    const dy = (opp.y - opp.h/2) - this.y;
-    const dist2 = Math.sqrt(dx*dx + dy*dy) || 1;
-    this.x += (dx/dist2) * Math.min(80, dist2 * 0.7);
-    this.y += (dy/dist2) * Math.min(30, Math.abs(dy) * 0.5);
-    this.facing = dx > 0 ? 1 : -1;
-    this._doComboClose(opp, atkMul, isChain);
-  }
-
-  // コンボ命中時の共通処理
-  _onComboHit(opp, count) {
-    this._comboCount = count + 1;
-    const windowFrames = 70 + count * 10;
-    this._comboWindow = windowFrames;
-    this._comboWindowMax = windowFrames;
-  }
-
-  // フィニッシュアッパー（25%、得意技オーラ中は1.3倍＋タイプ追加効果）
-  _doComboFinisher(opp, atkMul) {
-    if (opp.respawnTimer > 0 || opp.invincible > 0) return;
-    const skillMul = (this.skillBuffTimer || 0) > 0 ? 1.3 : 1.0;
-    const finishDmg = 25 * atkMul * skillMul;
-    const finishKb  = 18 * atkMul * skillMul;
-    opp.takeHit(this, { damage: finishDmg, kb: finishKb, type:'smash' });
-    opp.vy = -18;
-    if ((this.skillBuffTimer || 0) > 0 && this.skillBuffType) {
-      const td = SKILL_TYPES[this.skillBuffType];
-      if (td) {
-        if (td.effect === 'burn')  opp._burnTimer = 150;
-        if (td.effect === 'soak')  opp._slowTimer = 120;
-        if (td.effect === 'drain') this.damage = Math.max(0, this.damage - 5);
-        if (td.effect === 'kb')    opp.vy = -22;
-        if (td.effect === 'regen') this.damage = Math.max(0, this.damage - 3);
-        effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-30,
-          text: td.emoji+' 追加効果!', color:td.color, size:13, life:70, maxLife:70, vy:-0.4 });
-      }
-    }
-    for (let k = 0; k < 24; k++) {
-      const ang = (k/24)*Math.PI*2;
-      effects.push({
-        x: opp.x + Math.cos(ang)*25, y: opp.y - opp.h/2 + Math.sin(ang)*25,
-        vx: Math.cos(ang)*6, vy: Math.sin(ang)*6,
-        life: 28, maxLife: 28,
-        color: k%3===0?'#ffd54f':k%3===1?'#ff8f00':'#fff',
-        size: 7+Math.random()*5
-      });
-    }
-    effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-20,
-      text:'FINISH!', color:'#ffd54f', size:20, life:75, maxLife:75, vy:-0.4 });
-    effects.push({ type:'text', x:this.x, y:this.y-this.h-30,
-      text:'5 HIT COMBO!!', color:'#ff8f00', size:14, life:85, maxLife:85, vy:-0.3 });
-    addShake(14);
-    playSound('ko');
-    this._comboCount = 0;
-    this._comboWindow = 0;
-    this.attackCooldown = 35;
-  }
-
-  // コンボ回数を表示
-  _showComboCount(n) {
-    effects.push({ type:'text', x:this.x, y:this.y-this.h-15,
-      text: n <= 5 ? `COMBO ${n}` : 'MAX!!',
-      color: n >= 5 ? '#ffd54f' : '#fff',
-      size: 13, life: 50, maxLife: 50, vy: -0.3 });
-  }
 
   useEquippedSkill(slotIdx) {
     const sid = this._equippedSkills?.[slotIdx];
@@ -5757,9 +5570,7 @@ class Fighter {
     const style = getSpecialStyle(this.charId);
     const stageBonus = getStageTypeBonus(type);
 
-    // コンボ中（_comboCount>0）に得意技を使うと強化
-    const comboBonus = Math.min((this._comboCount || 0) * 0.15, 0.45); // 最大+45%
-    const SKILL_DURATION = Math.floor(300 + comboBonus * 200); // コンボ中は最大7秒
+    const SKILL_DURATION = 300;
     const SKILL_COOLDOWN = 360; // 6秒クールダウン（短縮）
 
     this.skillCooldown = SKILL_COOLDOWN;
@@ -8926,8 +8737,6 @@ class Fighter {
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
     this._sealTimer = 0;
-    this._comboCount = 0;
-    this._comboWindow = 0;
     // 闇オーラ・三日月（リスポーン時に消去）
     this._darkAura = null;
     this._midnightMoons = null;
@@ -9042,25 +8851,6 @@ class Fighter {
       ctx.strokeText(this.moveNameText, this.x, yPos);
       ctx.fillText(this.moveNameText, this.x, yPos);
       ctx.restore();
-    }
-
-    // コンボウィンドウ中：頭上に「▼ X+Z」インジケーター
-    if ((this._comboWindow || 0) > 0 && this._comboCount > 0) {
-      const opp2 = this.isPlayer ? cpu : player;
-      if (opp2 && opp2.vy > 0) { // 相手が落下中
-        const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 100);
-        ctx.save();
-        ctx.globalAlpha = 0.55 + 0.45 * pulse;
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = this._comboCount >= 4 ? '#ffd54f' : '#fff';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        const ind = `▼ X+Z [${this._comboCount}/5]`;
-        ctx.strokeText(ind, this.x, this.y - this.h - 28);
-        ctx.fillText(ind, this.x, this.y - this.h - 28);
-        ctx.restore();
-      }
     }
 
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -9413,16 +9203,6 @@ function updateProjectiles() {
           break;
         }
         t.takeHit(p.owner, { damage: p.damage, kb: p.kb, type: p.attackType || 'jab' });
-        // コンボ弾命中：打ち上げ処理
-        if (p.isComboShot && t.respawnTimer === 0) {
-          const count = p.comboCount || 0;
-          t.vy = -(12 + count * 1.5);
-          t.vx = 0;
-          t.hitstun = 18;
-          p.owner._onComboHit(t, count);
-          p.owner._showComboCount(count + 1);
-          addShake(5);
-        }
         // 🍁 矢命中時に枯葉を散らす
         if (p.isArrow) spawnLeaves(p.x, p.y, p.owner);
     // ⚡雷弾命中：鈍足付与
@@ -11077,11 +10857,7 @@ function vSkill() {
   }
 }
 function vSkillEnd() {}
-function vCombo() {
-  if (player && player.attackCooldown === 0) {
-    player.doComboAttack();
-  }
-}
+function vCombo() {}
 function vComboEnd() {}
 function vSkillSlot(idx) {
   if (player && (player._skillCooldown||0) === 0) {
