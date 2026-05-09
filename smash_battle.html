@@ -4528,6 +4528,7 @@ class Fighter {
     this.skillType = null;
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
+    this._barrierCooldown = 0;
     this._sealTimer = 0;
     this._midnightWeightDebuff = 1.0;
     this._equippedSkills = [null, null];
@@ -4749,6 +4750,7 @@ class Fighter {
     if (this.cloneCooldown > 0) this.cloneCooldown--;
     if ((this.skillCooldown || 0) > 0) this.skillCooldown--;
     if ((this.skillHitCooldown || 0) > 0) this.skillHitCooldown--;
+    if ((this._barrierCooldown || 0) > 0) this._barrierCooldown--;
     if ((this.skillBuffTimer || 0) > 0) {
       this.skillBuffTimer--;
       const td = SKILL_TYPES[this.skillBuffType] || SKILL_TYPES.fight;
@@ -5570,8 +5572,8 @@ class Fighter {
     const style = getSpecialStyle(this.charId);
     const stageBonus = getStageTypeBonus(type);
 
-    const SKILL_DURATION = 300;
-    const SKILL_COOLDOWN = 360; // 6秒クールダウン（短縮）
+    const SKILL_DURATION = 420; // 7秒
+    const SKILL_COOLDOWN = 600; // 10秒クールダウン
 
     this.skillCooldown = SKILL_COOLDOWN;
     this.skillType = type;
@@ -5672,12 +5674,12 @@ class Fighter {
               text:'射程外！', color:'#ff8a65', size:12, life:35, maxLife:35, vy:-0.4 });
           }
         }
-        this.skillBuffTimer = 150;
+        this.skillBuffTimer = SKILL_DURATION;
         this.skillBuffType = type;
         return;
       }
       // 通常chainスタイル
-      this.skillBuffTimer = 200;
+      this.skillBuffTimer = SKILL_DURATION;
       this.skillBuffType = type;
     } else {
       // 通常スタイル：バフ（コンボ中は時間延長）
@@ -5967,8 +5969,6 @@ class Fighter {
     const BUFF_DURATION = 240; // 4秒
     const style = getSpecialStyle(this.charId);
     if (style !== 'ranged') {
-      this.skillBuffTimer = BUFF_DURATION;
-      this.skillBuffType = this.specialType || getCharSkillType(this.charId);
       this.skillHitCooldown = 0;
     }
     // 発動エフェクト（1回のみ）
@@ -8488,9 +8488,10 @@ class Fighter {
       effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
         text:'炎無効!', color:'#7c4dff', size:12, life:35, maxLife:35, vy:-0.4 });
     }
-    if (this.hasTrait('sep_reflect') && !hitbox.piercing) {
+    if (this.hasTrait('sep_reflect') && !hitbox.piercing && (this._barrierCooldown || 0) === 0) {
       // 追加効果（得意技バフ中の追加ダメージ）は完全防ぐ
       if (attacker && (attacker.skillBuffTimer || 0) > 0) {
+        this._barrierCooldown = 300; // 5秒クールダウン
         effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
           text:'バリア!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
         effects.push({ x:this.x, y:this.y-this.h*0.5, vx:0, vy:0,
@@ -8499,6 +8500,7 @@ class Fighter {
       }
       // 通常被弾も50%で防ぐ
       if (Math.random() < 0.5) {
+        this._barrierCooldown = 300; // 5秒クールダウン
         effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
           text:'防御!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
         for (let k = 0; k < 6; k++) {
