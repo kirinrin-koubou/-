@@ -5576,12 +5576,6 @@ class Fighter {
     this.skillCooldown = SKILL_COOLDOWN;
     this.skillType = type;
 
-    // コンボ連携の演出
-    if (comboBonus > 0) {
-      effects.push({ type:'text', x:this.x, y:this.y-this.h-25,
-        text:`コンボ強化 +${Math.round(comboBonus*100)}%!`,
-        color: td.color, size: 12, life: 60, maxLife: 60, vy: -0.4 });
-    }
     // ホームステージ演出
     if (stageBonus > 1) {
       effects.push({ type:'text', x: this.x, y: this.y - this.h - 35,
@@ -5623,8 +5617,8 @@ class Fighter {
       // (snow_castle は上で処理済み)
       if (sa === 'snow_castle') { /* handled above */ }
       const projSpeed = 10;
-      const projDamage = 18 * this.stats.atk * td.dmgMul * stageBonus * (1 + comboBonus);
-      const projKb = 10 * this.stats.atk * stageBonus * (1 + comboBonus);
+      const projDamage = 18 * this.stats.atk * td.dmgMul * stageBonus;
+      const projKb = 10 * this.stats.atk * stageBonus;
       geometricObjects.push({
         type: 'skill_projectile',
         x: this.x + this.facing * 20,
@@ -5637,7 +5631,7 @@ class Fighter {
         damage: projDamage,
         kb: projKb,
         timer: 90,
-        size: 14 + comboBonus * 8,
+        size: 14,
       });
       for (let k = 0; k < 10; k++) {
         effects.push({
