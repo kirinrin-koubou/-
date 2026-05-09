@@ -4528,7 +4528,7 @@ class Fighter {
     this.skillType = null;
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
-    this.barrierCD = 0;
+    this.barrierAvailable = true;
     this._sealTimer = 0;
     this._midnightWeightDebuff = 1.0;
     this._equippedSkills = [null, null];
@@ -4546,7 +4546,6 @@ class Fighter {
   }
 
   update(opponent) {
-    if (this.barrierCD > 0) this.barrierCD--;
     if (this.respawnTimer > 0) {
       this.respawnTimer--;
       if (this.respawnTimer === 0) this.respawn();
@@ -8488,12 +8487,15 @@ class Fighter {
       effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
         text:'炎無効!', color:'#7c4dff', size:12, life:35, maxLife:35, vy:-0.4 });
     }
-    if (this.hasTrait('sep_reflect') && !hitbox.piercing && this.barrierCD <= 0) {
+    if (this.hasTrait('sep_reflect') && !hitbox.piercing && this.barrierAvailable) {
       const blocked =
         (attacker && (attacker.skillBuffTimer || 0) > 0) ||
         Math.random() < 0.5;
       if (blocked) {
-        this.barrierCD = 300;
+        // バリア発動 → 使用不可に。5秒後に再び使用可能にする
+        this.barrierAvailable = false;
+        const _self = this;
+        setTimeout(function() { _self.barrierAvailable = true; }, 5000);
         const isSkillBuff = attacker && (attacker.skillBuffTimer || 0) > 0;
         effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
           text: isSkillBuff ? 'バリア!' : '防御!',
