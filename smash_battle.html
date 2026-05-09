@@ -8642,7 +8642,8 @@ class Fighter {
       }
     }
     const angle = hitbox.type === 'smash' ? -0.5 : -0.3;
-    this.vx = attacker.facing * knockback * Math.cos(angle);
+    const attackerFacing = attacker ? attacker.facing : (this.x < (player ? player.x : 0) ? -1 : 1);
+    this.vx = attackerFacing * knockback * Math.cos(angle);
     this.vy = -Math.abs(knockback * Math.sin(angle)) - knockback * 0.4;
     let stun = Math.floor(8 + knockback);
     if (this.hasTrait('armor')) stun = Math.floor(stun * 0.5);
@@ -12209,7 +12210,9 @@ function damageColor(d) {
 
 function loop() {
   if (!gameRunning) return;
+  requestAnimationFrame(loop);
   window.battleFrame = (window.battleFrame || 0) + 1;
+  try {
   ctx.clearRect(0, 0, W, H);
 
   // 更新（位置などを先に確定）
@@ -12276,7 +12279,7 @@ function loop() {
 
   trimEffects();
   updateBattleUI();
-  requestAnimationFrame(loop);
+  } catch(e) { console.error('loop error:', e); }
 }
 
 (async () => {
