@@ -4528,7 +4528,6 @@ class Fighter {
     this.skillType = null;
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
-    this.barrierAvailable = true;
     this._sealTimer = 0;
     this._midnightWeightDebuff = 1.0;
     this._equippedSkills = [null, null];
@@ -8487,26 +8486,28 @@ class Fighter {
       effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
         text:'炎無効!', color:'#7c4dff', size:12, life:35, maxLife:35, vy:-0.4 });
     }
-    if (this.hasTrait('sep_reflect') && !hitbox.piercing && this.barrierAvailable) {
-      const blocked =
-        (attacker && (attacker.skillBuffTimer || 0) > 0) ||
-        Math.random() < 0.5;
-      if (blocked) {
-        // バリア発動 → 使用不可に。5秒後に再び使用可能にする
-        this.barrierAvailable = false;
-        const _self = this;
-        setTimeout(function() { _self.barrierAvailable = true; }, 5000);
-        const isSkillBuff = attacker && (attacker.skillBuffTimer || 0) > 0;
-        effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
-          text: isSkillBuff ? 'バリア!' : '防御!',
-          color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
-        effects.push({ x:this.x, y:this.y-this.h*0.5, vx:0, vy:0,
-          life:15, maxLife:15, color:'#ce93d8', size:this.w*1.2 });
-        for (let k = 0; k < 6; k++) {
-          effects.push({ x:this.x+(Math.random()-0.5)*30, y:this.y-this.h/2+(Math.random()-0.5)*30,
-            vx:(Math.random()-0.5)*3, vy:-1.5, life:14, maxLife:14, color:'#ce93d8', size:5+Math.random()*3 });
+    if (this.hasTrait('sep_reflect') && !hitbox.piercing) {
+      const _bKey = this.isPlayer ? 'player' : 'cpu';
+      const _bNow = Date.now();
+      // 前回発動から5秒以上経っていなければバリア使用不可
+      if (_bNow - barrierLastFired[_bKey] >= 5000) {
+        const blocked =
+          (attacker && (attacker.skillBuffTimer || 0) > 0) ||
+          Math.random() < 0.5;
+        if (blocked) {
+          barrierLastFired[_bKey] = _bNow; // 発動時刻を記録
+          const isSkillBuff = attacker && (attacker.skillBuffTimer || 0) > 0;
+          effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
+            text: isSkillBuff ? 'バリア!' : '防御!',
+            color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
+          effects.push({ x:this.x, y:this.y-this.h*0.5, vx:0, vy:0,
+            life:15, maxLife:15, color:'#ce93d8', size:this.w*1.2 });
+          for (let k = 0; k < 6; k++) {
+            effects.push({ x:this.x+(Math.random()-0.5)*30, y:this.y-this.h/2+(Math.random()-0.5)*30,
+              vx:(Math.random()-0.5)*3, vy:-1.5, life:14, maxLife:14, color:'#ce93d8', size:5+Math.random()*3 });
+          }
+          return;
         }
-        return;
       }
     }
     // シールド中は完全防御（ただしpiercingなら貫通する）
@@ -9126,6 +9127,8 @@ class Fighter {
 
 const effects = [];
 const projectiles = [];
+// sep_reflectバリアのクールダウン管理（Fighterオブジェクト外で保持）
+const barrierLastFired = { player: 0, cpu: 0 };
 const geometricObjects = []; // 必殺技用の幾何オブジェクト（岩壁、警告マーカーなど）
 window.geometricObjects = geometricObjects;
 
@@ -11131,6 +11134,8 @@ function startBattle() {
   effects.length = 0;
   projectiles.length = 0;
   geometricObjects.length = 0;
+  barrierLastFired.player = 0;
+  barrierLastFired.cpu = 0;
   // ステージセットアップ
   setupStage(gameData.selectedStage || 'random');
   resetCamera();
