@@ -4528,7 +4528,7 @@ class Fighter {
     this.skillType = null;
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
-    this._barrierCooldown = 0;
+    this._barrierLastUsed = 0;
     this._sealTimer = 0;
     this._midnightWeightDebuff = 1.0;
     this._equippedSkills = [null, null];
@@ -4750,7 +4750,6 @@ class Fighter {
     if (this.cloneCooldown > 0) this.cloneCooldown--;
     if ((this.skillCooldown || 0) > 0) this.skillCooldown--;
     if ((this.skillHitCooldown || 0) > 0) this.skillHitCooldown--;
-    if ((this._barrierCooldown || 0) > 0) this._barrierCooldown--;
     if ((this.skillBuffTimer || 0) > 0) {
       this.skillBuffTimer--;
       const td = SKILL_TYPES[this.skillBuffType] || SKILL_TYPES.fight;
@@ -8488,26 +8487,30 @@ class Fighter {
       effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
         text:'炎無効!', color:'#7c4dff', size:12, life:35, maxLife:35, vy:-0.4 });
     }
-    if (this.hasTrait('sep_reflect') && !hitbox.piercing && (this._barrierCooldown || 0) === 0) {
-      // 追加効果（得意技バフ中の追加ダメージ）は完全防ぐ
-      if (attacker && (attacker.skillBuffTimer || 0) > 0) {
-        this._barrierCooldown = 300; // 5秒クールダウン
-        effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
-          text:'バリア!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
-        effects.push({ x:this.x, y:this.y-this.h*0.5, vx:0, vy:0,
-          life:15, maxLife:15, color:'#ce93d8', size:this.w*1.2 });
-        return;
-      }
-      // 通常被弾も50%で防ぐ
-      if (Math.random() < 0.5) {
-        this._barrierCooldown = 300; // 5秒クールダウン
-        effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
-          text:'防御!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
-        for (let k = 0; k < 6; k++) {
-          effects.push({ x:this.x+(Math.random()-0.5)*30, y:this.y-this.h/2+(Math.random()-0.5)*30,
-            vx:(Math.random()-0.5)*3, vy:-1.5, life:14, maxLife:14, color:'#ce93d8', size:5+Math.random()*3 });
+    if (this.hasTrait('sep_reflect') && !hitbox.piercing) {
+      const _now = Date.now();
+      const _barrierReady = (_now - (this._barrierLastUsed || 0)) >= 5000;
+      if (_barrierReady) {
+        // 追加効果（得意技バフ中の追加ダメージ）は完全防ぐ
+        if (attacker && (attacker.skillBuffTimer || 0) > 0) {
+          this._barrierLastUsed = _now;
+          effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
+            text:'バリア!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
+          effects.push({ x:this.x, y:this.y-this.h*0.5, vx:0, vy:0,
+            life:15, maxLife:15, color:'#ce93d8', size:this.w*1.2 });
+          return;
         }
-        return;
+        // 通常被弾も50%で防ぐ
+        if (Math.random() < 0.5) {
+          this._barrierLastUsed = _now;
+          effects.push({ type:'text', x:this.x, y:this.y-this.h-10,
+            text:'防御!', color:'#ce93d8', size:14, life:40, maxLife:40, vy:-0.5 });
+          for (let k = 0; k < 6; k++) {
+            effects.push({ x:this.x+(Math.random()-0.5)*30, y:this.y-this.h/2+(Math.random()-0.5)*30,
+              vx:(Math.random()-0.5)*3, vy:-1.5, life:14, maxLife:14, color:'#ce93d8', size:5+Math.random()*3 });
+          }
+          return;
+        }
       }
     }
     // シールド中は完全防御（ただしpiercingなら貫通する）
