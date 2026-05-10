@@ -12552,6 +12552,17 @@ function loop() {
   updateStageGimmicks();
   player.update(cpu);
   if (cpu) cpu.update(player);
+  // チェーン拘束：両update後に位置を強制固定（重力・物理の上書きを防ぐ）
+  for (const f of [player, cpu]) {
+    if (!f || f._chainLockX == null) continue;
+    const chainOpp = f.isPlayer ? cpu : player;
+    if (chainOpp && chainOpp.respawnTimer === 0) {
+      chainOpp.x = f._chainLockX;
+      chainOpp.y = f._chainLockY;
+      chainOpp.vx = 0;
+      chainOpp.vy = 0;
+    }
+  }
   resolveOverlap();
   checkHits();
   updateProjectiles();
