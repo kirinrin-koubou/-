@@ -5785,7 +5785,7 @@ class Fighter {
     if (this.hasTrait('chain_weapon')) {
       // 既にチェーンが動いていたら発動しない（重複防止）
       if (geometricObjects.some(o => o.type === 'chain_swing' && o.owner === this)) return;
-      const swings = Math.floor(Math.random() * 3) + 1;
+      const swings = 1;
       const opp = this.isPlayer ? cpu : player;
       // 相手がいれば相手の方向、いなければfacingの水平方向
       let angle = 0;
