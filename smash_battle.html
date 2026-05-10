@@ -5538,9 +5538,9 @@ class Fighter {
     // --- 攻撃技 ---
     if (m.power > 0 && opp && opp.respawnTimer === 0) {
       if (range === 'zone' || sid === 'sm_earthquake' || sid === 'sm_fissure') {
-        opp.takeHit(this, { damage: m.power * atkMul, kb: m.smash * atkMul, type:'smash' });
+        opp.takeHit(this, { damage: m.power * atkMul * 0.82, kb: m.smash * atkMul * 0.82, type:'smash' });
       } else {
-        opp.takeHit(this, { damage: m.power * atkMul, kb: m.smash * atkMul, type:'smash' });
+        opp.takeHit(this, { damage: m.power * atkMul * 0.82, kb: m.smash * atkMul * 0.82, type:'smash' });
       }
       if (m.heal) this.damage = Math.max(0, this.damage - m.heal * (atkMul > 1 ? 1.2 : 1));
       if (m.debuff === 'paralyze') opp._slowTimer = Math.max(opp._slowTimer||0, 300);
@@ -6207,7 +6207,7 @@ class Fighter {
       if (this._sakuraSword) this._sakuraSword.swing = this.specialPhaseTimer; // 振り下ろしアニメ
       if (this.specialPhaseTimer === 1) {
         if (opp && !opp.shielding && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 40 * atkMul, kb: 16 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 33 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
           // 振り下ろしのスラッシュエフェクト
           for (let s = 0; s < 12; s++) {
             const ang = (s/12)*Math.PI - Math.PI*0.8 + (this.facing > 0 ? 0 : Math.PI);
@@ -6266,7 +6266,7 @@ class Fighter {
       if (this.specialPhaseTimer >= 30) { this.specialPhase = 2; this.specialPhaseTimer = 0; }
     } else if (this.specialPhase === 2) {
       if (this.specialPhaseTimer === 1 && opp && opp.respawnTimer === 0 && !opp.shielding) {
-        opp.takeHit(this, { damage: 50 * atkMul, kb: 20 * atkMul, type: 'smash', piercing: true });
+        opp.takeHit(this, { damage: 42 * atkMul, kb: 17 * atkMul, type: 'smash', piercing: true });
         const cloud = this._thunderCloud || { x: opp.x, y: opp.y - 180 };
         for (let k = 0; k < 50; k++) {
           const t = k / 50;
@@ -6319,7 +6319,7 @@ class Fighter {
     } else if (this.specialPhase === 3) {
       if (this.specialPhaseTimer === 1) {
         if (opp && opp.respawnTimer === 0 && !opp.shielding) {
-          opp.takeHit(this, { damage: 22 * atkMul, kb: 12 * atkMul, type: 'smash' });
+          opp.takeHit(this, { damage: 18 * atkMul, kb: 10 * atkMul, type: 'smash' });
           opp.vy = -14; // 半分に抑える
           for (let k = 0; k < 60; k++) {
             const t = k / 60;
@@ -6345,7 +6345,7 @@ class Fighter {
     if (this.specialPhase === 1) {
       if (this.specialPhaseTimer % 5 === 0 && opp && opp.respawnTimer === 0) {
         const intensity = this.specialPhaseTimer / 60;
-        opp.damage += (1.5 + intensity * 2.5) * atkMul;
+        opp.damage += (1.2 + intensity * 2.0) * atkMul;
         for (let k = 0; k < 3 + Math.floor(intensity * 4); k++) {
           effects.push({
             x: opp.x + (Math.random()-0.5)*60, y: opp.y + (Math.random()-0.5)*10,
@@ -6358,7 +6358,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer >= 60) {
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 12 * atkMul, kb: 10 * atkMul, type: 'smash', piercing: true });
           opp._heatSickness = 180;
           for (let k = 0; k < 20; k++) {
             const ang = (k/20)*Math.PI*2;
@@ -6402,7 +6402,7 @@ class Fighter {
     } else if (this.specialPhase === 2) {
       // specialPhaseTimer===1のみでtakeHit（確実に1回だけ）
       if (this.specialPhaseTimer === 1 && opp && opp.respawnTimer === 0) {
-        opp.takeHit(this, { damage: 60 * atkMul, kb: 0, type: 'smash', piercing: true });
+        opp.takeHit(this, { damage: 50 * atkMul, kb: 0, type: 'smash', piercing: true });
         opp.vx = 0; opp.vy = 0;
         const sx = W - 80, sy = 40;
         const tx = opp.x, ty = opp.y - opp.h/2;
@@ -6500,8 +6500,8 @@ class Fighter {
             vy: (ty/dist)*speed,
             gravity: 0.1,
             life: 90,
-            damage: isFirst ? 12 * atkMul : 6 * atkMul,
-            kb: isFirst ? 8 * atkMul : 5 * atkMul,
+            damage: isFirst ? 10 * atkMul : 5 * atkMul,
+            kb: isFirst ? 7 * atkMul : 4 * atkMul,
             owner: this,
             color: '#bf360c',
             isArrow: true,
@@ -6583,7 +6583,7 @@ class Fighter {
       if (this._moonSword) { this._moonSword.phase = 2; this._moonSword.swing = this.specialPhaseTimer; }
       if (this.specialPhaseTimer === 1) {
         if (opp && !opp.shielding && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 40 * atkMul, kb: 16 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 33 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
           for (let k = 0; k < 6; k++) {
             const ang = (k/6)*Math.PI - Math.PI*0.7 + (this.facing>0?0:Math.PI);
             effects.push({ x:this.x+Math.cos(ang)*40, y:this.y-this.h*0.5+Math.sin(ang)*40,
@@ -6612,7 +6612,7 @@ class Fighter {
           vx: 0, vy: 16, // 高速落下
           timer: 80, maxTimer: 80,
           owner: this,
-          damage: 14 * atkMul, kb: 12 * atkMul,
+          damage: 12 * atkMul, kb: 10 * atkMul,
           pumpkinSize: 1.0,
           chainCount: 0,
           firstHit: true, // 1発目フラグ（必中）
@@ -6815,8 +6815,8 @@ class Fighter {
             vx: Math.cos(ang) * 7,
             vy: Math.sin(ang) * 7,
             life: 50,
-            damage: 6 * atkMul,
-            kb: 5 * atkMul,
+            damage: 5 * atkMul,
+            kb: 4 * atkMul,
             owner: this,
             color: BARRIER_PALETTE[k % BARRIER_PALETTE.length],
             special: true,
@@ -6890,7 +6890,7 @@ class Fighter {
       this.attackBox = {
         x: ax - 32, y: this.y - 50,
         w: 64, h: 50,
-        damage: 18 * atkMul, kb: 14 * atkMul, type: 'smash',
+        damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash',
       };
       this.attackType = 'special';
       this.attackTimer = 16;
@@ -6931,8 +6931,8 @@ class Fighter {
           vx: (dx / len) * 7,
           vy: (dy / len) * 7,
           life: 100,
-          damage: 3 * atkMul,
-          kb: 3 * atkMul,
+          damage: 2.5 * atkMul,
+          kb: 2.5 * atkMul,
           owner: this,
           color: this.specialColor,
           special: true,
@@ -6957,8 +6957,8 @@ class Fighter {
           vx: (dx / len) * 6,
           vy: (dy / len) * 6,
           life: 120,
-          damage: 18 * atkMul,
-          kb: 14 * atkMul,
+          damage: 15 * atkMul,
+          kb: 12 * atkMul,
           owner: this,
           color: this.specialColor,
           special: true,
@@ -7073,7 +7073,7 @@ class Fighter {
           this.attackBox = {
             x: this.x - 55, y: this.y - this.h - 30,
             w: 110, h: 110,
-            damage: 22 * atkMul, kb: 16 * atkMul, type: 'smash',
+            damage: 18 * atkMul, kb: 13 * atkMul, type: 'smash',
             piercing: true,
             stun: 50,
           };
@@ -7149,7 +7149,7 @@ class Fighter {
       this.attackBox = {
         x: ax - 30, y: this.y - 50,
         w: 60, h: 50,
-        damage: 18 * atkMul, kb: 14 * atkMul, type: 'smash',
+        damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash',
       };
       this.attackType = 'special';
       this.attackTimer = 14;
@@ -7220,7 +7220,7 @@ class Fighter {
         const ax = this.x + this.facing * 30;
         this.attackBox = {
           x: ax - 22, y: this.y - 46, w: 44, h: 36,
-          damage: 2.5 * atkMul, kb: 1.5 * atkMul, type: 'jab',
+          damage: 2.0 * atkMul, kb: 1.2 * atkMul, type: 'jab',
         };
         this.attackType = 'special';
         this.attackTimer = 4;
@@ -7249,7 +7249,7 @@ class Fighter {
         const ax = this.x + this.facing * 42;
         this.attackBox = {
           x: ax - 28, y: this.y - 50, w: 56, h: 44,
-          damage: 12 * atkMul, kb: 10 * atkMul, type: 'smash',
+          damage: 10 * atkMul, kb: 8 * atkMul, type: 'smash',
         };
         this.attackType = 'special';
         this.attackTimer = 14;
@@ -7290,8 +7290,8 @@ class Fighter {
           maxCharge: 25,
           owner: this,
           color: this.specialColor,
-          damage: 20 * atkMul,
-          kb: 14 * atkMul,
+          damage: 17 * atkMul,
+          kb: 12 * atkMul,
           state: 'charging',
         });
       }
@@ -7349,8 +7349,8 @@ class Fighter {
           targetY: cy,
           color: this.specialColor,
           owner: this,
-          damage: 8 * atkMul,
-          kb: 5 * atkMul,
+          damage: 7 * atkMul,
+          kb: 4 * atkMul,
         });
         // 右の岩壁
         geometricObjects.push({
@@ -7368,8 +7368,8 @@ class Fighter {
           targetY: cy,
           color: this.specialColor,
           owner: this,
-          damage: 8 * atkMul,
-          kb: 5 * atkMul,
+          damage: 7 * atkMul,
+          kb: 4 * atkMul,
         });
         addShake(10);
         playSound('smash');
@@ -7386,8 +7386,8 @@ class Fighter {
           if (o.type === 'rock_wall' && o.owner === this) {
             o.phase = 'squeezing';
             o.squeezeStart = 0;
-            o.crushDamage = 24 * atkMul;
-            o.crushKb = 17 * atkMul;
+            o.crushDamage = 20 * atkMul;
+            o.crushKb = 14 * atkMul;
           }
         }
         addShake(15);
@@ -7416,8 +7416,8 @@ class Fighter {
       if (this.specialPhaseTimer >= 30) {
         // balance固有バフ（attack×1.8）も維持しつつ共通バフも発動
         this.buffTimer = 600;
-        this.buffAtkMul = 1.8;
-        this.buffKbMul = 1.8;
+        this.buffAtkMul = 1.5;
+        this.buffKbMul = 1.5;
         this.activateSpecialBuff();
         this.specialPhase = 0;
       }
@@ -7479,7 +7479,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer >= 15) {
         if (opp && opp.respawnTimer===0) {
-          opp.takeHit(this, { damage:28*atk, kb:18*atk, type:'smash', piercing:true });
+          opp.takeHit(this, { damage:23*atk, kb:15*atk, type:'smash', piercing:true });
           opp.frozenTimer = Math.max(opp.frozenTimer||0, 200);
           effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-20,
             text:'❄️ 凍結！', color:'#80d8ff', size:15, life:60, maxLife:60, vy:-0.5 });
@@ -7522,7 +7522,7 @@ class Fighter {
     } else if (this.specialPhase === 2) {
       // フェーズ2: 投げ（ガード完全無視・大ふっ飛び）
       if (this.specialPhaseTimer === 10 && opp) {
-        opp.takeHit(this, { damage: 18 * atkMul, kb: 24 * atkMul, type:'smash', piercing:true });
+        opp.takeHit(this, { damage: 15 * atkMul, kb: 20 * atkMul, type:'smash', piercing:true });
         opp.vy = -20;
         opp.vx = this.facing * 15;
         for (let k = 0; k < 20; k++) {
@@ -7556,7 +7556,7 @@ class Fighter {
           effects.push({ x:opp.x+Math.cos(ang)*30, y:opp.y-opp.h/2+Math.sin(ang)*30,
             vx:Math.cos(ang)*5, vy:Math.sin(ang)*5, life:25, maxLife:25, color:this.specialColor, size:8+Math.random()*4 });
         }
-        opp.takeHit(this, { damage: 28 * atkMul, kb: 16 * atkMul, type:'smash', piercing:true });
+        opp.takeHit(this, { damage: 23 * atkMul, kb: 13 * atkMul, type:'smash', piercing:true });
         opp._slowTimer = Math.max(opp._slowTimer||0, 180); // 呪い:鈍足
         // デメリット：自分も10%ダメージ
         this.damage += 10;
@@ -7622,7 +7622,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer % INTERVAL === 1 && this._chainHitCount < HITS) {
         if (opp && opp.respawnTimer === 0) {
-          opp.damage += 6 * atkMul;
+          opp.damage += 5 * atkMul;
           this._chainHitCount++;
           addShake(7); playSound('smash');
           for (let k = 0; k < 18; k++) {
@@ -7649,7 +7649,7 @@ class Fighter {
       if (this.specialPhaseTimer === 1) {
         this._chainLockX = null; this._chainLockY = null;
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 25 * atkMul, kb: 18 * atkMul, type: 'smash' });
+          opp.takeHit(this, { damage: 21 * atkMul, kb: 15 * atkMul, type: 'smash' });
           addShake(22); playSound('smash');
           for (let k = 0; k < 35; k++) {
             const ang = Math.random() * Math.PI * 2;
@@ -7705,7 +7705,7 @@ class Fighter {
         geometricObjects.push({
           type:'heart_arrow', x:this.x+this.facing*20, y:this.y-this.h*0.6,
           vx:(dx/dist)*13, vy:(dy/dist)*13, owner:this,
-          damage:12*atk, kb:5*atk, life:50,
+          damage:10*atk, kb:4*atk, life:50,
           onHit:(target)=>{ if(!this._heartHit){ this._heartHit=true; this._heartTarget=target; } }
         });
         for (let k=0;k<10;k++) effects.push({
@@ -7749,7 +7749,7 @@ class Fighter {
       if (this.specialPhaseTimer>=15) {
         const t = this._heartTarget || opp;
         if (t && t.respawnTimer===0) {
-          t.takeHit(this, { damage:26*atk, kb:20*atk, type:'smash' }); // 弱体化
+          t.takeHit(this, { damage:22*atk, kb:17*atk, type:'smash' }); // 弱体化
           for (let k=0;k<24;k++) {
             const ang=(k/24)*Math.PI*2;
             effects.push({ x:t.x+Math.cos(ang)*20, y:t.y-t.h/2+Math.sin(ang)*20,
@@ -7809,8 +7809,8 @@ class Fighter {
         if (opp && opp.respawnTimer===0 && Math.abs(opp.x-this.x)<80) {
           this._ribbonHits++;
           const isFinisher = this._ribbonHits === maxHits;
-          const dmg = isFinisher ? 18*atk : 5*atk;
-          const kb  = isFinisher ? 26*atk : 4*atk;
+          const dmg = isFinisher ? 15*atk : 4*atk;
+          const kb  = isFinisher ? 22*atk : 3*atk;
           opp.takeHit(this, { damage:dmg, kb:kb, type: isFinisher?'smash':'jab' });
           if (isFinisher) { opp.vy=-12; addShake(12); playSound('smash'); }
           else { addShake(3); }
@@ -8485,25 +8485,25 @@ class Fighter {
       this.attackCooldown = 45;
       const ax = this.x + this.facing * 42;
       const powerMul = this.hasTrait('power_smash') ? 1.3 : 1.0;
-      this.attackBox = { x: ax - 24, y: this.y - 48, w: 48, h: 40, damage: 14 * atkMul * powerMul, kb: 11 * atkMul * powerMul, type: 'smash' };
+      this.attackBox = { x: ax - 24, y: this.y - 48, w: 48, h: 40, damage: 12 * atkMul * powerMul, kb: 9 * atkMul * powerMul, type: 'smash' };
       if (this.hasTrait('double_smash')) this.doubleSmashWindow = 25;
     } else if (type === 'smash2') {
       this.attackTimer = 18;
       this.attackCooldown = 30;
       const ax = this.x + this.facing * 38;
-      this.attackBox = { x: ax - 22, y: this.y - 50, w: 44, h: 38, damage: 10 * atkMul, kb: 9 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 22, y: this.y - 50, w: 44, h: 38, damage: 8 * atkMul, kb: 7 * atkMul, type: 'smash' };
     } else if (type === 'smash3') {
       this.attackTimer = 26;
       this.attackCooldown = 50;
       const ax = this.x + this.facing * 46;
-      this.attackBox = { x: ax - 28, y: this.y - 54, w: 56, h: 46, damage: 18 * atkMul, kb: 14 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 28, y: this.y - 54, w: 56, h: 46, damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash' };
     } else if (type === 'down_smash') {
       this.attackTimer = 24;
       this.attackCooldown = 50;
       const m = (this.charData.moves || {}).down_smash || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: this.x - 70, y: this.y - 24, w: 140, h: 26, damage: 12 * atkMul * dMul, kb: 10 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: this.x - 70, y: this.y - 24, w: 140, h: 26, damage: 10 * atkMul * dMul, kb: 8 * atkMul * kMul, type: 'smash' };
       this.spawnMoveFx(m.effect, 'down_smash');
     } else if (type === 'strong_side') {
       this.attackTimer = 16;
@@ -8518,7 +8518,7 @@ class Fighter {
       this.attackTimer = 20;
       this.attackCooldown = 38;
       const ax = this.x + this.facing * 38;
-      this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 11 * atkMul, kb: 9 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 9 * atkMul, kb: 7 * atkMul, type: 'smash' };
       this.vx = this.facing * 7;
     } else if (type === 'special') {
       this.attackTimer = 36;
@@ -8526,7 +8526,7 @@ class Fighter {
       const m = (this.charData.moves || {}).special || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: this.x - 80, y: this.y - 80, w: 160, h: 90, damage: 22 * atkMul * dMul, kb: 18 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: this.x - 80, y: this.y - 80, w: 160, h: 90, damage: 18 * atkMul * dMul, kb: 15 * atkMul * kMul, type: 'smash' };
       // 必殺技：自分回復オプション
       if (m.healSelf) {
         this.damage = Math.max(0, this.damage - m.healSelf);
@@ -8543,7 +8543,7 @@ class Fighter {
       const m = (this.charData.moves || {}).jab3 || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 9 * atkMul * dMul, kb: 8 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 7 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'smash' };
       this.spawnMoveFx(m.effect, 'jab3');
     }
 
@@ -8749,9 +8749,9 @@ class Fighter {
       const firstHit = (attacker.skillHitCooldown || 0) === 0;
       if (firstHit) {
         const totalMul = matchup * stageBonus;
-        const bonus = hitbox.damage * 2.5 * totalMul;
+        const bonus = hitbox.damage * 2.0 * totalMul;
         this.damage += bonus;
-        knockback *= td.dmgMul * 1.8 * totalMul;
+        knockback *= td.dmgMul * 1.5 * totalMul;
         attacker.skillHitCooldown = 90;
 
         const eff = td.effect;
