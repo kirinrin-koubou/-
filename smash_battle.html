@@ -9393,8 +9393,9 @@ function updateProjectiles() {
 function drawChainSpecials() {
   for (const f of [player, cpu]) {
     if (!f || f.specialStyle !== 'chain' || f._chainTipX == null) continue;
-    const aX = f._drawChainFrom ? f._drawChainFrom.x : (f.x + f.facing * f.w * 0.35);
-    const aY = f._drawChainFrom ? f._drawChainFrom.y : (f.y - f.h * 0.6);
+    // 毎フレームキャラの現在位置から根本を計算（ジャンプ中も追従）
+    const aX = f.x + f.facing * f.w * 0.35;
+    const aY = f.y - f.h * 0.6;
     const tX = f._chainTipX, tY = f._chainTipY;
     // phase2中はチェーン先端を激しく振動させる
     const vibr = f.specialPhase === 2 ? (Math.random()-0.5)*22 : 0;
