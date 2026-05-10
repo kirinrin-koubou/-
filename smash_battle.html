@@ -4495,6 +4495,7 @@ class Fighter {
     this.shieldMaxTimer = 180;
     this.shieldHP = 100;
     this.shieldRegenTimer = 0;
+    this.shieldCooldownTimer = 0;
     this.zComboCount = 0;
     this.zComboTimer = 0;
     this.specialMoveCooldown = 0;
@@ -5049,11 +5050,16 @@ class Fighter {
       this.shieldTimer--;
       if (this.shieldTimer <= 0) {
         this.shielding = false;
-        this.shieldHP = 0; // クールダウン中
+        this.shieldHP = 0;
+        this.shieldCooldownTimer = 300; // 5秒クールダウン（60fps×5）
       }
     }
-    // シールドHP回復（展開していない時のみ・ゆっくり回復）
-    if (!this.shielding && this.shieldHP < 100) {
+    // シールドクールダウン
+    if (this.shieldCooldownTimer > 0) {
+      this.shieldCooldownTimer--;
+    }
+    // シールドHP回復（クールダウン終了後のみ・ゆっくり回復）
+    if (!this.shielding && this.shieldCooldownTimer === 0 && this.shieldHP < 100) {
       this.shieldRegenTimer++;
       if (this.shieldRegenTimer >= 12) {
         this.shieldHP = Math.min(100, this.shieldHP + 1);
@@ -5192,7 +5198,7 @@ class Fighter {
     const dashMaxMove = maxMove * 1.7;
 
     const moving = keys['ArrowLeft'] || keys['ArrowRight'];
-    if (keys[' '] && !moving && !this.spaceHeld && this.shieldHP > 0 && !this.shielding) {
+    if (keys[' '] && !moving && !this.spaceHeld && this.shieldHP > 0 && !this.shielding && this.shieldCooldownTimer === 0) {
       this.activateShield();
       this.spaceHeld = true;
     }
@@ -7992,7 +7998,7 @@ class Fighter {
     }
 
     // 相手がスマッシュ等の強力な攻撃を出した直後、しかも自分が範囲内なら防御
-    if (!this.shielding && this.shieldHP >= 50 && opponent.attackBox && !this.attackBox) {
+    if (!this.shielding && this.shieldHP >= 50 && this.shieldCooldownTimer === 0 && opponent.attackBox && !this.attackBox) {
       const ab = opponent.attackBox;
       const dxAtk = (ab.x + ab.w/2) - this.x;
       const dyAtk = (ab.y + ab.h/2) - (this.y - this.h/2);
@@ -8714,6 +8720,7 @@ class Fighter {
     this.shieldTimer = 0;
     this.shieldHP = 100;           // シールドHPも完全回復
     this.shieldRegenTimer = 0;
+    this.shieldCooldownTimer = 0; // クールダウンもリセット
     this.flashTimer = 0;
     this.smokeTrailTimer = 0;
     this.platformIgnoreTimer = 0;
