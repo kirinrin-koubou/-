@@ -7572,58 +7572,107 @@ class Fighter {
 
   updateSpecialChain(opp) {
     const atkMul = this.stats.atk;
+    const attachX = this.x + this.facing * this.w * 0.35;
+    const attachY = this.y - this.h * 0.6;
+
     if (this.specialPhase === 1) {
-      // フェーズ1: チェーンを伸ばす（15フレームで最大射程）
-      const maxLen = 200;
-      const progress = Math.min(1, this.specialPhaseTimer / 15);
-      const chainEndX = this.x + this.facing * maxLen * progress;
-      const chainEndY = this.y - this.h * 0.5;
-      // チェーン描画用エフェクト（線状）
+      // フェーズ1: チェーンを相手の位置に向けて飛ばす（18フレーム）
+      const flyDur = 18;
+      if (!this._chainTargetX) {
+        // 発動時の相手位置をロック
+        this._chainTargetX = opp ? opp.x : this.x + this.facing * 200;
+        this._chainTargetY = opp ? opp.y - opp.h * 0.5 : this.y - this.h * 0.5;
+        this._chainHitCount = 0;
+      }
+      const ep = Math.min(1, this.specialPhaseTimer / flyDur);
+      const eased = Math.sqrt(ep); // 最初が速く伸びる
+      this._chainTipX = attachX + (this._chainTargetX - attachX) * eased;
+      this._chainTipY = attachY + (this._chainTargetY - attachY) * eased;
+      this._drawChainFrom = { x: attachX, y: attachY };
+      // チェーン沿いのパーティクル
       if (this._specialEffectOk) {
-        const steps = 6;
-        for (let k = 1; k <= steps; k++) {
-          const t = k / steps;
-          effects.push({ x:this.x + this.facing * maxLen * progress * t + (Math.random()-0.5)*6,
-            y:chainEndY + Math.sin(t*Math.PI)*15,
-            vx:0, vy:0, life:6, maxLife:6, color:this.specialColor, size:5+Math.random()*3 });
+        for (let k = 1; k <= 5; k++) {
+          const t = k / 5;
+          const sag = Math.sin(t * Math.PI) * 10;
+          effects.push({ x: attachX + (this._chainTipX - attachX) * t + (Math.random()-0.5)*4,
+            y: attachY + (this._chainTipY - attachY) * t + sag,
+            vx: 0, vy: 0, life: 5, maxLife: 5, color: this.specialColor, size: 5+Math.random()*3 });
         }
       }
-      // 命中判定（先端）
-      if (opp && opp.respawnTimer === 0 && opp.invincible === 0 && !this._chainHit) {
-        const cdx = chainEndX - opp.x;
-        const cdy = chainEndY - (opp.y - opp.h/2);
-        if (Math.abs(cdx) < 45 && Math.abs(cdy) < 45) {
-          this._chainHit = true;
-          opp.takeHit(this, { damage: 22 * atkMul, kb: 14 * atkMul, type:'smash' });
-          opp._slowTimer = Math.max(opp._slowTimer||0, 90); // 巻きつき:鈍足
-          effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-15,
-            text:'⛓ ヒット!', color:this.specialColor, size:13, life:45, maxLife:45, vy:-0.4 });
-          addShake(10); playSound('smash');
-        }
-      }
-      if (this.specialPhaseTimer >= 20) {
+      if (ep >= 1) {
         this.specialPhase = 2;
         this.specialPhaseTimer = 0;
-        this._chainHit = false;
-        // チェーン連続制限：クールダウン追加
-        this._chainOverheat = (this._chainOverheat || 0) + 1;
       }
+
     } else if (this.specialPhase === 2) {
-      // フェーズ2: 引き戻し（5フレーム）
-      if (this.specialPhaseTimer >= 8) {
+      // フェーズ2: 相手の場所で5回連続叩き（8フレームごと）
+      const HITS = 5, INTERVAL = 8;
+      if (opp && opp.respawnTimer === 0) {
+        opp.frozenTimer = Math.max(opp.frozenTimer || 0, 4); // 拘束
+        opp.vx *= 0.6; opp.vy *= 0.6;
+      }
+      this._chainTipX = this._chainTargetX;
+      this._chainTipY = this._chainTargetY;
+      // チェーン振動エフェクト
+      if (this._specialEffectOk) {
+        effects.push({ x: this._chainTipX + (Math.random()-0.5)*20,
+          y: this._chainTipY + (Math.random()-0.5)*20,
+          vx: (Math.random()-0.5)*4, vy: -1-Math.random()*3,
+          life: 10, maxLife: 10, color: this.specialColor, size: 6+Math.random()*4 });
+      }
+      if (this.specialPhaseTimer % INTERVAL === 1 && this._chainHitCount < HITS) {
+        if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
+          opp.takeHit({ damage: 5 * atkMul, kb: 1.5, type: 'jab', knockbackAngle: 0 }, this);
+          this._chainHitCount++;
+          addShake(3); playSound('jab');
+          for (let k = 0; k < 8; k++) {
+            effects.push({ x: opp.x + (Math.random()-0.5)*30,
+              y: opp.y - opp.h*0.5 + (Math.random()-0.5)*30,
+              vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6,
+              life: 12, maxLife: 12, color: this.specialColor, size: 5+Math.random()*4 });
+          }
+        }
+      }
+      if (this.specialPhaseTimer >= HITS * INTERVAL + 5) {
+        this.specialPhase = 3;
+        this.specialPhaseTimer = 0;
+      }
+
+    } else if (this.specialPhase === 3) {
+      // フェーズ3: 最後に大きく打ち飛ばす
+      this._chainTipX = this._chainTargetX;
+      this._chainTipY = this._chainTargetY;
+      if (this.specialPhaseTimer === 1) {
+        if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
+          opp.takeHit({ damage: 20 * atkMul, kb: 18 * atkMul, type: 'smash', knockbackAngle: -0.45 }, this);
+          addShake(14); playSound('smash');
+          for (let k = 0; k < 18; k++) {
+            effects.push({ x: opp.x + (Math.random()-0.5)*40,
+              y: opp.y - opp.h*0.5 + (Math.random()-0.5)*40,
+              vx: (Math.random()-0.5)*10, vy: -3-Math.random()*5,
+              life: 22, maxLife: 22, color: this.specialColor, size: 7+Math.random()*6 });
+          }
+          effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-20,
+            text:'⛓ 終撃!', color:this.specialColor, size:16, life:55, maxLife:55, vy:-0.5 });
+        }
+      }
+      if (this.specialPhaseTimer >= 15) {
+        this.specialPhase = 4;
+        this.specialPhaseTimer = 0;
+      }
+
+    } else if (this.specialPhase === 4) {
+      // フェーズ4: チェーン引き戻し（ease-inで最初が速い）
+      const retractDur = 12;
+      const rp = this.specialPhaseTimer / retractDur;
+      const easedR = rp * rp;
+      this._chainTipX = this._chainTargetX + (attachX - this._chainTargetX) * easedR;
+      this._chainTipY = this._chainTargetY + (attachY - this._chainTargetY) * easedR;
+      if (this.specialPhaseTimer >= retractDur) {
+        this._chainTipX = null; this._chainTipY = null;
+        this._chainTargetX = null; this._chainTargetY = null;
         this.activateSpecialBuff();
         this.specialPhase = 0;
-        this._chainHit = false;
-        // 連続3回使用でオーバーヒート（30秒クールダウン）
-        if ((this._chainOverheat || 0) >= 3) {
-          this._chainOverheat = 0;
-          this.specialUsedThisLife = true; // 一時封印
-          this._specialBuffActivated = false;
-          effects.push({ type:'text', x:this.x, y:this.y-this.h-15,
-            text:'⛓ 過熱!封印3秒', color:'#ff5252', size:12, life:60, maxLife:60, vy:-0.5 });
-          // 3秒後に解除
-          setTimeout(() => { if(this) { this.specialUsedThisLife = false; this._chainOverheat = 0; } }, 3000);
-        }
       }
     }
     if (this.specialPhase === 0) this.specialJumping = false;
@@ -9338,6 +9387,51 @@ function updateProjectiles() {
       }
     }
     if (hit) continue;
+  }
+}
+
+function drawChainSpecials() {
+  for (const f of [player, cpu]) {
+    if (!f || f.specialStyle !== 'chain' || f._chainTipX == null) continue;
+    const aX = f._drawChainFrom ? f._drawChainFrom.x : (f.x + f.facing * f.w * 0.35);
+    const aY = f._drawChainFrom ? f._drawChainFrom.y : (f.y - f.h * 0.6);
+    const tX = f._chainTipX, tY = f._chainTipY;
+    ctx.save();
+    // ベジェチェーン（たわみ付き）
+    const sagMid = Math.sin(Math.PI * 0.5) * 14;
+    const ctrlX = aX + (tX - aX) * 0.5;
+    const ctrlY = aY + (tY - aY) * 0.5 + sagMid;
+    ctx.beginPath();
+    ctx.moveTo(aX, aY);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, tX, tY);
+    ctx.strokeStyle = f.specialColor || f.color;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+    // リンク
+    const links = 10;
+    for (let k = 0; k <= links; k++) {
+      const t = k / links;
+      const sag = Math.sin(t * Math.PI) * 14;
+      const lx = aX + (tX - aX) * t;
+      const ly = aY + (tY - aY) * t + sag;
+      ctx.beginPath();
+      ctx.arc(lx, ly, k === links ? 8 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = k === links ? '#fff' : (f.specialColor || f.color);
+      ctx.globalAlpha = k === links ? 1 : 0.9;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    // 先端の光彩（phase2=多段hit中は強く点滅）
+    const glowStr = f.specialPhase === 2 ? (0.5 + 0.5 * Math.sin(Date.now() / 40)) : 0.3;
+    ctx.beginPath();
+    ctx.arc(tX, tY, 14, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = glowStr;
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -12461,6 +12555,7 @@ function loop() {
   player.draw();
   if (cpu) cpu.draw();
   drawProjectiles();
+  drawChainSpecials();
   const moonTargets = [player, cpu];
   for (const mt of moonTargets) {
     if (mt && mt._midnightMoons && mt._midnightMoons.length > 0) {
