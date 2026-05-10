@@ -5783,6 +5783,8 @@ class Fighter {
 
     // チェーン武器：相手の方向へチェーンを1〜3回伸ばす
     if (this.hasTrait('chain_weapon')) {
+      // 既にチェーンが動いていたら発動しない（重複防止）
+      if (geometricObjects.some(o => o.type === 'chain_swing' && o.owner === this)) return;
       const swings = Math.floor(Math.random() * 3) + 1;
       const opp = this.isPlayer ? cpu : player;
       // 相手がいれば相手の方向、いなければfacingの水平方向
@@ -9402,6 +9404,8 @@ function updateGeometricObjects() {
             o.tipProgress = 0;
             o.hitThisSwing = false;
           } else {
+            // アニメーション完了時にcooldownが残っていなければ最低限セット（重複防止）
+            if (o.owner && o.owner.traitMoveCooldown <= 0) o.owner.traitMoveCooldown = 10;
             geometricObjects.splice(i, 1);
             continue;
           }
