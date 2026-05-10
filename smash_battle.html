@@ -257,6 +257,10 @@
           <div><span class="icon">⚙</span>戦闘方法を変更・強化<br>ステージ選択</div>
           <div class="desc">戦闘スタイル選択・コインで強化</div>
         </button>
+        <button class="tabButton" onclick="goToPractice()">
+          <div><span class="icon">🏋️</span>練習</div>
+          <div class="desc">敵なしステージで自由に動きを確認</div>
+        </button>
         <button id="settingsTab" onclick="goToSettings()">⚙ 設定（音量・難易度・データ初期化）</button>
       </div>
       <div id="characterDisplay">
@@ -519,6 +523,7 @@
 
   <div id="battleScreen" class="screen">
     <canvas id="gameCanvas" width="900" height="600"></canvas>
+    <button id="practiceHomeBtn" onclick="exitPractice()" style="display:none;position:absolute;top:10px;right:10px;z-index:100;padding:8px 18px;background:rgba(0,0,0,0.6);color:#fff;border:2px solid rgba(255,255,255,0.4);border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">← ホームに戻る</button>
     <div id="battleUI">
       <div class="playerInfo p1">
         <div class="name" id="p1Name">P1</div>
@@ -1573,6 +1578,46 @@ function _hideTrainingSelect() {
   // trainingSelectScreenはscreenクラスなのでshowScreen()で自動管理される
 }
 function goToHome() { _hideTrainingSelect(); showScreen('homeScreen'); updateHomeDisplay(); }
+
+function goToPractice() {
+  practiceMode = true;
+  showScreen('battleScreen');
+  document.getElementById('practiceHomeBtn').style.display = '';
+  document.getElementById('battleUI').querySelector('.p2')?.style && (document.getElementById('battleUI').querySelector('.playerInfo.p2').style.display = 'none');
+  document.getElementById('battleStartScreen').classList.add('hidden');
+  document.getElementById('battleOverScreen').classList.add('hidden');
+  effects.length = 0;
+  projectiles.length = 0;
+  geometricObjects.length = 0;
+  barrierLastFired.player = 0;
+  barrierLastFired.cpu = 0;
+  setupStage(gameData.selectedStage || 'random');
+  resetCamera();
+  const main = currentStage && currentStage.platforms.find(p => p.main);
+  const startY = main ? main.y - 40 : 420;
+  const startX = W * 0.5;
+  player = new Fighter(startX, startY, gameData.selectedChar, true);
+  player._equippedSkills = [...selectedSkills];
+  player._skillUses = {};
+  for (const sid of selectedSkills) {
+    if (sid && SKILL_MOVE_DB[sid]) player._skillUses[sid] = SKILL_MOVE_DB[sid].uses;
+  }
+  cpu = null;
+  document.getElementById('p1Name').textContent = CHARACTER_DB[gameData.selectedChar]?.name || 'P1';
+  document.getElementById('p2Name').textContent = '';
+  gameRunning = true;
+  window.battleFrame = 0;
+  loop();
+}
+
+function exitPractice() {
+  gameRunning = false;
+  practiceMode = false;
+  document.getElementById('practiceHomeBtn').style.display = 'none';
+  const p2Info = document.getElementById('battleUI').querySelector('.playerInfo.p2');
+  if (p2Info) p2Info.style.display = '';
+  goToHome();
+}
 function goToGacha() {
   showScreen('gachaScreen');
   _applyThemeColor();
@@ -8684,8 +8729,15 @@ class Fighter {
       }
     }
     if (this.stocks <= 0) {
-      this.x = -9999;
-      battleEnd(this.isPlayer ? 'lose' : 'win');
+      if (practiceMode) {
+        // 練習モードはストック無限：ダメージリセットして復活
+        this.stocks = 1;
+        this.damage = 0;
+        this.respawnTimer = 60;
+      } else {
+        this.x = -9999;
+        battleEnd(this.isPlayer ? 'lose' : 'win');
+      }
     } else {
       this.respawnTimer = 60;
     }
@@ -10843,6 +10895,7 @@ function drawEffects() {
 const keys = {};
 let player, cpu;
 let gameRunning = false;
+let practiceMode = false;
 
 function vkDown(key) { keys[key] = true; }
 function vkUp(key)   { keys[key] = false; }
@@ -11377,7 +11430,7 @@ async function battleEnd(result) {
 }
 
 function checkHits() {
-  const fighters = [player, cpu];
+  const fighters = [player, cpu].filter(Boolean);
   for (const a of fighters) {
     if (!a.attackBox) continue;
     for (const b of fighters) {
@@ -12181,11 +12234,13 @@ function updateBattleUI() {
       return `<span style="font-size:9px;padding:1px 4px;border-radius:4px;border:1px solid ${col};color:${col};background:rgba(0,0,0,0.4);">${m.emoji}[${key}] ${uses}回</span>`;
     }).join('');
   }
-  document.getElementById('p2damage').textContent = Math.floor(cpu.damage) + '%';
+  if (cpu) {
+    document.getElementById('p2damage').textContent = Math.floor(cpu.damage) + '%';
+    document.getElementById('p2damage').style.color = damageColor(cpu.damage);
+    document.getElementById('p2stocks').textContent = '♥'.repeat(Math.max(0, cpu.stocks));
+  }
   document.getElementById('p1damage').style.color = damageColor(player.damage);
-  document.getElementById('p2damage').style.color = damageColor(cpu.damage);
   document.getElementById('p1stocks').textContent = '♥'.repeat(Math.max(0, player.stocks));
-  document.getElementById('p2stocks').textContent = '♥'.repeat(Math.max(0, cpu.stocks));
   // バフ表示
   const p1Buff = document.getElementById('p1buff');
   const p2Buff = document.getElementById('p2buff');
@@ -12198,7 +12253,7 @@ function updateBattleUI() {
       p1Buff.style.display = 'none';
     }
   }
-  if (p2Buff) {
+  if (p2Buff && cpu) {
     if (cpu.buffTimer > 0) {
       const sec = Math.ceil(cpu.buffTimer / 60);
       p2Buff.textContent = `⚡×${cpu.buffAtkMul} (${sec}s)`;
@@ -12225,7 +12280,7 @@ function loop() {
   // 更新（位置などを先に確定）
   updateStageGimmicks();
   player.update(cpu);
-  cpu.update(player);
+  if (cpu) cpu.update(player);
   resolveOverlap();
   checkHits();
   updateProjectiles();
@@ -12242,7 +12297,7 @@ function loop() {
   drawStage();
   drawGeometricObjects();
   player.draw();
-  cpu.draw();
+  if (cpu) cpu.draw();
   drawProjectiles();
   const moonTargets = [player, cpu];
   for (const mt of moonTargets) {
