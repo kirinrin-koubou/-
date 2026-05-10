@@ -5776,6 +5776,31 @@ class Fighter {
     const m = (this.charData.moves || {}).trait_move || {};
     if (this.traitMoveCooldown > 0) return;
 
+    // チェーン武器：1〜3回の振り回し攻撃
+    if (this.hasTrait('chain_weapon')) {
+      const swings = Math.floor(Math.random() * 3) + 1;
+      geometricObjects.push({
+        type: 'chain_swing',
+        owner: this,
+        swingsLeft: swings - 1,
+        swingTotal: swings,
+        facing: this.facing,
+        // 角度：facing=1のとき上から前方へ弧を描く（ラジアン）
+        angle: this.facing === 1 ? Math.PI * 0.75 : Math.PI * 0.25,
+        angleEnd: this.facing === 1 ? -Math.PI * 0.25 : Math.PI * 1.25,
+        chainLength: 150, // 画面900pxの1/6
+        swingDur: 22,     // 1振り22フレーム
+        retractDur: 8,    // 引き戻し8フレーム
+        phase: 'swing',
+        phaseTimer: 22,
+        hitThisSwing: false,
+        color: this.color,
+      });
+      this.traitMoveCooldown = swings * 32 + 10;
+      playSound('jab');
+      return;
+    }
+
     if (this.charData?.seasonalAbility === 'rain_drop') {
       const opp = this.isPlayer ? cpu : player;
       if (opp && opp.respawnTimer === 0) {
@@ -9327,6 +9352,65 @@ function drawProjectiles() {
 function updateGeometricObjects() {
   for (let i = geometricObjects.length - 1; i >= 0; i--) {
     const o = geometricObjects[i];
+    if (o.type === 'chain_swing') {
+      const owner = o.owner;
+      if (!owner || !gameRunning) { geometricObjects.splice(i, 1); continue; }
+      if (o.phase === 'swing') {
+        // 角度を進める
+        const progress = 1 - o.phaseTimer / o.swingDur;
+        o.angle = o.facing === 1
+          ? Math.PI * 0.75 - progress * Math.PI
+          : Math.PI * 0.25 + progress * Math.PI;
+        o.phaseTimer--;
+        // チェーン先端の座標
+        const attachX = owner.x;
+        const attachY = owner.y - owner.h * 0.55;
+        o.tipX = attachX + Math.cos(o.angle) * o.chainLength;
+        o.tipY = attachY + Math.sin(o.angle) * o.chainLength;
+        // ヒット判定（1振りにつき1回）
+        if (!o.hitThisSwing && o.phaseTimer < o.swingDur * 0.8) {
+          const opp = owner.isPlayer ? cpu : player;
+          if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
+            const dx = o.tipX - opp.x, dy = o.tipY - (opp.y - opp.h / 2);
+            if (Math.sqrt(dx*dx + dy*dy) < opp.w * 0.8 + 20) {
+              let atkMul = owner.stats.atk;
+              if (owner.hasTrait('berserker')) atkMul *= (1 + Math.min(owner.damage, 150) / 300);
+              const kb = 7 * atkMul + o.swingTotal * 0.5;
+              const hitbox = { damage: 9 * atkMul, kb, type: 'jab', knockbackAngle: -0.35 };
+              opp.takeHit(hitbox, owner);
+              o.hitThisSwing = true;
+              // 先端エフェクト
+              for (let k = 0; k < 8; k++) {
+                effects.push({ x: o.tipX, y: o.tipY,
+                  vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5,
+                  life: 14, maxLife: 14, color: o.color, size: 4+Math.random()*3 });
+              }
+            }
+          }
+        }
+        if (o.phaseTimer <= 0) {
+          o.phase = 'retract';
+          o.phaseTimer = o.retractDur;
+        }
+      } else { // retract
+        o.phaseTimer--;
+        if (o.phaseTimer <= 0) {
+          if (o.swingsLeft > 0) {
+            // 次の振り
+            o.swingsLeft--;
+            o.facing = owner.facing; // 最新のfacingを取得
+            o.angle = o.facing === 1 ? Math.PI * 0.75 : Math.PI * 0.25;
+            o.angleEnd = o.facing === 1 ? -Math.PI * 0.25 : Math.PI * 1.25;
+            o.phase = 'swing';
+            o.phaseTimer = o.swingDur;
+            o.hitThisSwing = false;
+          } else {
+            geometricObjects.splice(i, 1);
+          }
+        }
+      }
+      continue;
+    }
     if (o.type === 'rock_warning' || o.type === 'rock_circle_warning') {
       o.timer--;
       if (o.timer <= 0) {
@@ -10179,6 +10263,49 @@ function updateGeometricObjects() {
 
 function drawGeometricObjects() {
   for (const o of geometricObjects) {
+    if (o.type === 'chain_swing') {
+      if (!o.owner || o.tipX === undefined) continue;
+      const attachX = o.owner.x;
+      const attachY = o.owner.y - o.owner.h * 0.55;
+      ctx.save();
+      // チェーンリンクを等間隔で描画
+      const links = 8;
+      for (let k = 0; k <= links; k++) {
+        const t = k / links;
+        // 少しカーブさせる（重力感）
+        const sag = Math.sin(t * Math.PI) * 12;
+        const lx = attachX + (o.tipX - attachX) * t;
+        const ly = attachY + (o.tipY - attachY) * t + sag;
+        const r = k === links ? 7 : 4;
+        ctx.beginPath();
+        ctx.arc(lx, ly, r, 0, Math.PI * 2);
+        ctx.fillStyle = k === links ? '#fff' : o.color;
+        ctx.globalAlpha = k === links ? 0.95 : 0.8;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      // チェーン本体ライン
+      ctx.beginPath();
+      ctx.moveTo(attachX, attachY);
+      // ベジェで弧を描く
+      const midX = attachX + (o.tipX - attachX) * 0.5;
+      const midY = attachY + (o.tipY - attachY) * 0.5 + 14;
+      ctx.quadraticCurveTo(midX, midY, o.tipX, o.tipY);
+      ctx.strokeStyle = o.color;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
+      // 先端の光彩
+      ctx.beginPath();
+      ctx.arc(o.tipX, o.tipY, 10, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = 0.3 + 0.3 * Math.sin(Date.now() / 80);
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
     if (o.type === 'rock_warning') {
       const blink = Math.floor(o.timer / 4) % 2 === 0 ? 1 : 0.4;
       ctx.fillStyle = o.color;
