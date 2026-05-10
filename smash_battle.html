@@ -7574,44 +7574,44 @@ class Fighter {
     const atkMul = this.stats.atk;
     const attachX = this.x + this.facing * this.w * 0.35;
     const attachY = this.y - this.h * 0.6;
+    // 相手の現在の体の中心座標（先端の追従先）
+    const oppX = opp ? opp.x : (this._chainTargetX || this.x + this.facing * 200);
+    const oppY = opp ? opp.y - opp.h * 0.5 : (this._chainTargetY || this.y - this.h * 0.5);
 
     if (this.specialPhase === 1) {
-      // フェーズ1: チェーンを相手の位置に向けて飛ばす（18フレーム）
+      // フェーズ1: チェーンを相手に向けて伸ばす（先端が相手に近づく）
       const flyDur = 18;
       if (!this._chainTargetX) {
-        // 発動時の相手位置をロック
-        this._chainTargetX = opp ? opp.x : this.x + this.facing * 200;
-        this._chainTargetY = opp ? opp.y - opp.h * 0.5 : this.y - this.h * 0.5;
+        this._chainTargetX = oppX;
+        this._chainTargetY = oppY;
         this._chainHitCount = 0;
       }
       const ep = Math.min(1, this.specialPhaseTimer / flyDur);
-      const eased = Math.sqrt(ep); // 最初が速く伸びる
-      this._chainTipX = attachX + (this._chainTargetX - attachX) * eased;
-      this._chainTipY = attachY + (this._chainTargetY - attachY) * eased;
-      this._drawChainFrom = { x: attachX, y: attachY };
+      const eased = Math.sqrt(ep);
+      // 先端は毎フレーム相手の現在位置を目標にする
+      this._chainTipX = attachX + (oppX - attachX) * eased;
+      this._chainTipY = attachY + (oppY - attachY) * eased;
       if (ep >= 1) {
         this.specialPhase = 2;
         this.specialPhaseTimer = 0;
       }
 
     } else if (this.specialPhase === 2) {
-      // フェーズ2: 相手をx,y座標ごと完全ロックして5回叩く
+      // フェーズ2: 相手を完全ロックして5回叩く・先端は相手に追従
       const HITS = 5, INTERVAL = 10;
-      // フェーズ2開始時に相手位置をロック
       if (this.specialPhaseTimer === 1 && opp && opp.respawnTimer === 0) {
         this._chainLockX = opp.x;
         this._chainLockY = opp.y;
       }
-      // 毎フレーム座標を強制固定（物理・重力・衝突を全て上書き）
       if (opp && opp.respawnTimer === 0 && this._chainLockX != null) {
         opp.x = this._chainLockX;
         opp.y = this._chainLockY;
         opp.vx = 0; opp.vy = 0;
         opp.hitstun = Math.max(opp.hitstun || 0, 4);
       }
-      this._chainTipX = this._chainTargetX;
-      this._chainTipY = this._chainTargetY;
-      // 毎フレーム激しく飛び散るパーティクル
+      // 先端を相手の現在位置に追従
+      this._chainTipX = oppX;
+      this._chainTipY = oppY;
       if (this._specialEffectOk) {
         for (let k = 0; k < 3; k++) {
           effects.push({ x: this._chainTipX + (Math.random()-0.5)*35,
@@ -7622,7 +7622,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer % INTERVAL === 1 && this._chainHitCount < HITS) {
         if (opp && opp.respawnTimer === 0) {
-          opp.damage += 6 * atkMul; // takeHit経由にせず直接ダメージ加算（位置変化なし）
+          opp.damage += 6 * atkMul;
           this._chainHitCount++;
           addShake(7); playSound('smash');
           for (let k = 0; k < 18; k++) {
@@ -7643,16 +7643,14 @@ class Fighter {
       }
 
     } else if (this.specialPhase === 3) {
-      // フェーズ3: ロック解除して大きく打ち飛ばす
-      this._chainTipX = this._chainTargetX;
-      this._chainTipY = this._chainTargetY;
+      // フェーズ3: ロック解除→終撃・先端は相手に追従し続ける
+      this._chainTipX = oppX;
+      this._chainTipY = oppY;
       if (this.specialPhaseTimer === 1) {
-        // ロック解除
         this._chainLockX = null; this._chainLockY = null;
         if (opp && opp.respawnTimer === 0) {
           opp.takeHit(this, { damage: 25 * atkMul, kb: 18 * atkMul, type: 'smash' });
           addShake(22); playSound('smash');
-          // 爆発的なパーティクル
           for (let k = 0; k < 35; k++) {
             const ang = Math.random() * Math.PI * 2;
             const spd = 5 + Math.random() * 12;
@@ -7666,21 +7664,27 @@ class Fighter {
         }
       }
       if (this.specialPhaseTimer >= 18) {
+        // フェーズ4開始時の先端位置（相手が飛んだ先）を記録
+        this._chainRetractFromX = this._chainTipX;
+        this._chainRetractFromY = this._chainTipY;
         this.specialPhase = 4;
         this.specialPhaseTimer = 0;
       }
 
     } else if (this.specialPhase === 4) {
-      // フェーズ4: チェーン引き戻し（ease-inで最初が速い）
+      // フェーズ4: 相手が飛んだ位置から根本へ引き戻す
       const retractDur = 12;
       const rp = this.specialPhaseTimer / retractDur;
       const easedR = rp * rp;
-      this._chainTipX = this._chainTargetX + (attachX - this._chainTargetX) * easedR;
-      this._chainTipY = this._chainTargetY + (attachY - this._chainTargetY) * easedR;
+      const fromX = this._chainRetractFromX ?? oppX;
+      const fromY = this._chainRetractFromY ?? oppY;
+      this._chainTipX = fromX + (attachX - fromX) * easedR;
+      this._chainTipY = fromY + (attachY - fromY) * easedR;
       if (this.specialPhaseTimer >= retractDur) {
         this._chainTipX = null; this._chainTipY = null;
         this._chainTargetX = null; this._chainTargetY = null;
         this._chainLockX = null; this._chainLockY = null;
+        this._chainRetractFromX = null; this._chainRetractFromY = null;
         this.activateSpecialBuff();
         this.specialPhase = 0;
       }
