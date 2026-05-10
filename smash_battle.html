@@ -7599,7 +7599,7 @@ class Fighter {
       const HITS = 5, INTERVAL = 10;
       if (opp && opp.respawnTimer === 0) {
         opp.frozenTimer = Math.max(opp.frozenTimer || 0, 5);
-        opp.vx *= 0.5; opp.vy *= 0.5;
+        opp.vx = 0; opp.vy = 0; // 速度を毎フレーム完全停止（ワープ防止）
       }
       this._chainTipX = this._chainTargetX;
       this._chainTipY = this._chainTargetY;
@@ -7614,7 +7614,10 @@ class Fighter {
       }
       if (this.specialPhaseTimer % INTERVAL === 1 && this._chainHitCount < HITS) {
         if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
-          opp.takeHit({ damage: 6 * atkMul, kb: 2, type: 'jab', knockbackAngle: 0 }, this);
+          opp.takeHit({ damage: 6 * atkMul, kb: 0, type: 'jab' }, this);
+          // ヒット後に速度を強制リセット（ワープ防止）
+          opp.vx = 0; opp.vy = 0;
+          opp.hitstun = 8;
           this._chainHitCount++;
           addShake(7); playSound('smash');
           // 大量のパーティクルで叩きつけを表現
