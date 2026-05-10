@@ -5389,6 +5389,7 @@ class Fighter {
       this.doSkillMove();
       this.xHeld = true;
       this.cHeld = true;
+      this._cPendingTrait = false; // x+cで消費したのでチェーン発動しない
       return;
     }
 
@@ -5438,11 +5439,13 @@ class Fighter {
     if (!keys['x']) this.xHeld = false;
 
     if (keys['c'] && !this.cHeld) {
-      this.cHeld = true; // 押したことを記録（発動はリリース時）
+      this.cHeld = true;
+      this._cPendingTrait = true; // c単独押し：リリース時にチェーン発動予約
     }
     if (!keys['c'] && this.cHeld) {
-      this.doTraitMove(); // 離した瞬間に発動
+      if (this._cPendingTrait) this.doTraitMove(); // c単独リリースのみ発動
       this.cHeld = false;
+      this._cPendingTrait = false;
     }
   }
 
