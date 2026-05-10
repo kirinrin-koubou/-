@@ -5776,23 +5776,32 @@ class Fighter {
     const m = (this.charData.moves || {}).trait_move || {};
     if (this.traitMoveCooldown > 0) return;
 
-    // チェーン武器：1〜3回の振り回し攻撃
+    // チェーン武器：相手の方向へチェーンを1〜3回伸ばす
     if (this.hasTrait('chain_weapon')) {
       const swings = Math.floor(Math.random() * 3) + 1;
+      const opp = this.isPlayer ? cpu : player;
+      // 相手がいれば相手の方向、いなければfacingの水平方向
+      let angle = 0;
+      if (opp && opp.respawnTimer === 0) {
+        const dx = opp.x - this.x;
+        const dy = (opp.y - opp.h * 0.5) - (this.y - this.h * 0.6);
+        angle = Math.atan2(dy, dx);
+      } else {
+        angle = this.facing === 1 ? 0 : Math.PI;
+      }
       geometricObjects.push({
         type: 'chain_swing',
         owner: this,
         swingsLeft: swings - 1,
         swingTotal: swings,
-        facing: this.facing,
-        // 角度：facing=1のとき上から前方へ弧を描く（ラジアン）
-        angle: this.facing === 1 ? Math.PI * 0.75 : Math.PI * 0.25,
-        angleEnd: this.facing === 1 ? -Math.PI * 0.25 : Math.PI * 1.25,
-        chainLength: 150, // 画面900pxの1/6
-        swingDur: 22,     // 1振り22フレーム
-        retractDur: 8,    // 引き戻し8フレーム
-        phase: 'swing',
-        phaseTimer: 22,
+        angle,                // 伸びる方向（固定）
+        chainLength: 270,     // 150pxの約1.8倍
+        extendDur: 14,        // 伸ばし14フレーム
+        holdDur: 5,           // 先端停止5フレーム
+        retractDur: 10,       // 引き戻し10フレーム
+        phase: 'extend',
+        phaseTimer: 14,
+        tipProgress: 0,       // 0=手元 〜 1=最大伸長
         hitThisSwing: false,
         color: this.color,
       });
@@ -9355,57 +9364,69 @@ function updateGeometricObjects() {
     if (o.type === 'chain_swing') {
       const owner = o.owner;
       if (!owner || !gameRunning) { geometricObjects.splice(i, 1); continue; }
-      if (o.phase === 'swing') {
-        // 角度を進める
-        const progress = 1 - o.phaseTimer / o.swingDur;
-        o.angle = o.facing === 1
-          ? Math.PI * 0.75 - progress * Math.PI
-          : Math.PI * 0.25 + progress * Math.PI;
-        o.phaseTimer--;
-        // チェーン先端の座標
-        const attachX = owner.x;
-        const attachY = owner.y - owner.h * 0.55;
-        o.tipX = attachX + Math.cos(o.angle) * o.chainLength;
-        o.tipY = attachY + Math.sin(o.angle) * o.chainLength;
-        // ヒット判定（1振りにつき1回）
-        if (!o.hitThisSwing && o.phaseTimer < o.swingDur * 0.8) {
-          const opp = owner.isPlayer ? cpu : player;
-          if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
-            const dx = o.tipX - opp.x, dy = o.tipY - (opp.y - opp.h / 2);
-            if (Math.sqrt(dx*dx + dy*dy) < opp.w * 0.8 + 20) {
-              let atkMul = owner.stats.atk;
-              if (owner.hasTrait('berserker')) atkMul *= (1 + Math.min(owner.damage, 150) / 300);
-              const kb = 7 * atkMul + o.swingTotal * 0.5;
-              const hitbox = { damage: 9 * atkMul, kb, type: 'jab', knockbackAngle: -0.35 };
-              opp.takeHit(hitbox, owner);
-              o.hitThisSwing = true;
-              // 先端エフェクト
-              for (let k = 0; k < 8; k++) {
-                effects.push({ x: o.tipX, y: o.tipY,
-                  vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5,
-                  life: 14, maxLife: 14, color: o.color, size: 4+Math.random()*3 });
-              }
-            }
-          }
-        }
-        if (o.phaseTimer <= 0) {
-          o.phase = 'retract';
-          o.phaseTimer = o.retractDur;
-        }
-      } else { // retract
-        o.phaseTimer--;
+      // 手元（手の位置）
+      const attachX = owner.x + owner.facing * owner.w * 0.35;
+      const attachY = owner.y - owner.h * 0.6;
+      o.phaseTimer--;
+      if (o.phase === 'extend') {
+        o.tipProgress = 1 - o.phaseTimer / o.extendDur;
+        if (o.phaseTimer <= 0) { o.phase = 'hold'; o.phaseTimer = o.holdDur; }
+      } else if (o.phase === 'hold') {
+        o.tipProgress = 1;
+        if (o.phaseTimer <= 0) { o.phase = 'retract'; o.phaseTimer = o.retractDur; }
+      } else {
+        o.tipProgress = o.phaseTimer / o.retractDur;
         if (o.phaseTimer <= 0) {
           if (o.swingsLeft > 0) {
-            // 次の振り
             o.swingsLeft--;
-            o.facing = owner.facing; // 最新のfacingを取得
-            o.angle = o.facing === 1 ? Math.PI * 0.75 : Math.PI * 0.25;
-            o.angleEnd = o.facing === 1 ? -Math.PI * 0.25 : Math.PI * 1.25;
-            o.phase = 'swing';
-            o.phaseTimer = o.swingDur;
+            // 次の振り：改めて相手の方向を計算
+            const opp2 = owner.isPlayer ? cpu : player;
+            if (opp2 && opp2.respawnTimer === 0) {
+              const dx2 = opp2.x - owner.x;
+              const dy2 = (opp2.y - opp2.h * 0.5) - (owner.y - owner.h * 0.6);
+              o.angle = Math.atan2(dy2, dx2);
+            } else {
+              o.angle = owner.facing === 1 ? 0 : Math.PI;
+            }
+            o.phase = 'extend';
+            o.phaseTimer = o.extendDur;
+            o.tipProgress = 0;
             o.hitThisSwing = false;
           } else {
             geometricObjects.splice(i, 1);
+            continue;
+          }
+        }
+      }
+      // 先端座標を更新
+      const ext = o.chainLength * o.tipProgress;
+      o.tipX = attachX + Math.cos(o.angle) * ext;
+      o.tipY = attachY + Math.sin(o.angle) * ext;
+      o.attachX = attachX;
+      o.attachY = attachY;
+      // ヒット判定：extend後半〜holdで1回
+      if (!o.hitThisSwing && o.tipProgress > 0.65) {
+        const opp = owner.isPlayer ? cpu : player;
+        if (opp && opp.respawnTimer === 0 && opp.invincible === 0) {
+          // チェーン全体（線分）と相手の当たり判定
+          const cx = opp.x, cy = opp.y - opp.h * 0.5, hitR = opp.w * 0.7 + 16;
+          // 線分最近点で判定
+          const lx = o.tipX - attachX, ly = o.tipY - attachY;
+          const len2 = lx*lx + ly*ly || 1;
+          const t = Math.max(0, Math.min(1, ((cx - attachX)*lx + (cy - attachY)*ly) / len2));
+          const nearX = attachX + t * lx, nearY = attachY + t * ly;
+          const dist = Math.sqrt((cx-nearX)**2 + (cy-nearY)**2);
+          if (dist < hitR) {
+            let atkMul = owner.stats.atk;
+            if (owner.hasTrait('berserker')) atkMul *= (1 + Math.min(owner.damage, 150) / 300);
+            const kb = 7 * atkMul + o.swingTotal * 0.5;
+            opp.takeHit({ damage: 9 * atkMul, kb, type: 'jab', knockbackAngle: -0.3 }, owner);
+            o.hitThisSwing = true;
+            for (let k = 0; k < 8; k++) {
+              effects.push({ x: o.tipX, y: o.tipY,
+                vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5 - 1,
+                life: 14, maxLife: 14, color: o.color, size: 4+Math.random()*3 });
+            }
           }
         }
       }
@@ -10264,44 +10285,45 @@ function updateGeometricObjects() {
 function drawGeometricObjects() {
   for (const o of geometricObjects) {
     if (o.type === 'chain_swing') {
-      if (!o.owner || o.tipX === undefined) continue;
-      const attachX = o.owner.x;
-      const attachY = o.owner.y - o.owner.h * 0.55;
+      if (!o.owner || o.tipX === undefined || o.tipProgress <= 0.01) continue;
+      const aX = o.attachX, aY = o.attachY;
       ctx.save();
-      // チェーンリンクを等間隔で描画
-      const links = 8;
+      // チェーンリンク（等間隔の楕円）
+      const links = Math.max(3, Math.floor(10 * o.tipProgress));
       for (let k = 0; k <= links; k++) {
         const t = k / links;
-        // 少しカーブさせる（重力感）
-        const sag = Math.sin(t * Math.PI) * 12;
-        const lx = attachX + (o.tipX - attachX) * t;
-        const ly = attachY + (o.tipY - attachY) * t + sag;
+        // 重力によるたわみ（先端が重い）
+        const sag = Math.sin(t * Math.PI) * 10 * o.tipProgress;
+        const lx = aX + (o.tipX - aX) * t;
+        const ly = aY + (o.tipY - aY) * t + sag;
         const r = k === links ? 7 : 4;
         ctx.beginPath();
         ctx.arc(lx, ly, r, 0, Math.PI * 2);
         ctx.fillStyle = k === links ? '#fff' : o.color;
-        ctx.globalAlpha = k === links ? 0.95 : 0.8;
+        ctx.globalAlpha = k === links ? 0.95 : 0.85;
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
       }
-      // チェーン本体ライン
+      // チェーン本体ライン（ベジェでたわみ表現）
+      const sagMid = Math.sin(Math.PI * 0.5) * 10 * o.tipProgress;
+      const ctrlX = aX + (o.tipX - aX) * 0.5;
+      const ctrlY = aY + (o.tipY - aY) * 0.5 + sagMid;
       ctx.beginPath();
-      ctx.moveTo(attachX, attachY);
-      // ベジェで弧を描く
-      const midX = attachX + (o.tipX - attachX) * 0.5;
-      const midY = attachY + (o.tipY - attachY) * 0.5 + 14;
-      ctx.quadraticCurveTo(midX, midY, o.tipX, o.tipY);
+      ctx.moveTo(aX, aY);
+      ctx.quadraticCurveTo(ctrlX, ctrlY, o.tipX, o.tipY);
       ctx.strokeStyle = o.color;
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = 3.5;
+      ctx.globalAlpha = 0.75;
       ctx.stroke();
-      // 先端の光彩
+      // 先端の光彩（hold中に強く光る）
+      const glowR = o.phase === 'hold' ? 13 : 9;
+      const glowA = o.phase === 'hold' ? 0.55 : 0.3;
       ctx.beginPath();
-      ctx.arc(o.tipX, o.tipY, 10, 0, Math.PI * 2);
+      ctx.arc(o.tipX, o.tipY, glowR, 0, Math.PI * 2);
       ctx.fillStyle = '#fff';
-      ctx.globalAlpha = 0.3 + 0.3 * Math.sin(Date.now() / 80);
+      ctx.globalAlpha = glowA + 0.2 * Math.sin(Date.now() / 70);
       ctx.fill();
       ctx.restore();
       continue;
