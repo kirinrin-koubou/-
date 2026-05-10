@@ -5438,10 +5438,12 @@ class Fighter {
     if (!keys['x']) this.xHeld = false;
 
     if (keys['c'] && !this.cHeld) {
-      this.doTraitMove();
-      this.cHeld = true;
+      this.cHeld = true; // 押したことを記録（発動はリリース時）
     }
-    if (!keys['c']) this.cHeld = false;
+    if (!keys['c'] && this.cHeld) {
+      this.doTraitMove(); // 離した瞬間に発動
+      this.cHeld = false;
+    }
   }
 
 
@@ -5795,7 +5797,7 @@ class Fighter {
         swingsLeft: swings - 1,
         swingTotal: swings,
         angle,                // 伸びる方向（固定）
-        chainLength: 270,     // 150pxの約1.8倍
+        chainLength: 310,     // 約2倍強
         extendDur: 14,        // 伸ばし14フレーム
         holdDur: 5,           // 先端停止5フレーム
         retractDur: 10,       // 引き戻し10フレーム
@@ -9369,13 +9371,17 @@ function updateGeometricObjects() {
       const attachY = owner.y - owner.h * 0.6;
       o.phaseTimer--;
       if (o.phase === 'extend') {
-        o.tipProgress = 1 - o.phaseTimer / o.extendDur;
+        // ease-out：最初が速く、終わりが遅い（√で急上昇→緩やか）
+        const ep = 1 - o.phaseTimer / o.extendDur;
+        o.tipProgress = Math.sqrt(ep);
         if (o.phaseTimer <= 0) { o.phase = 'hold'; o.phaseTimer = o.holdDur; }
       } else if (o.phase === 'hold') {
         o.tipProgress = 1;
         if (o.phaseTimer <= 0) { o.phase = 'retract'; o.phaseTimer = o.retractDur; }
       } else {
-        o.tipProgress = o.phaseTimer / o.retractDur;
+        // ease-out：引き戻し開始が速く、終わりが遅い（t²で急降下→緩やか）
+        const rp = o.phaseTimer / o.retractDur;
+        o.tipProgress = rp * rp;
         if (o.phaseTimer <= 0) {
           if (o.swingsLeft > 0) {
             o.swingsLeft--;
