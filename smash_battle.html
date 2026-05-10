@@ -9396,38 +9396,43 @@ function drawChainSpecials() {
     const aX = f._drawChainFrom ? f._drawChainFrom.x : (f.x + f.facing * f.w * 0.35);
     const aY = f._drawChainFrom ? f._drawChainFrom.y : (f.y - f.h * 0.6);
     const tX = f._chainTipX, tY = f._chainTipY;
+    // phase2中はチェーン先端を激しく振動させる
+    const vibr = f.specialPhase === 2 ? (Math.random()-0.5)*22 : 0;
+    const vibrY = f.specialPhase === 2 ? (Math.random()-0.5)*22 : 0;
+    const tXv = tX + vibr, tYv = tY + vibrY;
     ctx.save();
-    // ベジェチェーン（たわみ付き）
-    const sagMid = Math.sin(Math.PI * 0.5) * 14;
-    const ctrlX = aX + (tX - aX) * 0.5;
-    const ctrlY = aY + (tY - aY) * 0.5 + sagMid;
+    // ベジェチェーン（大きなたわみ）
+    const sagMid = 38;
+    const ctrlX = aX + (tXv - aX) * 0.5;
+    const ctrlY = aY + (tYv - aY) * 0.5 + sagMid;
     ctx.beginPath();
     ctx.moveTo(aX, aY);
-    ctx.quadraticCurveTo(ctrlX, ctrlY, tX, tY);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, tXv, tYv);
     ctx.strokeStyle = f.specialColor || f.color;
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.9;
     ctx.stroke();
-    // リンク
-    const links = 10;
+    // リンク（大きめ）
+    const links = 12;
     for (let k = 0; k <= links; k++) {
       const t = k / links;
-      const sag = Math.sin(t * Math.PI) * 14;
-      const lx = aX + (tX - aX) * t;
-      const ly = aY + (tY - aY) * t + sag;
+      const sag = Math.sin(t * Math.PI) * 38;
+      const lx = aX + (tXv - aX) * t;
+      const ly = aY + (tYv - aY) * t + sag;
       ctx.beginPath();
-      ctx.arc(lx, ly, k === links ? 8 : 4, 0, Math.PI * 2);
+      ctx.arc(lx, ly, k === links ? 11 : 6, 0, Math.PI * 2);
       ctx.fillStyle = k === links ? '#fff' : (f.specialColor || f.color);
-      ctx.globalAlpha = k === links ? 1 : 0.9;
+      ctx.globalAlpha = k === links ? 1 : 0.92;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     }
-    // 先端の光彩（phase2=多段hit中は強く点滅）
-    const glowStr = f.specialPhase === 2 ? (0.5 + 0.5 * Math.sin(Date.now() / 40)) : 0.3;
+    // 先端の光彩（phase2=多段hit中は激しく点滅）
+    const glowStr = f.specialPhase === 2 ? (0.6 + 0.6 * Math.sin(Date.now() / 30)) : 0.35;
+    const glowR   = f.specialPhase === 2 ? 26 : 18;
     ctx.beginPath();
-    ctx.arc(tX, tY, 14, 0, Math.PI * 2);
+    ctx.arc(tXv, tYv, glowR, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.globalAlpha = glowStr;
     ctx.fill();
@@ -10396,37 +10401,36 @@ function drawGeometricObjects() {
       const aX = o.attachX, aY = o.attachY;
       ctx.save();
       // チェーンリンク（等間隔の楕円）
-      const links = Math.max(3, Math.floor(10 * o.tipProgress));
+      const links = Math.max(3, Math.floor(12 * o.tipProgress));
       for (let k = 0; k <= links; k++) {
         const t = k / links;
-        // 重力によるたわみ（先端が重い）
-        const sag = Math.sin(t * Math.PI) * 10 * o.tipProgress;
+        const sag = Math.sin(t * Math.PI) * 22 * o.tipProgress;
         const lx = aX + (o.tipX - aX) * t;
         const ly = aY + (o.tipY - aY) * t + sag;
-        const r = k === links ? 7 : 4;
+        const r = k === links ? 10 : 6;
         ctx.beginPath();
         ctx.arc(lx, ly, r, 0, Math.PI * 2);
         ctx.fillStyle = k === links ? '#fff' : o.color;
-        ctx.globalAlpha = k === links ? 0.95 : 0.85;
+        ctx.globalAlpha = k === links ? 0.95 : 0.88;
         ctx.fill();
         ctx.strokeStyle = 'rgba(0,0,0,0.45)';
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
       // チェーン本体ライン（ベジェでたわみ表現）
-      const sagMid = Math.sin(Math.PI * 0.5) * 10 * o.tipProgress;
+      const sagMid = 22 * o.tipProgress;
       const ctrlX = aX + (o.tipX - aX) * 0.5;
       const ctrlY = aY + (o.tipY - aY) * 0.5 + sagMid;
       ctx.beginPath();
       ctx.moveTo(aX, aY);
       ctx.quadraticCurveTo(ctrlX, ctrlY, o.tipX, o.tipY);
       ctx.strokeStyle = o.color;
-      ctx.lineWidth = 3.5;
-      ctx.globalAlpha = 0.75;
+      ctx.lineWidth = 5;
+      ctx.globalAlpha = 0.8;
       ctx.stroke();
       // 先端の光彩（hold中に強く光る）
-      const glowR = o.phase === 'hold' ? 13 : 9;
-      const glowA = o.phase === 'hold' ? 0.55 : 0.3;
+      const glowR = o.phase === 'hold' ? 18 : 12;
+      const glowA = o.phase === 'hold' ? 0.65 : 0.35;
       ctx.beginPath();
       ctx.arc(o.tipX, o.tipY, glowR, 0, Math.PI * 2);
       ctx.fillStyle = '#fff';
