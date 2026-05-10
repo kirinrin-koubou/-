@@ -7650,7 +7650,7 @@ class Fighter {
         // ロック解除
         this._chainLockX = null; this._chainLockY = null;
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit({ damage: 25 * atkMul, kb: 18 * atkMul, type: 'smash' }, this);
+          opp.takeHit(this, { damage: 25 * atkMul, kb: 18 * atkMul, type: 'smash' });
           addShake(22); playSound('smash');
           // 爆発的なパーティクル
           for (let k = 0; k < 35; k++) {
@@ -9543,7 +9543,7 @@ function updateGeometricObjects() {
             let atkMul = owner.stats.atk;
             if (owner.hasTrait('berserker')) atkMul *= (1 + Math.min(owner.damage, 150) / 300);
             const kb = 7 * atkMul + o.swingTotal * 0.5;
-            opp.takeHit({ damage: 9 * atkMul, kb, type: 'jab', knockbackAngle: -0.3 }, owner);
+            opp.takeHit(owner, { damage: 9 * atkMul, kb, type: 'jab' });
             o.hitThisSwing = true;
             for (let k = 0; k < 8; k++) {
               effects.push({ x: o.tipX, y: o.tipY,
