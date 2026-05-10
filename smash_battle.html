@@ -7589,16 +7589,6 @@ class Fighter {
       this._chainTipX = attachX + (this._chainTargetX - attachX) * eased;
       this._chainTipY = attachY + (this._chainTargetY - attachY) * eased;
       this._drawChainFrom = { x: attachX, y: attachY };
-      // チェーン沿いのパーティクル
-      if (this._specialEffectOk) {
-        for (let k = 1; k <= 5; k++) {
-          const t = k / 5;
-          const sag = Math.sin(t * Math.PI) * 10;
-          effects.push({ x: attachX + (this._chainTipX - attachX) * t + (Math.random()-0.5)*4,
-            y: attachY + (this._chainTipY - attachY) * t + sag,
-            vx: 0, vy: 0, life: 5, maxLife: 5, color: this.specialColor, size: 5+Math.random()*3 });
-        }
-      }
       if (ep >= 1) {
         this.specialPhase = 2;
         this.specialPhaseTimer = 0;
