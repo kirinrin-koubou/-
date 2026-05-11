@@ -4671,7 +4671,7 @@ class Fighter {
               const ddx = opp.x - this.x;
               const ddy = Math.abs(opp.y - this.y);
               if (Math.abs(ddx) < 110 && ddy < 30) {
-                opp.takeHit(this, { damage: 8 * this.stats.atk, kb: 7 * this.stats.atk, type: 'smash' });
+                opp.takeHit(this, { damage: 10 * this.stats.atk, kb: 7 * this.stats.atk, type: 'smash' });
               }
             }
             for (let k = 0; k < 16; k++) {
@@ -5538,9 +5538,9 @@ class Fighter {
     // --- 攻撃技 ---
     if (m.power > 0 && opp && opp.respawnTimer === 0) {
       if (range === 'zone' || sid === 'sm_earthquake' || sid === 'sm_fissure') {
-        opp.takeHit(this, { damage: m.power * atkMul * 0.82, kb: m.smash * atkMul * 0.82, type:'smash' });
+        opp.takeHit(this, { damage: m.power * atkMul * 1.05, kb: m.smash * atkMul * 0.82, type:'smash' });
       } else {
-        opp.takeHit(this, { damage: m.power * atkMul * 0.82, kb: m.smash * atkMul * 0.82, type:'smash' });
+        opp.takeHit(this, { damage: m.power * atkMul * 1.05, kb: m.smash * atkMul * 0.82, type:'smash' });
       }
       if (m.heal) this.damage = Math.max(0, this.damage - m.heal * (atkMul > 1 ? 1.2 : 1));
       if (m.debuff === 'paralyze') opp._slowTimer = Math.max(opp._slowTimer||0, 300);
@@ -5645,7 +5645,7 @@ class Fighter {
       if (_opp && _opp.respawnTimer === 0) {
         const doIceWave = (hitNum) => {
           if (!_opp || _opp.respawnTimer > 0) return;
-          _opp.takeHit(this, { damage: 6 * this.stats.atk, kb: 4 * this.stats.atk, type:'jab' });
+          _opp.takeHit(this, { damage: 8 * this.stats.atk, kb: 4 * this.stats.atk, type:'jab' });
           _opp.frozenTimer = Math.max(_opp.frozenTimer||0, 20);
           // 足元から氷の波エフェクト
           for (let k=0;k<8;k++) {
@@ -5708,7 +5708,7 @@ class Fighter {
           const dx = opp2.x - this.x;
           // チューリップ色の丸チェーンを振り回して攻撃（200px以内）
           if (Math.abs(dx) < 200) {
-            opp2.takeHit(this, { damage: 10 * this.stats.atk, kb: 18 * this.stats.atk, type:'special' });
+            opp2.takeHit(this, { damage: 13 * this.stats.atk, kb: 18 * this.stats.atk, type:'special' });
             // チェーン：丸がつながった棒状エフェクト
             const chainLen = 8;
             const chainDir = this.facing;
@@ -6037,7 +6037,7 @@ class Fighter {
     let atkMul = this.stats.atk;
     if (this.hasTrait('berserker')) atkMul *= (1 + Math.min(this.damage, 150) / 300);
     if (this.hasTrait('late_bloomer') && this.damage >= 100) atkMul *= 1.4;
-    this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 8 * atkMul, kb: 7 * atkMul, type: 'jab' };
+    this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 10 * atkMul, kb: 7 * atkMul, type: 'jab' };
     this.spawnMoveFx(m.effect, 'trait_move');
     this.traitMoveCooldown = m.cooldown;
     this.vx += this.facing * 4;
@@ -6207,7 +6207,7 @@ class Fighter {
       if (this._sakuraSword) this._sakuraSword.swing = this.specialPhaseTimer; // 振り下ろしアニメ
       if (this.specialPhaseTimer === 1) {
         if (opp && !opp.shielding && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 33 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 43 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
           // 振り下ろしのスラッシュエフェクト
           for (let s = 0; s < 12; s++) {
             const ang = (s/12)*Math.PI - Math.PI*0.8 + (this.facing > 0 ? 0 : Math.PI);
@@ -6266,7 +6266,7 @@ class Fighter {
       if (this.specialPhaseTimer >= 30) { this.specialPhase = 2; this.specialPhaseTimer = 0; }
     } else if (this.specialPhase === 2) {
       if (this.specialPhaseTimer === 1 && opp && opp.respawnTimer === 0 && !opp.shielding) {
-        opp.takeHit(this, { damage: 42 * atkMul, kb: 17 * atkMul, type: 'smash', piercing: true });
+        opp.takeHit(this, { damage: 55 * atkMul, kb: 17 * atkMul, type: 'smash', piercing: true });
         const cloud = this._thunderCloud || { x: opp.x, y: opp.y - 180 };
         for (let k = 0; k < 50; k++) {
           const t = k / 50;
@@ -6319,7 +6319,7 @@ class Fighter {
     } else if (this.specialPhase === 3) {
       if (this.specialPhaseTimer === 1) {
         if (opp && opp.respawnTimer === 0 && !opp.shielding) {
-          opp.takeHit(this, { damage: 18 * atkMul, kb: 10 * atkMul, type: 'smash' });
+          opp.takeHit(this, { damage: 24 * atkMul, kb: 10 * atkMul, type: 'smash' });
           opp.vy = -14; // 半分に抑える
           for (let k = 0; k < 60; k++) {
             const t = k / 60;
@@ -6358,7 +6358,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer >= 60) {
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 12 * atkMul, kb: 10 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 16 * atkMul, kb: 10 * atkMul, type: 'smash', piercing: true });
           opp._heatSickness = 180;
           for (let k = 0; k < 20; k++) {
             const ang = (k/20)*Math.PI*2;
@@ -6402,7 +6402,7 @@ class Fighter {
     } else if (this.specialPhase === 2) {
       // specialPhaseTimer===1のみでtakeHit（確実に1回だけ）
       if (this.specialPhaseTimer === 1 && opp && opp.respawnTimer === 0) {
-        opp.takeHit(this, { damage: 50 * atkMul, kb: 0, type: 'smash', piercing: true });
+        opp.takeHit(this, { damage: 65 * atkMul, kb: 0, type: 'smash', piercing: true });
         opp.vx = 0; opp.vy = 0;
         const sx = W - 80, sy = 40;
         const tx = opp.x, ty = opp.y - opp.h/2;
@@ -6583,7 +6583,7 @@ class Fighter {
       if (this._moonSword) { this._moonSword.phase = 2; this._moonSword.swing = this.specialPhaseTimer; }
       if (this.specialPhaseTimer === 1) {
         if (opp && !opp.shielding && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 33 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
+          opp.takeHit(this, { damage: 43 * atkMul, kb: 13 * atkMul, type: 'smash', piercing: true });
           for (let k = 0; k < 6; k++) {
             const ang = (k/6)*Math.PI - Math.PI*0.7 + (this.facing>0?0:Math.PI);
             effects.push({ x:this.x+Math.cos(ang)*40, y:this.y-this.h*0.5+Math.sin(ang)*40,
@@ -6612,7 +6612,7 @@ class Fighter {
           vx: 0, vy: 16, // 高速落下
           timer: 80, maxTimer: 80,
           owner: this,
-          damage: 12 * atkMul, kb: 10 * atkMul,
+          damage: 16 * atkMul, kb: 10 * atkMul,
           pumpkinSize: 1.0,
           chainCount: 0,
           firstHit: true, // 1発目フラグ（必中）
@@ -6764,7 +6764,7 @@ class Fighter {
           vx: (dx / len) * 7,
           vy: (dy / len) * 7,
           life: 100,
-          damage: 8 * atkMul,
+          damage: 10 * atkMul,
           kb: 4 * atkMul,
           owner: this,
           color: '#aaeeff',
@@ -6815,7 +6815,7 @@ class Fighter {
             vx: Math.cos(ang) * 7,
             vy: Math.sin(ang) * 7,
             life: 50,
-            damage: 5 * atkMul,
+            damage: 7 * atkMul,
             kb: 4 * atkMul,
             owner: this,
             color: BARRIER_PALETTE[k % BARRIER_PALETTE.length],
@@ -6890,7 +6890,7 @@ class Fighter {
       this.attackBox = {
         x: ax - 32, y: this.y - 50,
         w: 64, h: 50,
-        damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash',
+        damage: 20 * atkMul, kb: 12 * atkMul, type: 'smash',
       };
       this.attackType = 'special';
       this.attackTimer = 16;
@@ -6931,7 +6931,7 @@ class Fighter {
           vx: (dx / len) * 7,
           vy: (dy / len) * 7,
           life: 100,
-          damage: 2.5 * atkMul,
+          damage: 3.5 * atkMul,
           kb: 2.5 * atkMul,
           owner: this,
           color: this.specialColor,
@@ -6957,7 +6957,7 @@ class Fighter {
           vx: (dx / len) * 6,
           vy: (dy / len) * 6,
           life: 120,
-          damage: 15 * atkMul,
+          damage: 20 * atkMul,
           kb: 12 * atkMul,
           owner: this,
           color: this.specialColor,
@@ -7073,7 +7073,7 @@ class Fighter {
           this.attackBox = {
             x: this.x - 55, y: this.y - this.h - 30,
             w: 110, h: 110,
-            damage: 18 * atkMul, kb: 13 * atkMul, type: 'smash',
+            damage: 24 * atkMul, kb: 13 * atkMul, type: 'smash',
             piercing: true,
             stun: 50,
           };
@@ -7149,7 +7149,7 @@ class Fighter {
       this.attackBox = {
         x: ax - 30, y: this.y - 50,
         w: 60, h: 50,
-        damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash',
+        damage: 20 * atkMul, kb: 12 * atkMul, type: 'smash',
       };
       this.attackType = 'special';
       this.attackTimer = 14;
@@ -7220,7 +7220,7 @@ class Fighter {
         const ax = this.x + this.facing * 30;
         this.attackBox = {
           x: ax - 22, y: this.y - 46, w: 44, h: 36,
-          damage: 2.0 * atkMul, kb: 1.2 * atkMul, type: 'jab',
+          damage: 2.8 * atkMul, kb: 1.2 * atkMul, type: 'jab',
         };
         this.attackType = 'special';
         this.attackTimer = 4;
@@ -7249,7 +7249,7 @@ class Fighter {
         const ax = this.x + this.facing * 42;
         this.attackBox = {
           x: ax - 28, y: this.y - 50, w: 56, h: 44,
-          damage: 7 * atkMul, kb: 6 * atkMul, type: 'smash',
+          damage: 9 * atkMul, kb: 6 * atkMul, type: 'smash',
         };
         this.attackType = 'special';
         this.attackTimer = 14;
@@ -7290,7 +7290,7 @@ class Fighter {
           maxCharge: 25,
           owner: this,
           color: this.specialColor,
-          damage: 17 * atkMul,
+          damage: 22 * atkMul,
           kb: 12 * atkMul,
           state: 'charging',
         });
@@ -7349,7 +7349,7 @@ class Fighter {
           targetY: cy,
           color: this.specialColor,
           owner: this,
-          damage: 7 * atkMul,
+          damage: 9 * atkMul,
           kb: 4 * atkMul,
         });
         // 右の岩壁
@@ -7368,7 +7368,7 @@ class Fighter {
           targetY: cy,
           color: this.specialColor,
           owner: this,
-          damage: 7 * atkMul,
+          damage: 9 * atkMul,
           kb: 4 * atkMul,
         });
         addShake(10);
@@ -7386,7 +7386,7 @@ class Fighter {
           if (o.type === 'rock_wall' && o.owner === this) {
             o.phase = 'squeezing';
             o.squeezeStart = 0;
-            o.crushDamage = 20 * atkMul;
+            o.crushDamage = 26 * atkMul;
             o.crushKb = 14 * atkMul;
           }
         }
@@ -7479,7 +7479,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer >= 15) {
         if (opp && opp.respawnTimer===0) {
-          opp.takeHit(this, { damage:23*atk, kb:15*atk, type:'smash', piercing:true });
+          opp.takeHit(this, { damage:30*atk, kb:15*atk, type:'smash', piercing:true });
           opp.frozenTimer = Math.max(opp.frozenTimer||0, 200);
           effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-20,
             text:'❄️ 凍結！', color:'#80d8ff', size:15, life:60, maxLife:60, vy:-0.5 });
@@ -7522,7 +7522,7 @@ class Fighter {
     } else if (this.specialPhase === 2) {
       // フェーズ2: 投げ（ガード完全無視・大ふっ飛び）
       if (this.specialPhaseTimer === 10 && opp) {
-        opp.takeHit(this, { damage: 15 * atkMul, kb: 20 * atkMul, type:'smash', piercing:true });
+        opp.takeHit(this, { damage: 20 * atkMul, kb: 20 * atkMul, type:'smash', piercing:true });
         opp.vy = -20;
         opp.vx = this.facing * 15;
         for (let k = 0; k < 20; k++) {
@@ -7556,7 +7556,7 @@ class Fighter {
           effects.push({ x:opp.x+Math.cos(ang)*30, y:opp.y-opp.h/2+Math.sin(ang)*30,
             vx:Math.cos(ang)*5, vy:Math.sin(ang)*5, life:25, maxLife:25, color:this.specialColor, size:8+Math.random()*4 });
         }
-        opp.takeHit(this, { damage: 23 * atkMul, kb: 13 * atkMul, type:'smash', piercing:true });
+        opp.takeHit(this, { damage: 30 * atkMul, kb: 13 * atkMul, type:'smash', piercing:true });
         opp._slowTimer = Math.max(opp._slowTimer||0, 180); // 呪い:鈍足
         // デメリット：自分も10%ダメージ
         this.damage += 10;
@@ -7622,7 +7622,7 @@ class Fighter {
       }
       if (this.specialPhaseTimer % INTERVAL === 1 && this._chainHitCount < HITS) {
         if (opp && opp.respawnTimer === 0) {
-          opp.damage += 5 * atkMul;
+          opp.damage += 7 * atkMul;
           this._chainHitCount++;
           addShake(7); playSound('smash');
           for (let k = 0; k < 18; k++) {
@@ -7649,7 +7649,7 @@ class Fighter {
       if (this.specialPhaseTimer === 1) {
         this._chainLockX = null; this._chainLockY = null;
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 16 * atkMul, kb: 11 * atkMul, type: 'smash' });
+          opp.takeHit(this, { damage: 21 * atkMul, kb: 11 * atkMul, type: 'smash' });
           addShake(22); playSound('smash');
           for (let k = 0; k < 35; k++) {
             const ang = Math.random() * Math.PI * 2;
@@ -7705,7 +7705,7 @@ class Fighter {
         geometricObjects.push({
           type:'heart_arrow', x:this.x+this.facing*20, y:this.y-this.h*0.6,
           vx:(dx/dist)*13, vy:(dy/dist)*13, owner:this,
-          damage:10*atk, kb:4*atk, life:50,
+          damage:13*atk, kb:4*atk, life:50,
           onHit:(target)=>{ if(!this._heartHit){ this._heartHit=true; this._heartTarget=target; } }
         });
         for (let k=0;k<10;k++) effects.push({
@@ -7749,7 +7749,7 @@ class Fighter {
       if (this.specialPhaseTimer>=15) {
         const t = this._heartTarget || opp;
         if (t && t.respawnTimer===0) {
-          t.takeHit(this, { damage:16*atk, kb:13*atk, type:'smash' }); // 弱体化
+          t.takeHit(this, { damage:21*atk, kb:13*atk, type:'smash' }); // 弱体化
           for (let k=0;k<24;k++) {
             const ang=(k/24)*Math.PI*2;
             effects.push({ x:t.x+Math.cos(ang)*20, y:t.y-t.h/2+Math.sin(ang)*20,
@@ -7809,7 +7809,7 @@ class Fighter {
         if (opp && opp.respawnTimer===0 && Math.abs(opp.x-this.x)<80) {
           this._ribbonHits++;
           const isFinisher = this._ribbonHits === maxHits;
-          const dmg = isFinisher ? 11*atk : 4*atk;
+          const dmg = isFinisher ? 14*atk : 5*atk;
           const kb  = isFinisher ? 16*atk : 3*atk;
           opp.takeHit(this, { damage:dmg, kb:kb, type: isFinisher?'smash':'jab' });
           if (isFinisher) { opp.vy=-12; addShake(12); playSound('smash'); }
@@ -8350,7 +8350,7 @@ class Fighter {
         vx: this.facing * 15, // 高速
         vy: 0,
         life: 60,
-        damage: 7 * this.stats.atk,
+        damage: 9 * this.stats.atk,
         kb: 5 * this.stats.atk,
         owner: this,
         color: '#ffd54f',
@@ -8371,7 +8371,7 @@ class Fighter {
           vx: this.facing * 10,
           vy: spread[k] * 5,
           life: 70,
-          damage: 5 * this.stats.atk, // 1発は軽め・3発合計15%
+          damage: 6.5 * this.stats.atk, // 1発は軽め・3発合計15%
           kb: 4 * this.stats.atk,
           owner: this,
           color: '#ce93d8',
@@ -8391,7 +8391,7 @@ class Fighter {
         vy: -2, // 最初は少し上向き
         gravity: 0.18, // 重力で落下
         life: 90,
-        damage: 8 * this.stats.atk * dmgMul,
+        damage: 10 * this.stats.atk * dmgMul,
         kb: 7 * this.stats.atk * dmgMul,
         owner: this,
         color: '#bf360c',
@@ -8408,7 +8408,7 @@ class Fighter {
       vx: this.facing * 9,
       vy: 0,
       life: 90,
-      damage: 6 * this.stats.atk,
+      damage: 8 * this.stats.atk,
       kb: 5 * this.stats.atk,
       owner: this,
       color: this.color,
@@ -8465,45 +8465,45 @@ class Fighter {
       this.attackTimer = Math.floor(12 * speedBonus);
       this.attackCooldown = Math.floor(18 * speedBonus);
       const ax = this.x + this.facing * 32;
-      this.attackBox = { x: ax - 18, y: this.y - 42, w: 36, h: 30, damage: 5 * atkMul, kb: 4 * atkMul, type: 'jab' };
+      this.attackBox = { x: ax - 18, y: this.y - 42, w: 36, h: 30, damage: 7 * atkMul, kb: 4 * atkMul, type: 'jab' };
     } else if (type === 'jab2') {
       // Z連打2段目：少し強い
       const speedBonus = this.hasTrait('rapid') ? 0.6 : 1.0;
       this.attackTimer = Math.floor(13 * speedBonus);
       this.attackCooldown = Math.floor(20 * speedBonus);
       const ax = this.x + this.facing * 34;
-      this.attackBox = { x: ax - 20, y: this.y - 44, w: 40, h: 32, damage: 6 * atkMul, kb: 5 * atkMul, type: 'jab' };
+      this.attackBox = { x: ax - 20, y: this.y - 44, w: 40, h: 32, damage: 8 * atkMul, kb: 5 * atkMul, type: 'jab' };
     } else if (type === 'jab3') {
       // Z連打3段目：アッパー（吹っ飛ばし大）
       const speedBonus = this.hasTrait('rapid') ? 0.6 : 1.0;
       this.attackTimer = Math.floor(18 * speedBonus);
       this.attackCooldown = Math.floor(28 * speedBonus);
       const ax = this.x + this.facing * 36;
-      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 9 * atkMul, kb: 8 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 12 * atkMul, kb: 8 * atkMul, type: 'smash' };
     } else if (type === 'smash') {
       this.attackTimer = 22;
       this.attackCooldown = 45;
       const ax = this.x + this.facing * 42;
       const powerMul = this.hasTrait('power_smash') ? 1.3 : 1.0;
-      this.attackBox = { x: ax - 24, y: this.y - 48, w: 48, h: 40, damage: 12 * atkMul * powerMul, kb: 9 * atkMul * powerMul, type: 'smash' };
+      this.attackBox = { x: ax - 24, y: this.y - 48, w: 48, h: 40, damage: 16 * atkMul * powerMul, kb: 9 * atkMul * powerMul, type: 'smash' };
       if (this.hasTrait('double_smash')) this.doubleSmashWindow = 25;
     } else if (type === 'smash2') {
       this.attackTimer = 18;
       this.attackCooldown = 30;
       const ax = this.x + this.facing * 38;
-      this.attackBox = { x: ax - 22, y: this.y - 50, w: 44, h: 38, damage: 8 * atkMul, kb: 7 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 22, y: this.y - 50, w: 44, h: 38, damage: 11 * atkMul, kb: 7 * atkMul, type: 'smash' };
     } else if (type === 'smash3') {
       this.attackTimer = 26;
       this.attackCooldown = 50;
       const ax = this.x + this.facing * 46;
-      this.attackBox = { x: ax - 28, y: this.y - 54, w: 56, h: 46, damage: 15 * atkMul, kb: 12 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 28, y: this.y - 54, w: 56, h: 46, damage: 20 * atkMul, kb: 12 * atkMul, type: 'smash' };
     } else if (type === 'down_smash') {
       this.attackTimer = 24;
       this.attackCooldown = 50;
       const m = (this.charData.moves || {}).down_smash || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: this.x - 70, y: this.y - 24, w: 140, h: 26, damage: 10 * atkMul * dMul, kb: 8 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: this.x - 70, y: this.y - 24, w: 140, h: 26, damage: 13 * atkMul * dMul, kb: 8 * atkMul * kMul, type: 'smash' };
       this.spawnMoveFx(m.effect, 'down_smash');
     } else if (type === 'strong_side') {
       this.attackTimer = 16;
@@ -8512,13 +8512,13 @@ class Fighter {
       const m = (this.charData.moves || {}).strong_side || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: ax - 30, y: this.y - 44, w: 60, h: 32, damage: 8 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'jab' };
+      this.attackBox = { x: ax - 30, y: this.y - 44, w: 60, h: 32, damage: 10 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'jab' };
       this.spawnMoveFx(m.effect, 'strong_side');
     } else if (type === 'dash_attack') {
       this.attackTimer = 20;
       this.attackCooldown = 38;
       const ax = this.x + this.facing * 38;
-      this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 9 * atkMul, kb: 7 * atkMul, type: 'smash' };
+      this.attackBox = { x: ax - 26, y: this.y - 46, w: 52, h: 38, damage: 12 * atkMul, kb: 7 * atkMul, type: 'smash' };
       this.vx = this.facing * 7;
     } else if (type === 'special') {
       this.attackTimer = 36;
@@ -8526,7 +8526,7 @@ class Fighter {
       const m = (this.charData.moves || {}).special || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: this.x - 80, y: this.y - 80, w: 160, h: 90, damage: 18 * atkMul * dMul, kb: 15 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: this.x - 80, y: this.y - 80, w: 160, h: 90, damage: 24 * atkMul * dMul, kb: 15 * atkMul * kMul, type: 'smash' };
       // 必殺技：自分回復オプション
       if (m.healSelf) {
         this.damage = Math.max(0, this.damage - m.healSelf);
@@ -8543,7 +8543,7 @@ class Fighter {
       const m = (this.charData.moves || {}).jab3 || {};
       const dMul = (m.dmgMul || 1.0);
       const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 7 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'smash' };
+      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 9 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'smash' };
       this.spawnMoveFx(m.effect, 'jab3');
     }
 
@@ -8748,7 +8748,7 @@ class Fighter {
       const firstHit = (attacker.skillHitCooldown || 0) === 0;
       if (firstHit) {
         const totalMul = matchup * stageBonus;
-        const bonus = hitbox.damage * 1.3 * totalMul;
+        const bonus = hitbox.damage * 1.6 * totalMul;
         this.damage += bonus;
         // KBはダメージ蓄積で自然に上がるため、追加KB倍率は掛けない
         attacker.skillHitCooldown = 90;
@@ -8827,7 +8827,7 @@ class Fighter {
           type: 'pumpkin', x: opp.x, y: opp.y - opp.h - 20,
           vy: 0, timer: 50, maxTimer: 50,
           owner: this,
-          damage: 20 * this.stats.atk, kb: 12 * this.stats.atk,
+          damage: 26 * this.stats.atk, kb: 12 * this.stats.atk,
         });
       }
     }
@@ -9546,7 +9546,7 @@ function updateGeometricObjects() {
             let atkMul = owner.stats.atk;
             if (owner.hasTrait('berserker')) atkMul *= (1 + Math.min(owner.damage, 150) / 300);
             const kb = 7 * atkMul + o.swingTotal * 0.5;
-            opp.takeHit(owner, { damage: 9 * atkMul, kb, type: 'jab' });
+            opp.takeHit(owner, { damage: 12 * atkMul, kb, type: 'jab' });
             o.hitThisSwing = true;
             for (let k = 0; k < 8; k++) {
               effects.push({ x: o.tipX, y: o.tipY,
@@ -9650,7 +9650,7 @@ function updateGeometricObjects() {
           // 岩の半径22 + キャラの半径
           if (dd < 22 + Math.max(target.w, target.h) / 2 - 6) {
             // 軽めのダメージ（最終潰しよりは弱め）
-            target.takeHit(o.owner, { damage: 6 * (o.owner.stats?.atk || 1), kb: 5 * (o.owner.stats?.atk || 1), type: 'jab' });
+            target.takeHit(o.owner, { damage: 8 * (o.owner.stats?.atk || 1), kb: 5 * (o.owner.stats?.atk || 1), type: 'jab' });
             // 同じ岩に連続ヒットしないようクールダウン
             target.rockOrbitHitCooldown = 25;
             // 岩は弾き飛ばされる
@@ -9767,7 +9767,7 @@ function updateGeometricObjects() {
             timer: 30,
             maxTimer: 30,
             owner: o.owner,
-            damage: 14 * (o.owner.stats?.atk || 1),
+            damage: 18 * (o.owner.stats?.atk || 1),
             kb: 12 * (o.owner.stats?.atk || 1),
             color: o.color,
             hitTargets: new Set(),
@@ -9955,7 +9955,7 @@ function updateGeometricObjects() {
               owner: o.owner,
               skillType: 'dark',
               color: '#7c4dff',
-              damage: 12 * atkMul,
+              damage: 16 * atkMul,
               kb: 9 * atkMul,
               timer: 80,
               size: 18,
