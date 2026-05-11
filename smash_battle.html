@@ -7249,7 +7249,7 @@ class Fighter {
         const ax = this.x + this.facing * 42;
         this.attackBox = {
           x: ax - 28, y: this.y - 50, w: 56, h: 44,
-          damage: 10 * atkMul, kb: 8 * atkMul, type: 'smash',
+          damage: 7 * atkMul, kb: 6 * atkMul, type: 'smash',
         };
         this.attackType = 'special';
         this.attackTimer = 14;
@@ -7649,7 +7649,7 @@ class Fighter {
       if (this.specialPhaseTimer === 1) {
         this._chainLockX = null; this._chainLockY = null;
         if (opp && opp.respawnTimer === 0) {
-          opp.takeHit(this, { damage: 21 * atkMul, kb: 15 * atkMul, type: 'smash' });
+          opp.takeHit(this, { damage: 16 * atkMul, kb: 11 * atkMul, type: 'smash' });
           addShake(22); playSound('smash');
           for (let k = 0; k < 35; k++) {
             const ang = Math.random() * Math.PI * 2;
@@ -7749,7 +7749,7 @@ class Fighter {
       if (this.specialPhaseTimer>=15) {
         const t = this._heartTarget || opp;
         if (t && t.respawnTimer===0) {
-          t.takeHit(this, { damage:22*atk, kb:17*atk, type:'smash' }); // 弱体化
+          t.takeHit(this, { damage:16*atk, kb:13*atk, type:'smash' }); // 弱体化
           for (let k=0;k<24;k++) {
             const ang=(k/24)*Math.PI*2;
             effects.push({ x:t.x+Math.cos(ang)*20, y:t.y-t.h/2+Math.sin(ang)*20,
@@ -7809,8 +7809,8 @@ class Fighter {
         if (opp && opp.respawnTimer===0 && Math.abs(opp.x-this.x)<80) {
           this._ribbonHits++;
           const isFinisher = this._ribbonHits === maxHits;
-          const dmg = isFinisher ? 15*atk : 4*atk;
-          const kb  = isFinisher ? 22*atk : 3*atk;
+          const dmg = isFinisher ? 11*atk : 4*atk;
+          const kb  = isFinisher ? 16*atk : 3*atk;
           opp.takeHit(this, { damage:dmg, kb:kb, type: isFinisher?'smash':'jab' });
           if (isFinisher) { opp.vy=-12; addShake(12); playSound('smash'); }
           else { addShake(3); }
