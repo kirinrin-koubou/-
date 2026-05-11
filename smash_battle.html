@@ -7416,8 +7416,8 @@ class Fighter {
       if (this.specialPhaseTimer >= 30) {
         // balance固有バフ（attack×1.8）も維持しつつ共通バフも発動
         this.buffTimer = 600;
-        this.buffAtkMul = 1.2;
-        this.buffKbMul = 1.15;
+        this.buffAtkMul = 1.1;
+        this.buffKbMul = 1.05;
         this.activateSpecialBuff();
         this.specialPhase = 0;
       }
@@ -8706,16 +8706,15 @@ class Fighter {
     let knockback = hitbox.kb * defReduction * weightFactor * (1 + this.damage / 80) * 0.85;
     // 🌱自然：攻撃側の攻撃バフ（1.2倍）
     if (attacker && attacker._skillAtkBuff) {
-      knockback *= 1.2;
-      this.damage += hitbox.damage * 0.2;
+      knockback *= 1.05;
+      this.damage += hitbox.damage * 0.15;
     }
     // 必殺技パワーアップバフ中の全攻撃1.2倍（skillBuffTimerを共有）
     if (attacker && (attacker.skillBuffTimer || 0) > 0 && attacker.skillBuffType && !hitbox._skipSkillBuff) {
-      // firstHit大ダメ以外の通常攻撃にも1.2倍
+      // firstHit大ダメ以外の通常攻撃にも小幅強化
       if ((attacker.skillHitCooldown || 0) > 0) {
-        // firstHitクールダウン中は通常1.2倍のみ
-        knockback *= 1.2;
-        this.damage += hitbox.damage * 0.2;
+        knockback *= 1.05;
+        this.damage += hitbox.damage * 0.1;
       }
       // タイプ判定（タイプアイコンを表示）
       const _td2 = SKILL_TYPES[attacker.skillBuffType];
@@ -8749,16 +8748,16 @@ class Fighter {
       const firstHit = (attacker.skillHitCooldown || 0) === 0;
       if (firstHit) {
         const totalMul = matchup * stageBonus;
-        const bonus = hitbox.damage * 2.0 * totalMul;
+        const bonus = hitbox.damage * 1.3 * totalMul;
         this.damage += bonus;
-        knockback *= td.dmgMul * 1.5 * totalMul;
+        // KBはダメージ蓄積で自然に上がるため、追加KB倍率は掛けない
         attacker.skillHitCooldown = 90;
 
         const eff = td.effect;
         const starMul = attacker._hasStar ? 1.4 : 1.0;
         if (eff === 'burn')   this._burnTimer = Math.floor(240 * starMul);
         if (eff === 'soak')   this._slowTimer = Math.floor(180 * starMul);
-        if (eff === 'kb')     knockback *= (attacker._hasStar ? 1.6 : 1.4);
+        if (eff === 'kb')     knockback *= (attacker._hasStar ? 1.1 : 1.05);
         if (eff === 'drain')  attacker.damage = Math.max(0, attacker.damage - (attacker._hasStar ? 14 : 10));
         if (eff === 'atkbuff') attacker._skillAtkBuff = true;
         if (eff === 'defbuff') attacker._skillDefBuff = true;
