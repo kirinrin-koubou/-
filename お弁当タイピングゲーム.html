@@ -203,6 +203,19 @@ const COMBO2 = new Set(Object.keys(KANA).filter(k=>k.length===2));
 const SMALL_Y = new Set(["ゃ","ゅ","ょ"]);
 const SMALL_V = new Set(["ぁ","ぃ","ぅ","ぇ","ぉ"]);
 
+/* 推奨ローマ字の決定：
+   ①文字数が少ない ②使う人が多い ③使い分けが不要 の優先順で先頭に並べる */
+const POP={ "ji":0,"zi":1,"fu":0,"hu":1,"sha":0,"sya":1,"cha":0,"tya":1,"cya":2,
+            "ja":0,"jya":1,"zya":2,"ju":0,"jyu":1,"zyu":2,"jo":0,"jyo":1,"zyo":2,
+            "ka":0,"ca":1,"ku":0,"cu":1,"qu":2,"ko":0,"co":1,"se":0,"ce":1,
+            "si":0,"ci":1,"shi":2,"ti":0,"chi":1,"tu":0,"tsu":1,"wi":0,"whi":1 };
+Object.keys(KANA).forEach(k=>{
+  KANA[k]=KANA[k].slice().sort((a,b)=>
+    (a.length-b.length) || ((POP[a]??5)-(POP[b]??5)));
+});
+// 「ん」は単独「n」だと使い分けが必要なので、使い分け不要の「nn」を推奨
+KANA["ん"]=["nn","n","xn"];
+
 // 文字列(かな)→ トークン列。各トークン: {disp, alts:[...] }
 function tokenize(str){
   const t=[];
@@ -242,7 +255,7 @@ function tokenize(str){
       let needDouble=false;
       if(!nxt) needDouble=true;
       else if("あいうえおなにぬねのやゆよん".includes(nxt)) needDouble=true;
-      const alts = needDouble ? ["nn","xn","n'"] : ["n","nn","xn"];
+      const alts = needDouble ? ["nn","xn","n'"] : ["nn","n","xn"];
       t.push({disp:"ん", alts});
       continue;
     }
@@ -310,41 +323,19 @@ function renderRoma(s){
   return html;
 }
 
-/* ---- 画面キーボード（最短=黄, ミスでない=赤, それ以外=灰） ---- */
+/* ---- 画面キーボード（推奨の打ち方の次のキー=黄, それ以外=灰） ---- */
 function keyColors(s){
-  const toks=s.tokens, len=toks.length, memo={};
-  function cost(idx,buf){
-    if(idx>=len) return 0;
-    const key=idx+"|"+buf;
-    if(memo[key]!=null) return memo[key];
-    let best=Infinity;
-    for(const a of toks[idx].alts){
-      if(a.startsWith(buf)){
-        const c=(a.length-buf.length)+cost(idx+1,"");
-        if(c<best) best=c;
-      }
-    }
-    return memo[key]=best;
+  const toks=s.tokens, len=toks.length;
+  const idx=s.idx, buf=s.buf, tk=toks[idx];
+  const yellow=new Set();
+  // 推奨＝alts[0]（短い・一般的・使い分け不要の順で並べ済み）
+  const rec=tk.alts.find(a=>a.startsWith(buf) && a.length>buf.length);
+  if(rec){ yellow.add(rec[buf.length]); }
+  else if(tk.alts.includes(buf) && idx+1<len){
+    const na=toks[idx+1].alts[0];
+    if(na) yellow.add(na[0]);
   }
-  const idx=s.idx, buf=s.buf, tk=toks[idx], valid=new Set();
-  for(const a of tk.alts){
-    if(a.startsWith(buf) && a.length>buf.length) valid.add(a[buf.length]);
-  }
-  const canCommit=tk.alts.includes(buf);
-  if(canCommit && idx+1<len){
-    for(const a of toks[idx+1].alts) valid.add(a[0]);
-  }
-  let best=Infinity; const tot={};
-  for(const c of valid){
-    let rc=Infinity;
-    if(tk.alts.some(a=>a.startsWith(buf+c))) rc=Math.min(rc,cost(idx,buf+c));
-    if(canCommit && idx+1<len && toks[idx+1].alts.some(a=>a.startsWith(c)))
-      rc=Math.min(rc,cost(idx+1,c));
-    tot[c]=1+rc; if(tot[c]<best) best=tot[c];
-  }
-  const yellow=new Set(), red=new Set();
-  for(const c of valid){ (tot[c]===best?yellow:red).add(c); }
-  return {yellow,red};
+  return {yellow};
 }
 function renderKeyboard(){
   const kb=document.getElementById("keyboard");
@@ -353,11 +344,11 @@ function renderKeyboard(){
   if(!active){ kb.style.display="none"; kb.innerHTML=""; return; }
   kb.style.display="block";
   const {yellow}=keyColors(M.s);
-  const rows=["qwertyuiop","asdfghjkl","zxcvbnm"];
+  const rows=["1234567890-","qwertyuiop","asdfghjkl","zxcvbnm"];
   let html="";
   const cell=c=>`<div class="kb-key${yellow.has(c)?" kb-yellow":""}">${c}</div>`;
   rows.forEach(r=>{ html+='<div class="kb-row">'+[...r].map(cell).join("")+'</div>'; });
-  html+='<div class="kb-row">'+cell("-")+
+  html+='<div class="kb-row">'+
         `<div class="kb-key kb-wide${yellow.has(" ")?" kb-yellow":""}">space</div>`+'</div>';
   kb.innerHTML=html;
 }
