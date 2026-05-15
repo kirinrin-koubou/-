@@ -75,6 +75,7 @@
     <button class="menu-btn" onclick="startMode('pack')">🍱 お弁当詰め</button>
     <button class="menu-btn" onclick="startMode('deco')">✨ 期間限定の飾り</button>
     <button class="menu-btn" onclick="startMode('list')">📋 弁当一覧</button>
+    <button class="menu-btn" onclick="openSettings()">⚙️ 設定</button>
   </div>
   <div class="panel center-stage">
     <h2>ようこそ</h2>
@@ -92,6 +93,23 @@
     <ul class="inv-list" id="homeInv"></ul>
     <h2 style="margin-top:14px;">👑 最高級のお弁当</h2>
     <div class="best-box" id="homeBest">まだありません</div>
+  </div>
+</div>
+
+<!-- 設定画面 -->
+<div id="settingsView" class="hidden">
+  <div class="panel" style="max-width:760px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button class="back-btn" onclick="goHome()">← ホームへ</button>
+      <h2 style="border:none;margin:0;">⚙️ 設定</h2><span></span>
+    </div>
+    <h2>難度設定（何度でも変更できます）</h2>
+    <div class="pick-list" id="diffPick"></div>
+    <div class="best-box" id="diffInfo"></div>
+    <h2 style="margin-top:16px;">⏱ 待ち時間（具材購入の制限時間）</h2>
+    <div class="best-box" id="waitInfo"></div>
+    <h2 style="margin-top:16px;">🎯 キーごとの正答率</h2>
+    <div class="best-box" id="keyAcc" style="max-height:300px;overflow-y:auto;"></div>
   </div>
 </div>
 
@@ -327,9 +345,17 @@ const SAVE_KEY="bentoTypingSave_v1";
 let DB = load();
 function load(){
   try{ const d=JSON.parse(localStorage.getItem(SAVE_KEY)); if(d) return d; }catch(e){}
-  return { inv:{}, bentos:[], stats:{}, bestEver:null };
+  return { inv:{}, bentos:[], stats:{}, bestEver:null, settings:{diff:"normal"} };
 }
+if(!DB.settings) DB.settings={diff:"normal"};
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(DB)); }
+function diffCfg(){
+  const d=(DB.settings&&DB.settings.diff)||"normal";
+  if(d==="easy") return {key:"easy", label:"やさしい", buyMult:1.7, dropLimit:5};
+  if(d==="hard") return {key:"hard", label:"むずかしい", buyMult:0.8, dropLimit:2};
+  return {key:"normal", label:"ふつう", buyMult:1.2, dropLimit:3};
+}
+function buyTime(word){ return Math.max(3, Math.ceil(word.length*diffCfg().buyMult)); }
 function addStat(disp,hits,miss){
   if(!DB.stats[disp]) DB.stats[disp]={a:0,m:0};
   DB.stats[disp].a += hits+miss;
@@ -348,7 +374,7 @@ function weakChars(){
    ============================================================ */
 const $=id=>document.getElementById(id);
 function show(view){
-  ["homeView","gameView","listView"].forEach(v=>$(v).classList.add("hidden"));
+  ["homeView","gameView","listView","settingsView"].forEach(v=>$(v).classList.add("hidden"));
   $(view).classList.remove("hidden");
 }
 function goHome(){ stopTimer(); renderHome(); show("homeView"); }
@@ -403,27 +429,30 @@ function startMode(mode){
 /* ---- 具材購入（制限時間あり） ---- */
 function initBuy(){
   $("gameTitle").textContent="🛒 具材購入";
-  $("gameSub").textContent="制限時間内に打て！";
-  M={mode:"buy", got:0, round:0, max:8};
+  $("gameSub").textContent="やめるまで続きます";
+  M={mode:"buy", got:0, round:0};
   nextBuyWord();
 }
 function nextBuyWord(){
-  if(M.round>=M.max){ endBuy(); return; }
+  if(!M || M.mode!=="buy") return;
   M.round++;
   const w=BUY_WORDS[Math.floor(Math.random()*BUY_WORDS.length)];
   M.word=w; M.s=makeSession(w);
-  const sec=Math.max(4, Math.ceil(w.length*1.1));
-  $("gameSub").textContent=`${M.round}/${M.max}　獲得:${M.got}`;
+  const sec=buyTime(w);
+  $("gameSub").textContent=`${M.round}語目　獲得:${M.got}　待ち時間:${sec}秒`;
   $("wordDisplay").textContent=w;
   $("romaDisplay").innerHTML=renderRoma(M.s);
   $("statRow").innerHTML="";
   $("gameMsg").textContent="";
-  startTimer(sec, ()=>{ $("gameMsg").textContent="⏰ 時間切れ！"; setTimeout(nextBuyWord,800); });
+  $("gameControls").innerHTML=`<button class="danger-btn" onclick="endBuy()">🛑 やめる</button>`;
+  startTimer(sec, ()=>{ $("gameMsg").textContent="⏰ 時間切れ！次の単語へ"; setTimeout(nextBuyWord,800); });
 }
 function endBuy(){
   stopTimer();
+  M.mode="buyEnd";
   $("wordDisplay").textContent="🎉 購入終了";
   $("romaDisplay").innerHTML="";
+  $("statRow").innerHTML="";
   $("gameMsg").innerHTML=`具材を <b>${M.got}</b> 個ゲットしました！`;
   $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
   save();
@@ -462,12 +491,12 @@ function packPick(){
   $("gameControls").innerHTML=html;
 }
 function packStart(k){
-  M.cur=k; M.s=makeSession(k); M.curMiss=0; M.dropLimit=3;
+  M.cur=k; M.s=makeSession(k); M.curMiss=0; M.dropLimit=diffCfg().dropLimit;
   const ing=ALL_ING[k]||{e:"❓"};
   $("wordDisplay").textContent=`${ing.e} ${k}`;
   $("romaDisplay").innerHTML=renderRoma(M.s);
-  $("gameMsg").textContent="正確に打って詰めよう（ミス3回で落下）";
-  $("statRow").innerHTML=`<span>落下まで残り <b id='dropLeft'>3</b> ミス</span>`;
+  $("gameMsg").textContent=`正確に打って詰めよう（ミス${M.dropLimit}回で落下）`;
+  $("statRow").innerHTML=`<span>落下まで残り <b id='dropLeft'>${M.dropLimit}</b> ミス</span>`;
   $("gameControls").innerHTML="";
 }
 function renderBentoBox(){
@@ -619,6 +648,32 @@ function renderList(){
       <span class="small">${b.items.join("・")}<br>${b.date||""}</span></div>`;
   });
   grid.innerHTML=html;
+}
+
+/* ---- 設定画面 ---- */
+function openSettings(){ stopTimer(); renderSettings(); show("settingsView"); }
+function setDiff(d){ if(!DB.settings) DB.settings={}; DB.settings.diff=d; save(); renderSettings(); }
+function renderSettings(){
+  const cur=diffCfg().key;
+  const defs=[["easy","やさしい"],["normal","ふつう"],["hard","むずかしい"]];
+  $("diffPick").innerHTML=defs.map(([k,l])=>
+    `<button onclick="setDiff('${k}')" ${k===cur?'style="background:#3aa84a;color:#fff;border-color:#2c7d38"':''}>${l}</button>`
+  ).join("");
+  const c=diffCfg();
+  $("diffInfo").innerHTML=`現在の難度：<b>${c.label}</b><br>
+    <span class="small">具材購入の待ち時間倍率 ×${c.buyMult}　／　お弁当詰めの落下ミス数 ${c.dropLimit}回</span>`;
+  // 待ち時間の目安（単語長別）
+  const lens=[3,5,8,12];
+  $("waitInfo").innerHTML="単語の文字数 × "+c.buyMult+" 秒（最低3秒）<br>"+
+    lens.map(n=>`<span class="weak-tag">${n}文字 → ${Math.max(3,Math.ceil(n*c.buyMult))}秒</span>`).join("");
+  // キーごとの正答率
+  const rows=Object.entries(DB.stats)
+    .filter(([k,v])=>v.a>0)
+    .map(([k,v])=>({c:k,a:v.a,acc:Math.round((v.a-v.m)/v.a*100)}))
+    .sort((x,y)=>x.acc-y.acc);
+  $("keyAcc").innerHTML = rows.length
+    ? rows.map(r=>`<span class="weak-tag" style="background:${r.acc>=70?'#cdeccd':'#ffc7b0'}">${r.c} ${r.acc}% <span class="small">(${r.a}回)</span></span>`).join("")
+    : "<span class='small'>まだデータがありません。タイピングすると正答率が記録されます。</span>";
 }
 
 /* 初期化 */
