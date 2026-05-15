@@ -36,7 +36,8 @@
     font-size: 38px; text-align: center; letter-spacing: 2px; margin: 18px 0 6px;
     min-height: 50px; font-weight: bold;
   }
-  .roma-display { text-align:center; font-size:20px; color:#8a6a3a; min-height:28px; letter-spacing:1px;}
+  .roma-display { text-align:center; font-size:20px; color:#8a6a3a; min-height:28px; letter-spacing:1px; text-transform:uppercase;}
+  ruby rt { font-size:.55em; color:#8a6a3a; }
   .typed-ok { color: #1f9d55; }
   .typed-cur { background:#ffe08a; border-radius:4px; }
   .typed-rest { color:#b58a52; }
@@ -62,6 +63,16 @@
   .hidden { display:none; }
   .small { font-size:12px; color:#8a6a3a; }
   .weak-tag { display:inline-block; background:#ffd6a5; border-radius:6px; padding:2px 8px; margin:3px; font-size:13px;}
+  .keyboard { margin:14px auto 4px; max-width:560px; }
+  .kb-row { display:flex; justify-content:center; gap:6px; margin:5px 0;}
+  .kb-key {
+    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    border-radius:8px; font-size:16px; font-weight:bold; text-transform:uppercase;
+    border:2px solid #b9a07c; background:#d9d2c4; color:#6b6357; transition:background .08s;
+  }
+  .kb-key.kb-yellow { background:#ffdf3a; border-color:#d6b400; color:#5a4500; }
+  .kb-key.kb-red    { background:#ff7a5c; border-color:#d9482b; color:#fff; }
+  .kb-key.kb-wide   { width:120px; }
 </style>
 </head>
 <body>
@@ -128,6 +139,7 @@
     <div class="stat-row" id="statRow"></div>
     <div class="msg" id="gameMsg"></div>
     <div style="text-align:center;" id="gameControls"></div>
+    <div class="keyboard" id="keyboard" style="display:none;"></div>
   </div>
 </div>
 
@@ -296,6 +308,112 @@ function renderRoma(s){
     } else html+=`<span class="typed-rest">${a}</span>`;
   });
   return html;
+}
+
+/* ---- 画面キーボード（最短=黄, ミスでない=赤, それ以外=灰） ---- */
+function keyColors(s){
+  const toks=s.tokens, len=toks.length, memo={};
+  function cost(idx,buf){
+    if(idx>=len) return 0;
+    const key=idx+"|"+buf;
+    if(memo[key]!=null) return memo[key];
+    let best=Infinity;
+    for(const a of toks[idx].alts){
+      if(a.startsWith(buf)){
+        const c=(a.length-buf.length)+cost(idx+1,"");
+        if(c<best) best=c;
+      }
+    }
+    return memo[key]=best;
+  }
+  const idx=s.idx, buf=s.buf, tk=toks[idx], valid=new Set();
+  for(const a of tk.alts){
+    if(a.startsWith(buf) && a.length>buf.length) valid.add(a[buf.length]);
+  }
+  const canCommit=tk.alts.includes(buf);
+  if(canCommit && idx+1<len){
+    for(const a of toks[idx+1].alts) valid.add(a[0]);
+  }
+  let best=Infinity; const tot={};
+  for(const c of valid){
+    let rc=Infinity;
+    if(tk.alts.some(a=>a.startsWith(buf+c))) rc=Math.min(rc,cost(idx,buf+c));
+    if(canCommit && idx+1<len && toks[idx+1].alts.some(a=>a.startsWith(c)))
+      rc=Math.min(rc,cost(idx+1,c));
+    tot[c]=1+rc; if(tot[c]<best) best=tot[c];
+  }
+  const yellow=new Set(), red=new Set();
+  for(const c of valid){ (tot[c]===best?yellow:red).add(c); }
+  return {yellow,red};
+}
+function renderKeyboard(){
+  const kb=document.getElementById("keyboard");
+  if(!kb) return;
+  const active = M && M.s && !M.s.done;
+  if(!active){ kb.style.display="none"; kb.innerHTML=""; return; }
+  kb.style.display="block";
+  const {yellow,red}=keyColors(M.s);
+  const rows=["qwertyuiop","asdfghjkl","zxcvbnm"];
+  let html="";
+  const cell=c=>{
+    let cls="kb-key";
+    if(yellow.has(c)) cls+=" kb-yellow";
+    else if(red.has(c)) cls+=" kb-red";
+    return `<div class="${cls}">${c}</div>`;
+  };
+  rows.forEach(r=>{ html+='<div class="kb-row">'+[...r].map(cell).join("")+'</div>'; });
+  html+='<div class="kb-row">'+cell("-")+
+        `<div class="kb-key kb-wide${yellow.has(" ")?" kb-yellow":red.has(" ")?" kb-red":""}">space</div>`+'</div>';
+  kb.innerHTML=html;
+}
+
+/* ---- 漢字ふりがな ---- */
+const KMAP={
+ "弁":"べん","当":"とう","作":"つく","具":"ぐ","材":"ざい","購":"こう","入":"にゅう",
+ "詰":"つ","期":"き","間":"かん","限":"げん","定":"てい","飾":"かざ","一":"いち","覧":"らん",
+ "設":"せっ","所":"しょ","持":"じ","最":"さい","高":"こう","級":"きゅう","苦":"にが","手":"て",
+ "文":"も","字":"じ","個":"こ","落":"お","終":"しゅう","了":"りょう","完":"かん","成":"せい",
+ "豪":"ごう","華":"か","品":"しな","数":"かず","特":"とく","別":"べつ","難":"なん","度":"ど",
+ "待":"ま","時":"じ","正":"せい","答":"とう","率":"りつ","現":"げん","在":"ざい","倍":"ばい",
+ "単":"たん","語":"ご","秒":"びょう","低":"てい","回":"かい","残":"のこ","傑":"けっ","直":"ちょっ",
+ "近":"きん","報":"ほう","酬":"しゅう","分":"ぶん","析":"せき","克":"こく","服":"ふく","中":"ちゅう",
+ "何":"なん","変":"へん","更":"こう","可":"か","押":"お","選":"えら","空":"から","使":"つか",
+ "切":"き","化":"か","集":"あつ","収":"しゅう","精":"せい","得":"とく","意":"い","不":"ふ",
+ "金":"きん","箔":"はく","和":"わ","牛":"ぎゅう","保":"ほ","存":"ぞん","制":"せい","御":"ぎょ",
+ "今":"いま","名":"な","物":"もの","次":"つぎ","語目":"ごめ"
+};
+function esc(c){ return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c; }
+function rubify(str){
+  let out="";
+  for(const ch of str){
+    out += KMAP[ch] ? `<ruby>${ch}<rt>${KMAP[ch]}</rt></ruby>` : esc(ch);
+  }
+  return out;
+}
+let _mo=null, _scheduled=false;
+function rubifyAll(){
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode(n){
+    const p=n.parentNode; if(!p) return NodeFilter.FILTER_REJECT;
+    const t=p.nodeName;
+    if(t==="RUBY"||t==="RT"||t==="SCRIPT"||t==="STYLE") return NodeFilter.FILTER_REJECT;
+    return /[一-鿿]/.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+  }});
+  const list=[]; let n; while(n=w.nextNode()) list.push(n);
+  list.forEach(node=>{
+    const span=document.createElement("span");
+    span.innerHTML=rubify(node.nodeValue);
+    node.parentNode.replaceChild(span,node);
+  });
+}
+function doRefresh(){
+  if(_mo) _mo.disconnect();
+  rubifyAll();
+  renderKeyboard();
+  if(_mo) _mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+}
+function scheduleRefresh(){
+  if(_scheduled) return; _scheduled=true;
+  requestAnimationFrame(()=>{ _scheduled=false; doRefresh(); });
 }
 
 /* ============================================================
@@ -678,6 +796,8 @@ function renderSettings(){
 
 /* 初期化 */
 renderHome();
+_mo=new MutationObserver(()=>scheduleRefresh());
+doRefresh();
 </script>
 </body>
 </html>
