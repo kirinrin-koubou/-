@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeRaise - 育成タイピングゲーム</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #08080f;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.1);
+      --purple: #b44dff;
+      --blue: #4db8ff;
+      --pink: #ff5fa0;
+      --gold: #ffd700;
+      --green: #4dff9e;
+      --red: #ff4466;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Stars background ── */
+    #stars {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden;
+      pointer-events: none;
+    }
+    #stars span {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.1; transform: scale(1); }
+      50%      { opacity: 0.8; transform: scale(1.4); }
+    }
+
+    /* ── Layout ── */
+    .game {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 860px;
+      padding: 16px 20px 40px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; padding: 10px 0 4px; }
+    .title {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+    .subtitle { color: #555; font-size: 0.82rem; margin-top: 2px; }
+
+    /* ── Character card ── */
+    .char-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px 20px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .char-emoji {
+      font-size: 7rem; line-height: 1;
+      animation: float 3s ease-in-out infinite;
+      filter: drop-shadow(0 0 24px rgba(180,77,255,0.4));
+      user-select: none;
+      will-change: transform;
+    }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    @keyframes charBounce {
+      0%{transform:translateY(0) scale(1)} 30%{transform:translateY(-22px) scale(1.15)}
+      60%{transform:translateY(-8px) scale(1.07)} 100%{transform:translateY(0) scale(1)}
+    }
+    @keyframes charShake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-12px)}
+      40%{transform:translateX(12px)} 60%{transform:translateX(-8px)} 80%{transform:translateX(8px)}
+    }
+    .char-emoji.bounce { animation: charBounce 0.5s ease forwards !important; }
+    .char-emoji.shake  { animation: charShake 0.45s ease forwards !important; }
+
+    .char-name {
+      font-size: 1.3rem; font-weight: 700;
+      transition: color 0.5s;
+    }
+    .char-desc { color: #666; font-size: 0.82rem; }
+    .evo-badge {
+      font-size: 0.72rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      background: rgba(180,77,255,0.18); color: var(--purple);
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+
+    /* ── Level & EXP ── */
+    .level-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 0.85rem;
+    }
+    .level-label { font-weight: 700; color: var(--purple); font-size: 1rem; }
+    .exp-label { color: #555; }
+    .bar-track {
+      height: 10px; background: rgba(255,255,255,0.07);
+      border-radius: 5px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      border-radius: 5px;
+      transition: width 0.6s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    /* ── Stats row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 600px) { .stats { grid-template-columns: repeat(3, 1fr); } }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 8px;
+      text-align: center;
+    }
+    .stat-label { font-size: 0.65rem; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--blue); }
+    .stat-val.s-combo { color: var(--pink); }
+    .stat-val.s-score { color: var(--gold); }
+
+    /* ── Typing panel ── */
+    .typing-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px 24px 22px;
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
+    }
+
+    /* Word display */
+    .word-display {
+      display: flex; gap: 1px; flex-wrap: wrap; justify-content: center;
+      min-height: 64px; align-items: center;
+    }
+    .word-display span {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800; letter-spacing: 3px;
+      transition: color 0.08s;
+    }
+    .c-pending  { color: #333; }
+    .c-correct  { color: var(--blue); text-shadow: 0 0 8px rgba(77,184,255,0.4); }
+    .c-wrong    { color: var(--red); text-decoration: underline 2px; }
+    .c-cursor   { color: #fff; border-bottom: 3px solid #fff; text-shadow: 0 0 12px #fff; }
+
+    /* Input */
+    .type-input {
+      width: 100%; max-width: 420px;
+      padding: 14px 20px;
+      font-size: 1.15rem; font-weight: 600; letter-spacing: 3px;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.14);
+      border-radius: 14px; color: #fff;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .type-input:focus   { border-color: var(--purple); }
+    .type-input.ok      { border-color: var(--blue);   box-shadow: 0 0 14px rgba(77,184,255,0.25); }
+    .type-input.ng      { border-color: var(--red);    box-shadow: 0 0 14px rgba(255,68,102,0.25); }
+
+    /* Next words */
+    .next-words {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+      opacity: 0.35;
+    }
+    .next-word {
+      font-size: 0.82rem; padding: 4px 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px; color: #aaa;
+    }
+
+    /* Message */
+    .msg { height: 24px; text-align: center; font-size: 0.9rem; color: #888; }
+
+    /* ── Start / paused overlay ── */
+    #start-area {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding: 20px 0 4px;
+    }
+    .btn-start {
+      padding: 16px 52px; font-size: 1.25rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      border: none; border-radius: 14px; color: #fff;
+      cursor: pointer; letter-spacing: 2px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-start:hover { transform: scale(1.06); box-shadow: 0 8px 28px rgba(255,95,160,0.45); }
+    .start-hint { color: #444; font-size: 0.82rem; text-align: center; line-height: 1.6; }
+
+    /* ── Level-up overlay ── */
+    #levelup {
+      display: none; position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.85);
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; text-align: center;
+      animation: fadeIn 0.25s ease;
+    }
+    #levelup.show { display: flex; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .lu-title {
+      font-size: clamp(2.5rem, 7vw, 4rem); font-weight: 900;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: pulse 0.9s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+    .lu-emoji { font-size: 6rem; }
+    .lu-level { font-size: 1.8rem; font-weight: 700; color: var(--gold); }
+    .lu-msg   { font-size: 1.1rem; color: #bbb; }
+    .btn-continue {
+      padding: 14px 40px; font-size: 1.1rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      border: none; border-radius: 12px; color: #fff;
+      cursor: pointer; margin-top: 8px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-continue:hover { transform: scale(1.05); box-shadow: 0 6px 22px rgba(77,184,255,0.4); }
+
+    /* ── Floating particles ── */
+    .floater {
+      position: fixed; pointer-events: none; z-index: 200;
+      font-weight: 800; font-size: 1.1rem;
+      animation: floatUp 0.9s ease forwards;
+    }
+    @keyframes floatUp {
+      0%   { opacity:1; transform: translateY(0) scale(1); }
+      100% { opacity:0; transform: translateY(-80px) scale(0.7); }
+    }
+
+    /* ── Combo flash ── */
+    #combo-flash {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      font-size: 2.8rem; font-weight: 900;
+      color: var(--pink);
+      text-shadow: 0 0 20px rgba(255,95,160,0.8);
+      pointer-events: none; z-index: 200;
+      opacity: 0;
+    }
+    .combo-pop { animation: comboPop 0.9s ease forwards; }
+    @keyframes comboPop {
+      0%  { opacity:1; transform:translate(-50%,-50%) scale(0.6); }
+      40% { opacity:1; transform:translate(-50%,-60%) scale(1.2); }
+      100%{ opacity:0; transform:translate(-50%,-80%) scale(0.9); }
+    }
+
+    /* ── Difficulty pip ── */
+    .diff-pip {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 4px;
+    }
+    .d-easy   { background: #4dff9e; }
+    .d-normal { background: var(--blue); }
+    .d-hard   { background: var(--gold); }
+    .d-expert { background: var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="stars"></div>
+
+<div class="game">
+
+  <!-- Header -->
+  <header>
+    <div class="title">⚡ TypeRaise ⚡</div>
+    <div class="subtitle">育成タイピングゲーム — タイプしてキャラクターを育てよう</div>
+  </header>
+
+  <!-- Character -->
+  <div class="char-card">
+    <div class="char-emoji" id="charEmoji">🥚</div>
+    <div class="char-name" id="charName">たまご</div>
+    <div class="char-desc" id="charDesc">まだたまごの状態… タイピングで育てよう！</div>
+    <div class="evo-badge" id="evoBadge">Stage 1 / 5</div>
+  </div>
+
+  <!-- Level & EXP -->
+  <div style="display:flex;flex-direction:column;gap:6px;">
+    <div class="level-row">
+      <span class="level-label" id="lvLabel">Lv. 1</span>
+      <span class="exp-label" id="expLabel">0 / 100 EXP</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="expBar" style="width:0%"></div></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-label">WPM</div><div class="stat-val" id="sWpm">0</div></div>
+    <div class="stat"><div class="stat-label">精度</div><div class="stat-val" id="sAcc">100%</div></div>
+    <div class="stat"><div class="stat-label">コンボ</div><div class="stat-val s-combo" id="sCombo">0</div></div>
+    <div class="stat"><div class="stat-label">スコア</div><div class="stat-val s-score" id="sScore">0</div></div>
+    <div class="stat"><div class="stat-label">単語数</div><div class="stat-val" id="sWords">0</div></div>
+  </div>
+
+  <!-- Typing panel -->
+  <div class="typing-panel">
+    <div class="word-display" id="wordDisplay">
+      <span class="c-pending">スタートしよう！</span>
+    </div>
+
+    <input
+      id="typeInput" class="type-input"
+      type="text" placeholder="ここに入力…"
+      autocomplete="off" autocorrect="off"
+      autocapitalize="off" spellcheck="false"
+      disabled
+    >
+
+    <div class="next-words" id="nextWords"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <!-- Start area -->
+  <div id="start-area">
+    <button class="btn-start" onclick="startGame()">🎮 ゲームスタート</button>
+    <div class="start-hint">
+      単語を正確にタイプ → EXP獲得 → キャラクター進化！<br>
+      コンボを繋げてボーナスEXPをゲットしよう
+    </div>
+  </div>
+
+</div>
+
+<!-- Level-up overlay -->
+<div id="levelup">
+  <div class="lu-title">LEVEL UP!</div>
+  <div class="lu-emoji" id="luEmoji">🥚</div>
+  <div class="lu-level" id="luLevel">Lv. 2</div>
+  <div class="lu-msg"   id="luMsg">おめでとう！</div>
+  <button class="btn-continue" onclick="closeLevelUp()">続ける ▶</button>
+</div>
+
+<!-- Combo flash -->
+<div id="combo-flash"></div>
+
+<script>
+// ── Evolution stages ──────────────────────────────────────────────────────────
+const STAGES = [
+  { name: 'たまご',         emoji: '🥚',  lv:  1, color: '#aaa',    desc: 'まだたまごの状態… タイピングで育てよう！' },
+  { name: 'ひよこ',         emoji: '🐣',  lv:  5, color: '#ffd700', desc: 'たまごから生まれた！もっと練習しよう！' },
+  { name: 'こどもドラゴン', emoji: '🐲',  lv: 15, color: '#4dff9e', desc: 'ドラゴンに進化！タイピングの力が増した！' },
+  { name: 'ドラゴン',       emoji: '🐉',  lv: 30, color: '#ff9944', desc: '真のドラゴン！圧倒的な力を手に入れた！' },
+  { name: '神龍',           emoji: '🌟',  lv: 50, color: '#b44dff', desc: '伝説の存在になった！あなたは最強のタイパー！' },
+];
+
+// ── Word lists ─────────────────────────────────────────────────────────────────
+const WORDS = {
+  easy: [
+    'cat','dog','sun','map','fly','run','big','hot','red','cup',
+    'top','win','box','fox','hat','pen','arm','sky','joy','age',
+    'bus','car','day','ear','fan','gem','ice','key','lip','net',
+  ],
+  normal: [
+    'brave','cloud','dance','earth','flame','grace','heart','light',
+    'magic','night','ocean','power','quest','river','storm','tiger',
+    'unity','valor','water','youth','blend','crisp','drive','eagle',
+    'fancy','greet','happy','index','joker','knack','lemon','marsh',
+  ],
+  hard: [
+    'balance','crystal','diamond','element','fantasy','gravity',
+    'harmony','inspire','journey','kingdom','liberty','miracle',
+    'network','passion','quantum','rainbow','silence','thunder',
+    'upgrade','vibrant','warrior','extreme','yearning','zealous',
+    'cabinet','defense','enforce','furnace','glacier','harvest',
+  ],
+  expert: [
+    'adventure','beautiful','challenge','discovery','elevation',
+    'fantastic','greatness','hurricane','important','justified',
+    'knowledge','lightning','nightmare','overpower','potential',
+    'questions','resilient','strength','transform','unlimited',
+    'victories','wonderful','explosion','abandoned','calculate',
+    'delivered','escalated','framework','generated','highlight',
+  ],
+};
+
+// ── Game state ─────────────────────────────────────────────────────────────────
+const G = {
+  level: 1, exp: 0, expNext: 100,
+  stageIdx: 0,
+  correctWords: 0, totalWords: 0,
+  hits: 0, misses: 0,
+  combo: 0, maxCombo: 0,
+  score: 0,
+  sessionStart: null, wpm: 0, acc: 100,
+  playing: false,
+  word: '', queue: [],
+  wordStart: null,
+  autoCloseTimer: null,
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function expForLevel(lv) { return Math.floor(100 * Math.pow(1.28, lv - 1)); }
+
+function wordListForLevel() {
+  if (G.level >= 30) return WORDS.expert;
+  if (G.level >= 15) return WORDS.hard;
+  if (G.level >= 5)  return WORDS.normal;
+  return WORDS.easy;
+}
+
+function pickWord(exclude) {
+  const list = wordListForLevel();
+  let w;
+  do { w = list[Math.random() * list.length | 0]; } while (w === exclude);
+  return w;
+}
+
+function fillQueue() {
+  while (G.queue.length < 5) {
+    const last = G.queue[G.queue.length - 1] || G.word;
+    G.queue.push(pickWord(last));
+  }
+}
+
+function diffClass() {
+  if (G.level >= 30) return 'd-expert';
+  if (G.level >= 15) return 'd-hard';
+  if (G.level >= 5)  return 'd-normal';
+  return 'd-easy';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderWord(typed = '') {
+  const w = G.word;
+  let html = '';
+  for (let i = 0; i < w.length; i++) {
+    if (i < typed.length) {
+      html += `<span class="${typed[i] === w[i] ? 'c-correct' : 'c-wrong'}">${w[i]}</span>`;
+    } else if (i === typed.length) {
+      html += `<span class="c-cursor">${w[i]}</span>`;
+    } else {
+      html += `<span class="c-pending">${w[i]}</span>`;
+    }
+  }
+  $('wordDisplay').innerHTML = html;
+}
+
+function renderNextWords() {
+  $('nextWords').innerHTML = G.queue.slice(0, 3)
+    .map(w => `<span class="next-word"><span class="diff-pip ${diffClass()}"></span>${w}</span>`)
+    .join('');
+}
+
+function renderStats() {
+  // WPM
+  if (G.sessionStart && G.correctWords > 0) {
+    const mins = (Date.now() - G.sessionStart) / 60000;
+    G.wpm = Math.round(G.correctWords / mins);
+  }
+  // Accuracy
+  const total = G.hits + G.misses;
+  G.acc = total > 0 ? Math.round((G.hits / total) * 100) : 100;
+
+  $('sWpm').textContent   = G.wpm;
+  $('sAcc').textContent   = G.acc + '%';
+  $('sCombo').textContent = G.combo;
+  $('sScore').textContent = G.score.toLocaleString();
+  $('sWords').textContent = G.correctWords;
+
+  const pct = Math.min(100, (G.exp / G.expNext) * 100);
+  $('expBar').style.width = pct + '%';
+  $('lvLabel').textContent  = `Lv. ${G.level}`;
+  $('expLabel').textContent = `${G.exp} / ${G.expNext} EXP`;
+}
+
+function renderCharacter(evolved) {
+  const s = STAGES[G.stageIdx];
+  $('charEmoji').textContent  = s.emoji;
+  $('charName').textContent   = s.name;
+  $('charName').style.color   = s.color;
+  $('charDesc').textContent   = s.desc;
+  $('evoBadge').textContent   = `Stage ${G.stageIdx + 1} / ${STAGES.length}`;
+  if (evolved) {
+    $('charEmoji').style.filter = `drop-shadow(0 0 32px ${s.color}99)`;
+  }
+}
+
+// ── Char animation ────────────────────────────────────────────────────────────
+function charAnim(cls) {
+  const el = $('charEmoji');
+  el.classList.remove('bounce','shake');
+  void el.offsetWidth;
+  el.classList.add(cls);
+  el.addEventListener('animationend', () => el.classList.remove(cls), { once: true });
+}
+
+// ── Floating text ─────────────────────────────────────────────────────────────
+function floatText(text, color, x, y) {
+  const el = document.createElement('div');
+  el.className = 'floater';
+  el.textContent = text;
+  el.style.cssText = `color:${color};left:${x}px;top:${y}px`;
+  document.body.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function floatNear(text, color) {
+  const rect = $('charEmoji').getBoundingClientRect();
+  floatText(text, color,
+    rect.left + rect.width / 2 + (Math.random() * 80 - 40),
+    rect.top  + rect.height / 2 - 20);
+}
+
+// ── Combo flash ───────────────────────────────────────────────────────────────
+function showCombo(n) {
+  const el = $('combo-flash');
+  el.textContent = `🔥 ${n} COMBO!`;
+  el.className = '';
+  void el.offsetWidth;
+  el.className = 'combo-pop';
+}
+
+// ── Message ───────────────────────────────────────────────────────────────────
+let msgTimer = null;
+function setMsg(text) {
+  clearTimeout(msgTimer);
+  $('msg').textContent = text;
+  msgTimer = setTimeout(() => { $('msg').textContent = ''; }, 1600);
+}
+
+// ── Level up ──────────────────────────────────────────────────────────────────
+function checkLevelUp() {
+  while (G.exp >= G.expNext) {
+    G.exp -= G.expNext;
+    G.level++;
+    G.expNext = expForLevel(G.level);
+
+    // check evolution
+    let newIdx = 0;
+    for (let i = STAGES.length - 1; i >= 0; i--) {
+      if (G.level >= STAGES[i].lv) { newIdx = i; break; }
+    }
+    const evolved = newIdx > G.stageIdx;
+    G.stageIdx = newIdx;
+
+    renderCharacter(evolved);
+    showLevelUp(evolved);
+    return; // show one level-up at a time
+  }
+}
+
+function showLevelUp(evolved) {
+  const s = STAGES[G.stageIdx];
+  $('luEmoji').textContent = s.emoji;
+  $('luLevel').textContent = `Lv. ${G.level}`;
+  $('luMsg').textContent   = evolved
+    ? `🎉 進化！ ${s.name} になった！`
+    : 'おめでとう！さらに強くなった！';
+  $('levelup').classList.add('show');
+
+  if (G.autoCloseTimer) clearTimeout(G.autoCloseTimer);
+  G.autoCloseTimer = setTimeout(() => {
+    if (!evolved) closeLevelUp();
+  }, evolved ? 99999 : 2200);
+}
+
+function closeLevelUp() {
+  clearTimeout(G.autoCloseTimer);
+  $('levelup').classList.remove('show');
+  if (G.playing) $('typeInput').focus();
+}
+
+// ── Next word ─────────────────────────────────────────────────────────────────
+function nextWord() {
+  fillQueue();
+  G.word      = G.queue.shift();
+  G.wordStart = Date.now();
+  renderWord();
+  renderNextWords();
+}
+
+// ── Word completed ────────────────────────────────────────────────────────────
+const PRAISE = ['すごい！','ナイス！','よし！','やった！','いいね！','完璧！','最高！'];
+
+function onWordDone() {
+  G.correctWords++;
+  G.combo++;
+  if (G.combo > G.maxCombo) G.maxCombo = G.combo;
+
+  const wLen   = G.word.length;
+  const elapsed = Math.max(100, Date.now() - G.wordStart);
+  const speed  = Math.max(1, Math.floor(2500 / elapsed));
+  const multi  = 1 + (G.combo - 1) * 0.12;
+  const exp    = Math.floor((wLen * 6 + speed * 2) * multi);
+  const pts    = Math.floor(wLen * 12 * multi * speed);
+
+  G.exp   += exp;
+  G.score += pts;
+
+  charAnim('bounce');
+  floatNear(`+${exp} EXP`, '#b44dff');
+
+  if (G.combo >= 5 && G.combo % 5 === 0) showCombo(G.combo);
+
+  const praise = G.combo >= 10
+    ? `🔥 ${G.combo}コンボ継続中！！`
+    : PRAISE[Math.random() * PRAISE.length | 0];
+  setMsg(praise);
+
+  checkLevelUp();
+  renderStats();
+  nextWord();
+}
+
+// ── Input handling ────────────────────────────────────────────────────────────
+const inp = $('typeInput');
+
+inp.addEventListener('keydown', e => {
+  if (!G.playing || e.key.length !== 1) return;
+  const pos  = inp.value.length;
+  const expected = G.word[pos];
+  if (expected === undefined) return;
+
+  if (e.key === expected) {
+    G.hits++;
+  } else {
+    G.misses++;
+  }
+});
+
+inp.addEventListener('input', () => {
+  if (!G.playing) return;
+  const typed = inp.value;
+
+  renderWord(typed);
+
+  // Input border colour
+  if (!typed) {
+    inp.className = 'type-input';
+  } else {
+    const ok = typed.split('').every((ch, i) => ch === G.word[i]);
+    inp.className = 'type-input ' + (ok ? 'ok' : 'ng');
+    if (!ok) charAnim('shake');
+  }
+
+  // Word complete?
+  if (typed === G.word) {
+    inp.value = '';
+    inp.className = 'type-input';
+    onWordDone();
+  }
+});
+
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    inp.value = '';
+    renderWord('');
+    inp.className = 'type-input';
+    G.combo = 0;
+    renderStats();
+  }
+});
+
+// ── Start ──────────────────────────────────────────────────────────────────────
+function startGame() {
+  G.playing      = true;
+  G.sessionStart = Date.now();
+  $('start-area').style.display = 'none';
+  inp.disabled = false;
+  inp.focus();
+  renderCharacter(false);
+  fillQueue();
+  nextWord();
+  renderStats();
+}
+
+// Re-focus input on click
+document.addEventListener('click', () => {
+  if (G.playing && !$('levelup').classList.contains('show')) inp.focus();
+});
+
+// ── Stars background ──────────────────────────────────────────────────────────
+(function buildStars() {
+  const cont = $('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('span');
+    const sz = Math.random() * 2 + 1;
+    s.style.cssText = [
+      `width:${sz}px`, `height:${sz}px`,
+      `left:${Math.random()*100}%`,
+      `top:${Math.random()*100}%`,
+      `--d:${(Math.random()*4+2).toFixed(1)}s`,
+      `--delay:-${(Math.random()*5).toFixed(1)}s`,
+      `opacity:${(Math.random()*0.4+0.1).toFixed(2)}`,
+    ].join(';');
+    cont.appendChild(s);
+  }
+})();
+
+// ── Initial render ────────────────────────────────────────────────────────────
+renderCharacter(false);
+renderStats();
+</script>
+</body>
+</html>
