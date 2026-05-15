@@ -352,18 +352,13 @@ function renderKeyboard(){
   const active = M && M.s && !M.s.done;
   if(!active){ kb.style.display="none"; kb.innerHTML=""; return; }
   kb.style.display="block";
-  const {yellow,red}=keyColors(M.s);
+  const {yellow}=keyColors(M.s);
   const rows=["qwertyuiop","asdfghjkl","zxcvbnm"];
   let html="";
-  const cell=c=>{
-    let cls="kb-key";
-    if(yellow.has(c)) cls+=" kb-yellow";
-    else if(red.has(c)) cls+=" kb-red";
-    return `<div class="${cls}">${c}</div>`;
-  };
+  const cell=c=>`<div class="kb-key${yellow.has(c)?" kb-yellow":""}">${c}</div>`;
   rows.forEach(r=>{ html+='<div class="kb-row">'+[...r].map(cell).join("")+'</div>'; });
   html+='<div class="kb-row">'+cell("-")+
-        `<div class="kb-key kb-wide${yellow.has(" ")?" kb-yellow":red.has(" ")?" kb-red":""}">space</div>`+'</div>';
+        `<div class="kb-key kb-wide${yellow.has(" ")?" kb-yellow":""}">space</div>`+'</div>';
   kb.innerHTML=html;
 }
 
