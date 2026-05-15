@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>お弁当作りタイピングゲーム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    background: linear-gradient(135deg, #ffe9c7 0%, #ffd6a5 100%);
+    color: #4a3520; min-height: 100vh; padding: 16px;
+  }
+  h1 { text-align: center; color: #b5651d; margin-bottom: 12px; font-size: 26px; }
+  .home {
+    display: grid; grid-template-columns: 260px 1fr 300px; gap: 16px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .panel {
+    background: #fffaf0; border: 3px solid #e0a96d; border-radius: 14px;
+    padding: 16px; box-shadow: 0 4px 10px rgba(160,110,40,.2);
+  }
+  .panel h2 { color: #b5651d; font-size: 18px; margin-bottom: 12px; border-bottom: 2px dashed #e0a96d; padding-bottom: 6px; }
+  .menu-btn {
+    display: block; width: 100%; padding: 14px; margin-bottom: 10px;
+    background: #ffb866; border: 2px solid #d98e3b; border-radius: 10px;
+    font-size: 16px; font-weight: bold; color: #5a3a13; cursor: pointer;
+    transition: transform .1s, background .2s;
+  }
+  .menu-btn:hover { background: #ffa64d; transform: translateY(-2px); }
+  .center-stage { min-height: 420px; }
+  .inv-list { list-style: none; max-height: 220px; overflow-y: auto; }
+  .inv-list li { padding: 6px 4px; border-bottom: 1px solid #f0dcc0; font-size: 14px; display:flex; justify-content:space-between;}
+  .best-box { background:#fff4e0; border:2px dashed #d98e3b; border-radius:10px; padding:10px; margin-top:8px; font-size:14px;}
+  .word-display {
+    font-size: 38px; text-align: center; letter-spacing: 2px; margin: 18px 0 6px;
+    min-height: 50px; font-weight: bold;
+  }
+  .roma-display { text-align:center; font-size:20px; color:#8a6a3a; min-height:28px; letter-spacing:1px;}
+  .typed-ok { color: #1f9d55; }
+  .typed-cur { background:#ffe08a; border-radius:4px; }
+  .typed-rest { color:#b58a52; }
+  .timer-bar { height:14px; background:#f0dcc0; border-radius:7px; overflow:hidden; margin:10px 0;}
+  .timer-fill { height:100%; background:linear-gradient(90deg,#5ec96b,#3aa84a); transition:width .1s linear;}
+  .stat-row { display:flex; justify-content:space-around; font-size:15px; margin:10px 0; flex-wrap:wrap; gap:8px;}
+  .stat-row b { color:#b5651d; }
+  .msg { text-align:center; font-size:16px; min-height:24px; color:#b5651d; margin:8px 0;}
+  .back-btn { background:#cda878; border:none; color:#fff; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:14px;}
+  .primary-btn { background:#3aa84a; border:none; color:#fff; padding:10px 22px; border-radius:8px; cursor:pointer; font-size:16px; font-weight:bold; margin:6px;}
+  .danger-btn { background:#d9683b; border:none; color:#fff; padding:10px 22px; border-radius:8px; cursor:pointer; font-size:16px; font-weight:bold; margin:6px;}
+  .bento-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; max-height:360px; overflow-y:auto;}
+  .bento-card { background:#fff4e0; border:2px solid #e0a96d; border-radius:10px; padding:8px; font-size:13px;}
+  .bento-card.best { border-color:#e0b000; box-shadow:0 0 10px rgba(224,176,0,.6); background:#fff8d8;}
+  .bento-box-visual {
+    background:#d98e3b; border:6px solid #8a5a1d; border-radius:10px; padding:10px;
+    display:flex; flex-wrap:wrap; gap:6px; min-height:90px; margin:10px 0; justify-content:center; align-items:center;
+  }
+  .ing-chip { background:#fffaf0; border:1px solid #d98e3b; border-radius:8px; padding:4px 8px; font-size:14px;}
+  .pick-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0;}
+  .pick-list button { background:#ffd6a5; border:2px solid #d98e3b; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:14px;}
+  .pick-list button:disabled { opacity:.4; cursor:not-allowed;}
+  .hidden { display:none; }
+  .small { font-size:12px; color:#8a6a3a; }
+  .weak-tag { display:inline-block; background:#ffd6a5; border-radius:6px; padding:2px 8px; margin:3px; font-size:13px;}
+</style>
+</head>
+<body>
+<h1>🍱 お弁当作りタイピングゲーム</h1>
+
+<!-- ホーム画面 -->
+<div id="homeView" class="home">
+  <div class="panel">
+    <h2>メニュー</h2>
+    <button class="menu-btn" onclick="startMode('buy')">🛒 具材購入</button>
+    <button class="menu-btn" onclick="startMode('pack')">🍱 お弁当詰め</button>
+    <button class="menu-btn" onclick="startMode('deco')">✨ 期間限定の飾り</button>
+    <button class="menu-btn" onclick="startMode('list')">📋 弁当一覧</button>
+  </div>
+  <div class="panel center-stage">
+    <h2>ようこそ</h2>
+    <p style="line-height:1.9;font-size:15px;">
+      タイピングでお弁当を作ろう！<br>
+      ・<b>具材購入</b>：制限時間内に打って具材ゲット<br>
+      ・<b>お弁当詰め</b>：ミスが多いと具材が落ちる！正確に<br>
+      ・<b>期間限定の飾り</b>：苦手文字入りに挑戦して特別具材<br>
+      ・<b>弁当一覧</b>：直近14個＋最高傑作1個を表示
+    </p>
+    <div class="best-box" id="homeWeak"></div>
+  </div>
+  <div class="panel">
+    <h2>所持具材</h2>
+    <ul class="inv-list" id="homeInv"></ul>
+    <h2 style="margin-top:14px;">👑 最高級のお弁当</h2>
+    <div class="best-box" id="homeBest">まだありません</div>
+  </div>
+</div>
+
+<!-- ゲーム画面 -->
+<div id="gameView" class="hidden">
+  <div class="panel" style="max-width:760px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <button class="back-btn" onclick="goHome()">← ホームへ</button>
+      <h2 id="gameTitle" style="border:none;margin:0;"></h2>
+      <span class="small" id="gameSub"></span>
+    </div>
+    <div class="timer-bar hidden" id="timerBar"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="word-display" id="wordDisplay"></div>
+    <div class="roma-display" id="romaDisplay"></div>
+    <div class="bento-box-visual hidden" id="bentoBox"></div>
+    <div class="stat-row" id="statRow"></div>
+    <div class="msg" id="gameMsg"></div>
+    <div style="text-align:center;" id="gameControls"></div>
+  </div>
+</div>
+
+<!-- 一覧画面 -->
+<div id="listView" class="hidden">
+  <div class="panel" style="max-width:980px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button class="back-btn" onclick="goHome()">← ホームへ</button>
+      <h2 style="border:none;margin:0;">📋 弁当一覧</h2><span></span>
+    </div>
+    <div class="bento-grid" id="bentoGrid"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ローマ字入力エンジン（濁音・半濁音・小書き・複数打鍵対応）
+   ============================================================ */
+const KANA = {
+  "あ":["a"],"い":["i","yi"],"う":["u","wu","whu"],"え":["e"],"お":["o"],
+  "か":["ka","ca"],"き":["ki"],"く":["ku","cu","qu"],"け":["ke"],"こ":["ko","co"],
+  "さ":["sa"],"し":["si","shi","ci"],"す":["su"],"せ":["se","ce"],"そ":["so"],
+  "た":["ta"],"ち":["ti","chi"],"つ":["tu","tsu"],"て":["te"],"と":["to"],
+  "な":["na"],"に":["ni"],"ぬ":["nu"],"ね":["ne"],"の":["no"],
+  "は":["ha"],"ひ":["hi"],"ふ":["fu","hu"],"へ":["he"],"ほ":["ho"],
+  "ま":["ma"],"み":["mi"],"む":["mu"],"め":["me"],"も":["mo"],
+  "や":["ya"],"ゆ":["yu"],"よ":["yo"],
+  "ら":["ra"],"り":["ri"],"る":["ru"],"れ":["re"],"ろ":["ro"],
+  "わ":["wa"],"ゐ":["wyi"],"ゑ":["wye"],"を":["wo"],"ん":["nn","n","xn"],
+  "が":["ga"],"ぎ":["gi"],"ぐ":["gu"],"げ":["ge"],"ご":["go"],
+  "ざ":["za"],"じ":["zi","ji"],"ず":["zu"],"ぜ":["ze"],"ぞ":["zo"],
+  "だ":["da"],"ぢ":["di"],"づ":["du"],"で":["de"],"ど":["do"],
+  "ば":["ba"],"び":["bi"],"ぶ":["bu"],"べ":["be"],"ぼ":["bo"],
+  "ぱ":["pa"],"ぴ":["pi"],"ぷ":["pu"],"ぺ":["pe"],"ぽ":["po"],
+  "ぁ":["xa","la"],"ぃ":["xi","li","xyi","lyi"],"ぅ":["xu","lu"],"ぇ":["xe","le","xye","lye"],"ぉ":["xo","lo"],
+  "ゃ":["xya","lya"],"ゅ":["xyu","lyu"],"ょ":["xyo","lyo"],"ゎ":["xwa","lwa"],"っ":["xtu","ltu","xtsu","ltsu"],
+  "ー":["-"],"、":[","],"。":["."],"・":["/"],"！":["!"],"？":["?"]," ":[" "],
+  // 拗音
+  "きゃ":["kya"],"きゅ":["kyu"],"きょ":["kyo"],"きぇ":["kye"],"きぃ":["kyi"],
+  "ぎゃ":["gya"],"ぎゅ":["gyu"],"ぎょ":["gyo"],"ぎぇ":["gye"],
+  "しゃ":["sya","sha"],"しゅ":["syu","shu"],"しょ":["syo","sho"],"しぇ":["sye","she"],"しぃ":["syi"],
+  "じゃ":["zya","ja","jya"],"じゅ":["zyu","ju","jyu"],"じょ":["zyo","jo","jyo"],"じぇ":["zye","je","jye"],"じぃ":["jyi","zyi"],
+  "ちゃ":["tya","cha","cya"],"ちゅ":["tyu","chu","cyu"],"ちょ":["tyo","cho","cyo"],"ちぇ":["tye","che","cye"],"ちぃ":["tyi","cyi"],
+  "ぢゃ":["dya"],"ぢゅ":["dyu"],"ぢょ":["dyo"],"ぢぇ":["dye"],
+  "にゃ":["nya"],"にゅ":["nyu"],"にょ":["nyo"],"にぇ":["nye"],"にぃ":["nyi"],
+  "ひゃ":["hya"],"ひゅ":["hyu"],"ひょ":["hyo"],"ひぇ":["hye"],"ひぃ":["hyi"],
+  "びゃ":["bya"],"びゅ":["byu"],"びょ":["byo"],"びぇ":["bye"],
+  "ぴゃ":["pya"],"ぴゅ":["pyu"],"ぴょ":["pyo"],"ぴぇ":["pye"],
+  "みゃ":["mya"],"みゅ":["myu"],"みょ":["myo"],"みぇ":["mye"],
+  "りゃ":["rya"],"りゅ":["ryu"],"りょ":["ryo"],"りぇ":["rye"],
+  "ふぁ":["fa","fwa","hwa"],"ふぃ":["fi","fwi"],"ふぇ":["fe","fwe"],"ふぉ":["fo","fwo"],"ふゅ":["fyu"],
+  "うぁ":["wha"],"うぃ":["wi","whi"],"うぇ":["we","whe"],"うぉ":["who"],
+  "ヴぁ":["va"],"ゔぁ":["va"],"ゔ":["vu"],"ゔぃ":["vi"],"ゔぇ":["ve"],"ゔぉ":["vo"],
+  "てぃ":["thi"],"てゃ":["tha"],"てゅ":["thu"],"てょ":["tho"],"てぇ":["the"],
+  "でぃ":["dhi"],"でゅ":["dhu"],"とぅ":["twu"],"どぅ":["dwu"],
+  "つぁ":["tsa"],"つぃ":["tsi"],"つぇ":["tse"],"つぉ":["tso"],
+  "いぇ":["ye"],"くぁ":["qa","kwa"],"くぃ":["qi","kwi"],"くぇ":["qe","kwe"],"くぉ":["qo","kwo"],
+  "ぐぁ":["gwa"],"すぃ":["swi"],"ずぃ":["zwi"]
+};
+const COMBO2 = new Set(Object.keys(KANA).filter(k=>k.length===2));
+const SMALL_Y = new Set(["ゃ","ゅ","ょ"]);
+const SMALL_V = new Set(["ぁ","ぃ","ぅ","ぇ","ぉ"]);
+
+// 文字列(かな)→ トークン列。各トークン: {disp, alts:[...] }
+function tokenize(str){
+  const t=[];
+  for(let i=0;i<str.length;i++){
+    const c=str[i], c2=str.slice(i,i+2);
+    if(c==="っ"){
+      // 促音：次のかなの子音を重ねる or xtu系
+      let j=i+1, nstr="";
+      while(j<str.length && str[j]==="っ"){ j++; }
+      // 次のモーラを先読み（拗音含む）
+      const nx2=str.slice(j,j+2);
+      let nextAlts, nextDisp, consumed;
+      if(COMBO2.has(nx2)){ nextAlts=KANA[nx2].slice(); nextDisp=nx2; consumed=2; }
+      else if(str[j] && KANA[str[j]]){ nextAlts=KANA[str[j]].slice(); nextDisp=str[j]; consumed=1; }
+      else { nextAlts=null; }
+      const alts=[];
+      const sokuonSelf=["xtu","ltu","xtsu","ltsu"];
+      if(nextAlts){
+        nextAlts.forEach(a=>{
+          const f=a[0];
+          if(/[a-z]/.test(f) && !"aiueo".includes(f)){ alts.push(f+a); }
+          sokuonSelf.forEach(s=>alts.push(s+a));
+        });
+        // 連続っ対応：j-i-1 個の追加促音は簡略化（1つ分のみ厳密、残りは xtu）
+        t.push({disp:"っ".repeat(j-i)+nextDisp, alts:[...new Set(alts)]});
+        i = j + consumed - 1;
+      } else {
+        t.push({disp:"っ", alts:sokuonSelf});
+        i = j - 1;
+      }
+      continue;
+    }
+    if(c==="ん"){
+      const nxt=str[i+1];
+      const nxtChar = nxt || "";
+      // 次が母音/な行/や行/ん or 文末 → n単独不可（nn/xn/n'）
+      let needDouble=false;
+      if(!nxt) needDouble=true;
+      else if("あいうえおなにぬねのやゆよん".includes(nxt)) needDouble=true;
+      const alts = needDouble ? ["nn","xn","n'"] : ["n","nn","xn"];
+      t.push({disp:"ん", alts});
+      continue;
+    }
+    if(COMBO2.has(c2)){ t.push({disp:c2, alts:KANA[c2].slice()}); i++; continue; }
+    if(KANA[c]){ t.push({disp:c, alts:KANA[c].slice()}); continue; }
+    // 未知文字はそのまま
+    t.push({disp:c, alts:[c]});
+  }
+  return t;
+}
+
+/* ============================================================
+   タイピングセッション
+   ============================================================ */
+function makeSession(kanaStr){
+  return { kana:kanaStr, tokens:tokenize(kanaStr), idx:0, buf:"", done:false,
+           hits:0, miss:0 };
+}
+// 1キー処理。戻り: {ok, complete, tokenDone, weakDisp}
+function feed(s, ch){
+  if(s.done) return {ok:false};
+  const tk=s.tokens[s.idx];
+  const nb=s.buf+ch;
+  const matchExact = tk.alts.includes(nb);
+  const matchPrefix = tk.alts.some(a=>a.startsWith(nb));
+  if(matchPrefix){
+    s.buf=nb; s.hits++;
+    if(matchExact && !tk.alts.some(a=>a.length>nb.length && a.startsWith(nb))){
+      // 完全一致かつ延長候補なし → 確定
+      return commitToken(s);
+    }
+    if(matchExact){
+      // 例: ん "n"。延長候補ありだが暫定確定状態にする
+      s._pendingCommit=true;
+    } else s._pendingCommit=false;
+    return {ok:true, complete:false, tokenDone:false};
+  }
+  // 現バッファが確定済みで、次トークンの開始なら確定して持ち越し
+  if(s._pendingCommit || tk.alts.includes(s.buf)){
+    const r=commitToken(s);
+    if(s.done){ // 文末なのに余分入力
+      s.miss++; return {ok:false, weakDisp:tk.disp};
+    }
+    s._pendingCommit=false;
+    return feed(s, ch); // 次トークンへ再投入
+  }
+  s.miss++;
+  return {ok:false, weakDisp:tk.disp};
+}
+function commitToken(s){
+  s.buf=""; s.idx++; s._pendingCommit=false;
+  if(s.idx>=s.tokens.length){ s.done=true; return {ok:true, complete:true, tokenDone:true}; }
+  return {ok:true, complete:false, tokenDone:true};
+}
+function renderRoma(s){
+  let html="";
+  s.tokens.forEach((tk,i)=>{
+    const a=tk.alts[0];
+    if(i<s.idx) html+=`<span class="typed-ok">${a}</span>`;
+    else if(i===s.idx){
+      const cur=tk.alts.find(x=>x.startsWith(s.buf))||a;
+      html+=`<span class="typed-cur">${cur.slice(0,s.buf.length)}</span><span class="typed-rest">${cur.slice(s.buf.length)}</span>`;
+    } else html+=`<span class="typed-rest">${a}</span>`;
+  });
+  return html;
+}
+
+/* ============================================================
+   データ（具材・単語）
+   ============================================================ */
+const ING = [
+  // 通常具材：購入＆詰め対象
+  {n:"ごはん",e:"🍚",v:10,rank:"普通"},
+  {n:"うめぼし",e:"🔴",v:15,rank:"普通"},
+  {n:"たまごやき",e:"🟨",v:25,rank:"良"},
+  {n:"からあげ",e:"🍗",v:30,rank:"良"},
+  {n:"えびふらい",e:"🍤",v:40,rank:"良"},
+  {n:"しゃけ",e:"🐟",v:28,rank:"良"},
+  {n:"ぎょうざ",e:"🥟",v:32,rank:"良"},
+  {n:"ぶろっこりー",e:"🥦",v:22,rank:"普通"},
+  {n:"みにとまと",e:"🍅",v:18,rank:"普通"},
+  {n:"ういんなー",e:"🌭",v:24,rank:"普通"},
+  {n:"ちくわ",e:"🍢",v:16,rank:"普通"},
+  {n:"ぽてとさらだ",e:"🥗",v:26,rank:"良"},
+  {n:"きんぴら",e:"🥕",v:20,rank:"普通"},
+  {n:"しゅうまい",e:"🥟",v:30,rank:"良"},
+  {n:"ひじき",e:"⚫",v:14,rank:"普通"},
+];
+const SPECIAL_ING = [
+  {n:"きんぱく",e:"✨",v:120,rank:"特別",special:true},
+  {n:"いくら",e:"🟠",v:90,rank:"特別",special:true},
+  {n:"うに",e:"🟡",v:100,rank:"特別",special:true},
+  {n:"わぎゅう",e:"🥩",v:110,rank:"特別",special:true},
+  {n:"きゃびあ",e:"⚫",v:130,rank:"特別",special:true},
+];
+const ALL_ING = {};
+[...ING,...SPECIAL_ING].forEach(x=>ALL_ING[x.n]=x);
+
+// 購入用の単語・文章（濁音半濁音小書き入り）
+const BUY_WORDS = [
+ "ごはん","うめぼし","たまごやき","からあげ","えびふらい","しゃけ","ぎょうざ",
+ "ぶろっこりー","みにとまと","ういんなー","ちくわ","ぽてとさらだ","きんぴら",
+ "しゅうまい","ひじき","がっこうのきゅうしょく","ぱんだのおべんとう",
+ "じてんしゃでぴくにっく","しょうゆとそーす","ちょっぴりからい",
+ "びゅっふぇでばいきんぐ","でぃずにーへいこう","ふぁいといっぱつ"
+];
+
+/* ============================================================
+   セーブデータ
+   ============================================================ */
+const SAVE_KEY="bentoTypingSave_v1";
+let DB = load();
+function load(){
+  try{ const d=JSON.parse(localStorage.getItem(SAVE_KEY)); if(d) return d; }catch(e){}
+  return { inv:{}, bentos:[], stats:{}, bestEver:null };
+}
+function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(DB)); }
+function addStat(disp,hits,miss){
+  if(!DB.stats[disp]) DB.stats[disp]={a:0,m:0};
+  DB.stats[disp].a += hits+miss;
+  DB.stats[disp].m += miss;
+}
+function weakChars(){
+  // ミス率70%以上（試行3回以上）
+  return Object.entries(DB.stats)
+    .filter(([k,v])=>v.a>=3 && v.m/v.a>=0.7)
+    .map(([k,v])=>({c:k,rate:Math.round(v.m/v.a*100)}))
+    .sort((a,b)=>b.rate-a.rate);
+}
+
+/* ============================================================
+   画面制御
+   ============================================================ */
+const $=id=>document.getElementById(id);
+function show(view){
+  ["homeView","gameView","listView"].forEach(v=>$(v).classList.add("hidden"));
+  $(view).classList.remove("hidden");
+}
+function goHome(){ stopTimer(); renderHome(); show("homeView"); }
+function renderHome(){
+  const inv=$("homeInv"); inv.innerHTML="";
+  const keys=Object.keys(DB.inv).filter(k=>DB.inv[k]>0);
+  if(!keys.length) inv.innerHTML="<li>まだありません</li>";
+  keys.forEach(k=>{
+    const ing=ALL_ING[k]||{e:"❓",rank:""};
+    inv.innerHTML+=`<li><span>${ing.e} ${k} <span class="small">(${ing.rank})</span></span><b>×${DB.inv[k]}</b></li>`;
+  });
+  const b=DB.bestEver;
+  $("homeBest").innerHTML = b
+    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
+    : "まだありません";
+  const w=weakChars();
+  $("homeWeak").innerHTML = w.length
+    ? "苦手な文字（ミス率70%以上）：<br>"+w.slice(0,12).map(x=>`<span class="weak-tag">${x.c} ${x.rate}%</span>`).join("")
+    : "<span class='small'>苦手分析：データ収集中（タイピングするほど精度UP）</span>";
+}
+
+/* ---- タイマー ---- */
+let timerH=null;
+function startTimer(sec,onEnd){
+  stopTimer();
+  $("timerBar").classList.remove("hidden");
+  const total=sec*1000; let start=Date.now();
+  timerH=setInterval(()=>{
+    const left=total-(Date.now()-start);
+    const p=Math.max(0,left/total*100);
+    $("timerFill").style.width=p+"%";
+    if(left<=0){ stopTimer(); onEnd(); }
+  },50);
+}
+function stopTimer(){ if(timerH){ clearInterval(timerH); timerH=null; } $("timerBar").classList.add("hidden"); }
+
+/* ============================================================
+   モード起動
+   ============================================================ */
+let M=null; // 現在モード状態
+function startMode(mode){
+  if(mode==="list"){ renderList(); show("listView"); return; }
+  show("gameView");
+  $("bentoBox").classList.add("hidden");
+  $("gameControls").innerHTML="";
+  $("gameMsg").textContent="";
+  if(mode==="buy") initBuy();
+  if(mode==="pack") initPack();
+  if(mode==="deco") initDeco();
+}
+
+/* ---- 具材購入（制限時間あり） ---- */
+function initBuy(){
+  $("gameTitle").textContent="🛒 具材購入";
+  $("gameSub").textContent="制限時間内に打て！";
+  M={mode:"buy", got:0, round:0, max:8};
+  nextBuyWord();
+}
+function nextBuyWord(){
+  if(M.round>=M.max){ endBuy(); return; }
+  M.round++;
+  const w=BUY_WORDS[Math.floor(Math.random()*BUY_WORDS.length)];
+  M.word=w; M.s=makeSession(w);
+  const sec=Math.max(4, Math.ceil(w.length*1.1));
+  $("gameSub").textContent=`${M.round}/${M.max}　獲得:${M.got}`;
+  $("wordDisplay").textContent=w;
+  $("romaDisplay").innerHTML=renderRoma(M.s);
+  $("statRow").innerHTML="";
+  $("gameMsg").textContent="";
+  startTimer(sec, ()=>{ $("gameMsg").textContent="⏰ 時間切れ！"; setTimeout(nextBuyWord,800); });
+}
+function endBuy(){
+  stopTimer();
+  $("wordDisplay").textContent="🎉 購入終了";
+  $("romaDisplay").innerHTML="";
+  $("gameMsg").innerHTML=`具材を <b>${M.got}</b> 個ゲットしました！`;
+  $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
+  save();
+}
+
+/* ---- お弁当詰め（ミスで具材が落ちる） ---- */
+function initPack(){
+  $("gameTitle").textContent="🍱 お弁当詰め";
+  const avail=Object.keys(DB.inv).filter(k=>DB.inv[k]>0);
+  if(!avail.length){
+    $("gameSub").textContent="";
+    $("wordDisplay").textContent="具材がありません";
+    $("romaDisplay").innerHTML="";
+    $("gameMsg").textContent="先に「具材購入」で具材を集めよう！";
+    $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
+    return;
+  }
+  M={mode:"pack", placed:[], dropped:0, pool:{...DB.inv}};
+  $("bentoBox").classList.remove("hidden");
+  packPick();
+}
+function packPick(){
+  const avail=Object.keys(M.pool).filter(k=>M.pool[k]>0);
+  $("gameSub").textContent=`詰めた具材:${M.placed.length}　落とした:${M.dropped}`;
+  renderBentoBox();
+  if(!avail.length){ finishBento("全具材を使い切った！"); return; }
+  $("wordDisplay").textContent="詰める具材を選ぼう";
+  $("romaDisplay").innerHTML="";
+  $("statRow").innerHTML="";
+  let html='<div class="pick-list">';
+  avail.forEach(k=>{
+    const ing=ALL_ING[k]||{e:"❓"};
+    html+=`<button onclick="packStart('${k}')">${ing.e} ${k} ×${M.pool[k]}</button>`;
+  });
+  html+='</div><button class="primary-btn" onclick="finishBento(\'決定！\')">✅ 決定（お弁当を保存）</button>';
+  $("gameControls").innerHTML=html;
+}
+function packStart(k){
+  M.cur=k; M.s=makeSession(k); M.curMiss=0; M.dropLimit=3;
+  const ing=ALL_ING[k]||{e:"❓"};
+  $("wordDisplay").textContent=`${ing.e} ${k}`;
+  $("romaDisplay").innerHTML=renderRoma(M.s);
+  $("gameMsg").textContent="正確に打って詰めよう（ミス3回で落下）";
+  $("statRow").innerHTML=`<span>落下まで残り <b id='dropLeft'>3</b> ミス</span>`;
+  $("gameControls").innerHTML="";
+}
+function renderBentoBox(){
+  const box=$("bentoBox");
+  if(!M.placed.length){ box.innerHTML="<span class='small' style='color:#fff'>まだ空っぽ</span>"; return; }
+  box.innerHTML=M.placed.map(k=>{
+    const ing=ALL_ING[k]||{e:"❓"};
+    return `<span class="ing-chip">${ing.e} ${k}</span>`;
+  }).join("");
+}
+function finishBento(reason){
+  if(!M.placed.length){ $("gameMsg").textContent="空のお弁当は保存できません。具材を詰めよう"; return; }
+  let score=M.placed.reduce((s,k)=>s+((ALL_ING[k]||{v:5}).v),0);
+  if(M.placed.length>=8) score=Math.round(score*1.2); // 品数ボーナス
+  const bento={items:[...M.placed], score, date:new Date().toLocaleString("ja-JP")};
+  DB.bentos.push(bento);
+  if(DB.bentos.length>15) DB.bentos=DB.bentos.slice(DB.bentos.length-15);
+  if(!DB.bestEver || score>DB.bestEver.score) DB.bestEver={...bento};
+  save();
+  stopTimer();
+  $("wordDisplay").textContent="🍱 お弁当完成！";
+  $("romaDisplay").innerHTML="";
+  $("statRow").innerHTML="";
+  $("gameMsg").innerHTML=`${reason}　豪華さ <b>${score}</b> 点 / 品数 ${M.placed.length}　（落とした具材:${M.dropped}）`;
+  $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
+}
+
+/* ---- 期間限定の飾り（苦手文字入り→特別具材） ---- */
+function initDeco(){
+  $("gameTitle").textContent="✨ 期間限定の飾り";
+  $("gameSub").textContent="苦手克服で特別具材！";
+  const w=weakChars();
+  const target = w.length? w[Math.floor(Math.random()*Math.min(3,w.length))].c : null;
+  const sentence=buildDecoSentence(target);
+  M={mode:"deco"};
+  M.word=sentence; M.s=makeSession(sentence);
+  M.reward=SPECIAL_ING[Math.floor(Math.random()*SPECIAL_ING.length)];
+  $("wordDisplay").textContent=sentence;
+  $("romaDisplay").innerHTML=renderRoma(M.s);
+  $("statRow").innerHTML=`<span>報酬: <b>${M.reward.e} ${M.reward.n}</b></span><span class="small">${target?("苦手「"+target+"」入り"):"分析中につき通常文"}</span>`;
+  $("gameMsg").textContent="ミスしてもOK。最後まで打ち切れば特別具材ゲット";
+  $("gameControls").innerHTML="";
+}
+function buildDecoSentence(weak){
+  const base=["でこれーしょんべんとう","きらきらかざりつけ","ぴかぴかのほうせき",
+              "じゃがいもとぎゅうにく","ちょうごうかなおべんとう","ぱぱっとしゃしんさつえい"];
+  let s=base[Math.floor(Math.random()*base.length)];
+  if(weak){
+    // 苦手文字を含む語を必ず1つ混ぜる
+    const found = BUY_WORDS.find(w=>tokenize(w).some(t=>t.disp===weak));
+    s = (found||weak.repeat(3)) + "の" + s;
+  }
+  return s;
+}
+
+/* ============================================================
+   キー入力ハンドラ
+   ============================================================ */
+document.addEventListener("keydown",e=>{
+  if($("gameView").classList.contains("hidden")) return;
+  if(!M || !M.s || M.s.done) return;
+  if(e.key.length!==1) return;
+  const ch=e.key.toLowerCase();
+  if(!/[a-z0-9\-,.\/!? ']/.test(ch)) return;
+  e.preventDefault();
+  const r=feed(M.s,ch);
+  $("romaDisplay").innerHTML=renderRoma(M.s);
+
+  if(M.mode==="pack"){
+    if(!r.ok && r.weakDisp){
+      M.curMiss++;
+      const left=Math.max(0,M.dropLimit-M.curMiss);
+      if($("dropLeft")) $("dropLeft").textContent=left;
+      $("gameMsg").textContent="⚠️ ミス！具材がぐらついた…";
+      if(M.curMiss>=M.dropLimit){
+        // 具材落下
+        addStat(M.s.tokens[M.s.idx]?.disp||r.weakDisp, M.s.hits, M.s.miss);
+        M.pool[M.cur]--; M.dropped++;
+        DB.inv[M.cur]=(DB.inv[M.cur]||1)-1; save();
+        $("gameMsg").textContent=`💥 ${M.cur} を落としてしまった…`;
+        M.s.done=true;
+        setTimeout(packPick,900);
+        return;
+      }
+    }
+    if(r.complete){
+      M.s.tokens.forEach(t=>{}); // 統計はトークン単位で下で集計
+      recordSessionStats(M.s);
+      M.pool[M.cur]--; M.placed.push(M.cur);
+      DB.inv[M.cur]=(DB.inv[M.cur]||1)-1; save();
+      $("gameMsg").textContent="✅ うまく詰めた！";
+      setTimeout(packPick,700);
+    }
+    return;
+  }
+
+  if(M.mode==="buy"){
+    if(r.complete){
+      recordSessionStats(M.s);
+      stopTimer();
+      // 単語に対応する具材があれば付与、なければランダム通常具材
+      let gain = ALL_ING[M.word] ? M.word : ING[Math.floor(Math.random()*ING.length)].n;
+      DB.inv[gain]=(DB.inv[gain]||0)+1; M.got++; save();
+      const ing=ALL_ING[gain];
+      $("gameMsg").innerHTML=`🎁 ${ing.e} <b>${gain}</b> をゲット！`;
+      setTimeout(nextBuyWord,800);
+    }
+    return;
+  }
+
+  if(M.mode==="deco"){
+    if(r.complete){
+      recordSessionStats(M.s);
+      DB.inv[M.reward.n]=(DB.inv[M.reward.n]||0)+1; save();
+      stopTimer();
+      $("wordDisplay").textContent="✨ 飾りつけ成功！";
+      $("gameMsg").innerHTML=`特別具材 ${M.reward.e} <b>${M.reward.n}</b> をゲット！`;
+      $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
+    }
+    return;
+  }
+});
+// セッション終了時にトークン毎の統計を記録（簡易：かな全体のhit/miss比で按分）
+function recordSessionStats(s){
+  const perToken = s.tokens.length||1;
+  s.tokens.forEach(t=>{
+    if(!DB.stats[t.disp]) DB.stats[t.disp]={a:0,m:0};
+    DB.stats[t.disp].a += Math.max(1,Math.round(s.hits/perToken));
+    DB.stats[t.disp].m += Math.round(s.miss/perToken);
+  });
+  save();
+}
+
+/* ---- 弁当一覧（直近14＋最高傑作1） ---- */
+function renderList(){
+  const grid=$("bentoGrid");
+  const recent=DB.bentos.slice(-14).reverse();
+  let best=DB.bestEver;
+  let html="";
+  if(best){
+    html+=`<div class="bento-card best"><b>👑 最高傑作</b><br>豪華さ ${best.score}点<br>
+      <div style="font-size:20px;margin:6px 0;">${best.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}</div>
+      <span class="small">${best.items.join("・")}<br>${best.date||""}</span></div>`;
+  }
+  if(!recent.length && !best){ grid.innerHTML="<p>まだお弁当がありません。「お弁当詰め」で作ろう！</p>"; return; }
+  recent.forEach(b=>{
+    html+=`<div class="bento-card"><b>豪華さ ${b.score}点</b><br>
+      <div style="font-size:20px;margin:6px 0;">${b.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}</div>
+      <span class="small">${b.items.join("・")}<br>${b.date||""}</span></div>`;
+  });
+  grid.innerHTML=html;
+}
+
+/* 初期化 */
+renderHome();
+</script>
+</body>
+</html>
