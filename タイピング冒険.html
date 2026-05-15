@@ -428,33 +428,77 @@
 </div>
 
 <script>
-// ===== 単語データ =====
+// ===== 単語データ（自然ファンタジー・全文字対応）=====
 const WORDS = [
-  { kanji:'山',    furigana:'やま'       },
-  { kanji:'川',    furigana:'かわ'       },
-  { kanji:'空',    furigana:'そら'       },
-  { kanji:'森',    furigana:'もり'       },
-  { kanji:'木',    furigana:'き'         },
-  { kanji:'火',    furigana:'ひ'         },
-  { kanji:'海',    furigana:'うみ'       },
-  { kanji:'花',    furigana:'はな'       },
-  { kanji:'雨',    furigana:'あめ'       },
-  { kanji:'雪',    furigana:'ゆき'       },
-  { kanji:'風',    furigana:'かぜ'       },
-  { kanji:'星',    furigana:'ほし'       },
-  { kanji:'月',    furigana:'つき'       },
-  { kanji:'石',    furigana:'いし'       },
-  { kanji:'土',    furigana:'つち'       },
-  { kanji:'草',    furigana:'くさ'       },
-  { kanji:'畑',    furigana:'はたけ'     },
-  { kanji:'洞窟',  furigana:'どうくつ'   },
-  { kanji:'草原',  furigana:'そうげん'   },
-  { kanji:'太陽',  furigana:'たいよう'   },
-  { kanji:'冒険',  furigana:'ぼうけん'   },
-  { kanji:'村',    furigana:'むら'       },
-  { kanji:'家',    furigana:'いえ'       },
-  { kanji:'道',    furigana:'みち'       },
-  { kanji:'橋',    furigana:'はし'       },
+  // ── 自然・天象 ──────────────────
+  { kanji:'嵐',       furigana:'あらし'       }, // あ ら し
+  { kanji:'稲妻',     furigana:'いなずま'     }, // い な ず ま
+  { kanji:'宇宙',     furigana:'うちゅう'     }, // う ちゅ う
+  { kanji:'遠雷',     furigana:'えんらい'     }, // え ん ら い
+  { kanji:'大蛇',     furigana:'おろち'       }, // お ろ ち
+  { kanji:'霧',       furigana:'きり'         }, // き り
+  { kanji:'荒野',     furigana:'こうや'       }, // こ う や
+  { kanji:'大地',     furigana:'だいち'       }, // だ い ち
+  { kanji:'滝',       furigana:'たき'         }, // た き
+  { kanji:'虹',       furigana:'にじ'         }, // に じ
+  { kanji:'沼',       furigana:'ぬま'         }, // ぬ ま
+  { kanji:'野火',     furigana:'のび'         }, // の び
+  { kanji:'蛇',       furigana:'へび'         }, // へ び
+  { kanji:'氷河',     furigana:'ひょうが'     }, // ひょ う が
+  { kanji:'火山',     furigana:'かざん'       }, // か ざ ん
+  { kanji:'深淵',     furigana:'しんえん'     }, // し ん え ん
+  { kanji:'絶壁',     furigana:'ぜっぺき'     }, // ぜ っ ぺ き
+  { kanji:'洞窟',     furigana:'どうくつ'     }, // ど う く つ
+  { kanji:'蒼天',     furigana:'そうてん'     }, // そ う て ん
+  { kanji:'蝶',       furigana:'ちょう'       }, // ちょ う
+  { kanji:'炎',       furigana:'ほのお'       }, // ほ の お
+  { kanji:'惑星',     furigana:'わくせい'     }, // わ く せ い
+  // ── 幻想生物 ────────────────────
+  { kanji:'龍',       furigana:'りゅう'       }, // りゅ う
+  { kanji:'鳳凰',     furigana:'ほうおう'     }, // ほ う お う
+  { kanji:'精霊',     furigana:'せいれい'     }, // せ い れ い
+  { kanji:'妖精',     furigana:'ようせい'     }, // よ う せ い
+  { kanji:'幽霊',     furigana:'ゆうれい'     }, // ゆ う れ い
+  { kanji:'鬼',       furigana:'おに'         }, // お に
+  { kanji:'狼',       furigana:'おおかみ'     }, // お お か み
+  { kanji:'巨人',     furigana:'きょじん'     }, // きょ じ ん
+  { kanji:'銀龍',     furigana:'ぎんりゅう'   }, // ぎ ん りゅ う
+  { kanji:'化け物',   furigana:'ばけもの'     }, // ば け も の
+  { kanji:'魔像',     furigana:'まぞう'       }, // ま ぞ う
+  { kanji:'剣',       furigana:'つるぎ'       }, // つ る ぎ
+  // ── 人物 ────────────────────────
+  { kanji:'勇者',     furigana:'ゆうしゃ'     }, // ゆ う しゃ
+  { kanji:'魔王',     furigana:'まおう'       }, // ま お う
+  { kanji:'賢者',     furigana:'けんじゃ'     }, // け ん じゃ
+  { kanji:'魔女',     furigana:'まじょ'       }, // ま じょ
+  { kanji:'天使',     furigana:'てんし'       }, // て ん し
+  { kanji:'武者',     furigana:'むしゃ'       }, // む しゃ
+  { kanji:'巫女',     furigana:'みこ'         }, // み こ
+  { kanji:'侍',       furigana:'さむらい'     }, // さ む ら い
+  { kanji:'守護者',   furigana:'しゅごしゃ'   }, // しゅ ご しゃ
+  { kanji:'夜叉',     furigana:'やしゃ'       }, // や しゃ
+  // ── 魔法・術 ─────────────────────
+  { kanji:'魔法',     furigana:'まほう'       }, // ま ほ う
+  { kanji:'呪文',     furigana:'じゅもん'     }, // じゅ も ん
+  { kanji:'封印',     furigana:'ふういん'     }, // ふ う い ん
+  { kanji:'結晶',     furigana:'けっしょう'   }, // け っ しょ う
+  { kanji:'霊力',     furigana:'れいりょく'   }, // れ い りょ く
+  { kanji:'業火',     furigana:'ごうか'       }, // ご う か
+  { kanji:'聖水',     furigana:'せいすい'     }, // せ い す い
+  { kanji:'神殿',     furigana:'しんでん'     }, // し ん で ん
+  { kanji:'迷宮',     furigana:'めいきゅう'   }, // め い きゅ う
+  { kanji:'呪縛',     furigana:'じゅばく'     }, // じゅ ば く
+  { kanji:'秘宝',     furigana:'ひほう'       }, // ひ ほ う
+  { kanji:'武器',     furigana:'ぶき'         }, // ぶ き
+  { kanji:'破滅',     furigana:'はめつ'       }, // は め つ
+  { kanji:'幻影',     furigana:'げんえい'     }, // げ ん え い
+  { kanji:'具足',     furigana:'ぐそく'       }, // ぐ そ く
+  { kanji:'魂魄',     furigana:'こんぱく'     }, // こ ん ぱ く
+  { kanji:'忘却',     furigana:'ぼうきゃく'   }, // ぼ う きゃ く
+  { kanji:'眠り',     furigana:'ねむり'       }, // ね む り
+  { kanji:'討伐',     furigana:'とうばつ'     }, // と う ば つ
+  { kanji:'言霊',     furigana:'ことだま'     }, // こ と だ ま
+  { kanji:'聖域',     furigana:'せいいき'     }, // せ い い き
 ];
 
 // ===== キーボード配列 =====
