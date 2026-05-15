@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TypeRaise - 育成タイピング</title>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; font-family:'Segoe UI',system-ui,sans-serif; }
+
+/* ── APP LAYOUT ─────────────────────────────────── */
+.app { height:100vh; display:flex; flex-direction:column; }
+
+/* ── ROOM ───────────────────────────────────────── */
+.room {
+  flex: 0 0 46vh;
+  position: relative;
+  overflow: hidden;
+  background: #ecdbb5;
+}
+
+/* Wall paper stripes */
+.wall-bg {
+  position: absolute; inset: 0;
+  height: 62%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0, transparent 59px, rgba(0,0,0,0.04) 60px),
+    repeating-linear-gradient(0deg, transparent 0, transparent 59px, rgba(0,0,0,0.04) 60px),
+    #ecdbb5;
+}
+
+/* Wainscoting (lower wall panel) */
+.wainscot {
+  position: absolute;
+  top: 42%; left: 0; right: 0; height: 20%;
+  background: linear-gradient(180deg, #d4a86a, #c49050);
+  border-top: 3px solid #a07040;
+  border-bottom: 3px solid #7a5020;
+}
+
+/* Floor */
+.floor {
+  position: absolute;
+  bottom: 0; left: -5%; width: 110%; height: 38%;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.07) 0, rgba(0,0,0,0.07) 1px,
+      transparent 1px, transparent 70px),
+    repeating-linear-gradient(0deg,
+      rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 1px,
+      transparent 1px, transparent 18px),
+    linear-gradient(180deg, #c09050 0%, #8b5e28 100%);
+  transform: perspective(350px) rotateX(18deg);
+  transform-origin: top center;
+}
+
+/* Window */
+.win {
+  position: absolute;
+  top: 6%; left: 11%;
+  width: 100px; height: 82px;
+  background: linear-gradient(180deg, #a8dcf8 0%, #6ec0f0 55%, #b8e8a0 100%);
+  border: 5px solid #8b5e28;
+  border-radius: 4px 4px 0 0;
+}
+.win::before { /* vertical divider */
+  content:''; position:absolute; top:0; left:50%; width:4px; height:100%;
+  margin-left:-2px; background:#8b5e28;
+}
+.win::after { /* horizontal divider */
+  content:''; position:absolute; top:50%; left:0; width:100%; height:4px;
+  margin-top:-2px; background:#8b5e28;
+}
+/* Curtains */
+.curtain { position:absolute; top:4%; width:16px; height:88px; border-radius:2px; }
+.curtain.l { left:10%; background:linear-gradient(180deg,#d06858,#b04840); }
+.curtain.r { left:calc(11% + 100px + 5px); background:linear-gradient(180deg,#d06858,#b04840); }
+
+/* Bookshelf */
+.shelf {
+  position: absolute; top:5%; right:7%;
+  width:72px; height:96px;
+  border:4px solid #7a5020; border-radius:2px;
+  background:#c89050;
+  display:flex; flex-direction:column; gap:3px; padding:5px 4px; overflow:hidden;
+}
+.book { height:18px; border-radius:2px; flex-shrink:0; }
+
+/* Picture frame */
+.frame {
+  position: absolute; top:8%; left:50%; transform:translateX(-50%);
+  width:64px; height:52px;
+  border:6px solid #8b5e28; border-radius:2px;
+  background:linear-gradient(135deg,#f0d080,#c09050);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.5rem;
+}
+
+/* Floor plant */
+.plant {
+  position: absolute; right:18%; font-size:2rem; line-height:1;
+  filter:drop-shadow(2px 3px 4px rgba(0,0,0,0.25));
+  z-index:4;
+  /* bottom aligned with baseboard */
+  bottom: 38%;
+}
+
+/* Rug */
+.rug {
+  position: absolute; bottom:38%; left:50%; transform:translateX(-50%) translateY(50%);
+  width:150px; height:32px;
+  background:radial-gradient(ellipse, #c050a0 30%, #902070 60%, #6a1050 100%);
+  border-radius:50%; opacity:.65; z-index:3;
+}
+
+/* ── CHARACTERS ─────────────────────────────────── */
+.player-area {
+  position:absolute; bottom:38%; left:50%;
+  transform:translateX(-50%) translateY(50%);
+  display:flex; flex-direction:column; align-items:center; z-index:10;
+}
+.lv-badge {
+  background:rgba(0,0,0,.65); color:#ffd700;
+  font-size:.68rem; font-weight:700;
+  padding:2px 8px; border-radius:10px; margin-bottom:3px;
+}
+.char-emoji {
+  font-size:5rem; line-height:1; user-select:none;
+  animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.3));
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+.char-shadow {
+  width:58px; height:12px; margin-top:-8px;
+  background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);
+  animation:shadowP 3s ease-in-out infinite;
+}
+@keyframes shadowP { 0%,100%{transform:scaleX(1);opacity:.3} 50%{transform:scaleX(.7);opacity:.15} }
+
+/* Enemy */
+.enemy-area {
+  position:absolute; bottom:38%; right:12%;
+  transform:translateY(50%);
+  display:flex; flex-direction:column; align-items:center; z-index:10;
+}
+.enemy-emoji {
+  font-size:4rem; line-height:1; user-select:none;
+  animation:efloat 2.5s ease-in-out infinite;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));
+}
+@keyframes efloat { 0%,100%{transform:scaleX(-1) translateY(0)} 50%{transform:scaleX(-1) translateY(-8px)} }
+.enemy-shadow { width:48px; height:10px; margin-top:-6px; background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%); }
+.enemy-tag {
+  margin-top:4px; font-size:.65rem; font-weight:700;
+  background:rgba(180,0,0,.7); color:#fff;
+  padding:2px 8px; border-radius:8px;
+}
+
+/* ── HP OVERLAY ─────────────────────────────────── */
+.hp-overlay {
+  position:absolute; top:6px; left:50%; transform:translateX(-50%);
+  width:88%; max-width:380px; z-index:20;
+  background:rgba(0,0,0,.55); border-radius:10px; padding:7px 12px;
+  display:flex; flex-direction:column; gap:5px;
+}
+.hp-row { display:flex; align-items:center; gap:7px; }
+.hp-who { font-size:.62rem; font-weight:700; color:#fff; width:58px; flex-shrink:0; }
+.hp-track { flex:1; height:8px; background:rgba(255,255,255,.18); border-radius:4px; overflow:hidden; }
+.hp-fill { height:100%; border-radius:4px; transition:width .35s ease; }
+.hp-fill.player { background:linear-gradient(90deg,#4dff9e,#00cc60); }
+.hp-fill.enemy  { background:linear-gradient(90deg,#ff4466,#cc0020); }
+.hp-num { font-size:.62rem; color:#ccc; width:38px; text-align:right; flex-shrink:0; }
+
+/* ── BOTTOM PANEL ───────────────────────────────── */
+.bottom { flex:1; display:flex; flex-direction:column; background:#0d0d1c; overflow:hidden; }
+
+.tabs { display:flex; border-bottom:1px solid rgba(255,255,255,.08); flex-shrink:0; }
+.tab {
+  flex:1; padding:11px 8px;
+  background:transparent; border:none; border-bottom:3px solid transparent;
+  color:#555; font-size:.82rem; font-weight:700; cursor:pointer;
+  transition:color .2s,background .2s; letter-spacing:.5px;
+}
+.tab:hover { color:#999; background:rgba(255,255,255,.03); }
+.tab.active { color:#fff; border-bottom-color:#c44dff; background:rgba(196,77,255,.07); }
+
+.panel { flex:1; overflow-y:auto; padding:11px 14px; color:#fff; }
+
+/* ── IKUSEI PANEL ───────────────────────────────── */
+.exp-row { display:flex; justify-content:space-between; font-size:.78rem; margin-bottom:4px; }
+.exp-lv { font-weight:700; color:#c44dff; }
+.exp-num { color:#555; }
+.bar-track { height:8px; background:rgba(255,255,255,.08); border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; background:linear-gradient(90deg,#c44dff,#4dabff); border-radius:4px; transition:width .5s cubic-bezier(.34,1.56,.64,1); }
+
+.stats-row { display:flex; gap:7px; margin:9px 0; }
+.stat { flex:1; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07); border-radius:9px; padding:5px 6px; text-align:center; }
+.sl { font-size:.58rem; color:#555; text-transform:uppercase; }
+.sv { font-size:1.05rem; font-weight:700; color:#4dabff; }
+.sv.combo { color:#ff5fa0; }
+.sv.gold  { color:#ffd700; }
+
+.word-display { display:flex; justify-content:center; flex-wrap:wrap; gap:1px; min-height:46px; align-items:center; margin:8px 0 6px; }
+.word-display span { font-size:clamp(1.7rem,4vw,2.3rem); font-weight:800; letter-spacing:2px; }
+.cp { color:#2a2a3a; }
+.cc { color:#4dabff; text-shadow:0 0 6px rgba(77,171,255,.4); }
+.cw { color:#ff4466; }
+.cx { color:#fff; border-bottom:3px solid #fff; }
+
+.type-input {
+  width:100%; padding:10px 16px; font-size:1rem; font-weight:600;
+  letter-spacing:2px; text-align:center;
+  background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.12);
+  border-radius:10px; color:#fff; outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.type-input:focus { border-color:#c44dff; }
+.type-input.ok { border-color:#4dabff; box-shadow:0 0 10px rgba(77,171,255,.2); }
+.type-input.ng { border-color:#ff4466; box-shadow:0 0 10px rgba(255,68,102,.2); }
+
+.next-preview { display:flex; gap:6px; justify-content:center; margin-top:5px; opacity:.35; }
+.nw { font-size:.72rem; padding:2px 7px; background:rgba(255,255,255,.05); border-radius:5px; color:#aaa; }
+.msg-area { height:20px; text-align:center; font-size:.78rem; color:#888; margin-top:3px; }
+
+.btn { width:100%; padding:11px; font-size:1.05rem; font-weight:700; border:none; border-radius:11px; color:#fff; cursor:pointer; letter-spacing:1px; margin-top:7px; transition:transform .15s,box-shadow .15s; }
+.btn-green { background:linear-gradient(135deg,#4dff9e,#00cc60); color:#003; }
+.btn-red   { background:linear-gradient(135deg,#ff5050,#c44dff); }
+.btn:hover { transform:scale(1.02); box-shadow:0 5px 18px rgba(0,0,0,.4); }
+
+/* ── BATTLE PANEL ───────────────────────────────── */
+.enemy-card {
+  display:flex; align-items:center; gap:10px; margin-bottom:9px;
+  padding:8px 12px;
+  background:rgba(255,50,50,.07); border:1px solid rgba(255,50,50,.15); border-radius:10px;
+}
+.ec-emoji { font-size:2.2rem; }
+.ec-name { font-weight:700; font-size:.95rem; }
+.ec-sub { font-size:.68rem; color:#777; margin-top:2px; }
+
+.battle-log {
+  height:52px; overflow-y:auto; font-size:.72rem; color:#888;
+  margin:7px 0; padding:4px 8px;
+  background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:7px;
+}
+.log-hit { color:#4dabff; }
+.log-atk { color:#ff4466; }
+.log-win { color:#ffd700; }
+.log-lose { color:#ff7755; }
+
+/* ── ANIMATIONS ─────────────────────────────────── */
+@keyframes charBounce { 0%{transform:translateY(0) scale(1)} 30%{transform:translateY(-20px) scale(1.13)} 60%{transform:translateY(-7px) scale(1.06)} 100%{transform:translateY(0) scale(1)} }
+@keyframes charShake  { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-11px)} 75%{transform:translateX(11px)} }
+@keyframes roomFlash  { 0%{background-color:rgba(255,0,0,.25)} 100%{background-color:transparent} }
+.char-emoji.bounce { animation:charBounce .45s ease forwards !important; }
+.char-emoji.shake  { animation:charShake .4s ease forwards !important; }
+.room.flash { animation:roomFlash .35s ease forwards; }
+
+@keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-65px)} }
+.floater { position:fixed; pointer-events:none; z-index:200; font-weight:800; font-size:1rem; animation:floatUp .85s ease forwards; }
+
+/* Level-up overlay */
+#lu { display:none; position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.87); flex-direction:column; align-items:center; justify-content:center; gap:13px; text-align:center; }
+#lu.show { display:flex; }
+.lu-title { font-size:3rem; font-weight:900; background:linear-gradient(135deg,#ff5fa0,#c44dff,#4dabff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.lu-emoji { font-size:5rem; }
+.lu-lv { font-size:1.6rem; font-weight:700; color:#ffd700; }
+.lu-msg { color:#bbb; }
+.btn-lu { padding:11px 36px; font-size:1rem; font-weight:700; background:linear-gradient(135deg,#c44dff,#4dabff); border:none; border-radius:10px; color:#fff; cursor:pointer; }
+
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── ROOM ──────────────────────────────────────── -->
+  <div class="room" id="room">
+    <div class="wall-bg"></div>
+    <div class="wainscot"></div>
+    <div class="floor"></div>
+
+    <!-- Decorations -->
+    <div class="win"></div>
+    <div class="curtain l"></div>
+    <div class="curtain r"></div>
+    <div class="frame">🖼️</div>
+    <div class="shelf">
+      <div class="book" style="background:#c03030"></div>
+      <div class="book" style="background:#3050c0"></div>
+      <div class="book" style="background:#308040"></div>
+      <div class="book" style="background:#c09030"></div>
+    </div>
+    <div class="plant">🪴</div>
+    <div class="rug"></div>
+
+    <!-- Player -->
+    <div class="player-area">
+      <div class="lv-badge" id="lvBadge">Lv.1</div>
+      <div class="char-emoji" id="charEmoji">🥚</div>
+      <div class="char-shadow"></div>
+    </div>
+
+    <!-- Enemy (hidden until battle) -->
+    <div class="enemy-area hidden" id="enemyArea">
+      <div class="enemy-emoji" id="enemyEmoji">🫧</div>
+      <div class="enemy-shadow"></div>
+      <div class="enemy-tag" id="enemyTag">スライム</div>
+    </div>
+
+    <!-- HP bars (battle only) -->
+    <div class="hp-overlay hidden" id="hpOverlay">
+      <div class="hp-row">
+        <span class="hp-who" id="pHpName">あなた</span>
+        <div class="hp-track"><div class="hp-fill player" id="pHpBar" style="width:100%"></div></div>
+        <span class="hp-num" id="pHpNum">100</span>
+      </div>
+      <div class="hp-row">
+        <span class="hp-who" id="eHpName">スライム</span>
+        <div class="hp-track"><div class="hp-fill enemy" id="eHpBar" style="width:100%"></div></div>
+        <span class="hp-num" id="eHpNum">60</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM PANEL ─────────────────────────────── -->
+  <div class="bottom">
+    <div class="tabs">
+      <button class="tab active" id="tabI" onclick="switchTab('iku')">🌱 育成タイピング</button>
+      <button class="tab"        id="tabB" onclick="switchTab('btl')">⚔️ 戦闘タイピング</button>
+    </div>
+
+    <!-- 育成 -->
+    <div class="panel" id="panelI">
+      <div style="margin-bottom:8px">
+        <div class="exp-row">
+          <span class="exp-lv" id="expLv">Lv.1 たまご</span>
+          <span class="exp-num" id="expNum">0 / 100 EXP</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="expBar" style="width:0%"></div></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="sl">WPM</div><div class="sv" id="sWpm">0</div></div>
+        <div class="stat"><div class="sl">精度</div><div class="sv" id="sAcc">-</div></div>
+        <div class="stat"><div class="sl">コンボ</div><div class="sv combo" id="sCombo">0</div></div>
+        <div class="stat"><div class="sl">スコア</div><div class="sv gold" id="sScore">0</div></div>
+        <div class="stat"><div class="sl">単語</div><div class="sv" id="sWords">0</div></div>
+      </div>
+      <div class="word-display" id="ikuWord"><span class="cp" style="font-size:1rem">スタートしよう！</span></div>
+      <input id="ikuIn" class="type-input hidden" type="text" placeholder="ここに入力…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="next-preview" id="ikuNext"></div>
+      <div class="msg-area" id="ikuMsg"></div>
+      <button class="btn btn-green" id="ikuBtn" onclick="startIku()">🌱 育成スタート</button>
+    </div>
+
+    <!-- 戦闘 -->
+    <div class="panel hidden" id="panelB">
+      <div class="enemy-card">
+        <div class="ec-emoji" id="ecEmoji">❓</div>
+        <div>
+          <div class="ec-name" id="ecName">敵が現れるぞ！</div>
+          <div class="ec-sub" id="ecSub">バトルスタートで戦闘開始</div>
+        </div>
+      </div>
+      <div class="word-display" id="btlWord"><span class="cp" style="font-size:1rem">バトルスタートを押してね</span></div>
+      <input id="btlIn" class="type-input hidden" type="text" placeholder="タイプして攻撃！" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="battle-log" id="btlLog">-- バトルログ --</div>
+      <button class="btn btn-red" id="btlBtn" onclick="startBtl()">⚔️ バトルスタート</button>
+    </div>
+  </div>
+</div>
+
+<!-- Level-up overlay -->
+<div id="lu">
+  <div class="lu-title">LEVEL UP!</div>
+  <div class="lu-emoji" id="luEmoji">🥚</div>
+  <div class="lu-lv" id="luLv">Lv.2</div>
+  <div class="lu-msg" id="luMsg">おめでとう！</div>
+  <button class="btn-lu" onclick="closeLu()">続ける ▶</button>
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const STAGES = [
+  {name:'たまご',       emoji:'🥚', lv:1,  col:'#aaa'},
+  {name:'ひよこ',       emoji:'🐣', lv:5,  col:'#ffd700'},
+  {name:'こどもドラゴン', emoji:'🐲', lv:15, col:'#4dff9e'},
+  {name:'ドラゴン',     emoji:'🐉', lv:30, col:'#ff9944'},
+  {name:'神龍',         emoji:'🌟', lv:50, col:'#c44dff'},
+];
+const ENEMIES = [
+  {name:'スライム',    emoji:'🫧', hp:60,  atk:8,  ms:4000, exp:40,  lv:1},
+  {name:'ゴブリン',    emoji:'👺', hp:120, atk:15, ms:3500, exp:80,  lv:5},
+  {name:'オーク',      emoji:'👹', hp:220, atk:22, ms:3000, exp:140, lv:12},
+  {name:'ドラゴン',    emoji:'🐲', hp:380, atk:35, ms:2500, exp:230, lv:25},
+  {name:'ダークロード',emoji:'💀', hp:600, atk:55, ms:2000, exp:380, lv:40},
+];
+const WORDS = {
+  easy:   ['cat','dog','sun','map','fly','run','big','hot','red','cup','top','win','box','hat','arm','key','net','gem'],
+  normal: ['brave','cloud','dance','earth','flame','grace','heart','light','magic','night','ocean','power','quest','river','storm','tiger','unity','valor'],
+  hard:   ['balance','crystal','diamond','element','fantasy','gravity','harmony','inspire','journey','kingdom','liberty','miracle','network','passion','quantum','rainbow'],
+  expert: ['adventure','beautiful','challenge','discovery','elevation','fantastic','greatness','hurricane','important','justified','knowledge','lightning','nightmare','overpower'],
+};
+const PRAISE = ['すごい！','ナイス！','よし！','やった！','完璧！','いいね！','最高！'];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const G = {
+  lv:1, exp:0, expNext:100, stageIdx:0,
+  maxHp:100, hp:100,
+  // iku
+  ikuOn:false, ikuStart:null, correct:0, hits:0, misses:0,
+  combo:0, score:0,
+  word:'', queue:[], wordStart:null,
+  // battle
+  btlOn:false, enemy:null, eHp:0, btlCombo:0, atkTimer:null,
+  // tab
+  tab:'iku',
+};
+
+const $=id=>document.getElementById(id);
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function expFor(lv){ return Math.floor(100*Math.pow(1.28,lv-1)); }
+function wl(){ return G.lv>=30?WORDS.expert:G.lv>=15?WORDS.hard:G.lv>=5?WORDS.normal:WORDS.easy; }
+function pick(exc){ const l=wl(); let w; do{w=l[Math.random()*l.length|0];}while(w===exc); return w; }
+function fillQ(){ while(G.queue.length<5) G.queue.push(pick(G.queue[G.queue.length-1]||G.word)); }
+function stageFor(lv){ let i=0; for(let j=STAGES.length-1;j>=0;j--) if(lv>=STAGES[j].lv){i=j;break;} return i; }
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(t){
+  G.tab=t;
+  $('tabI').className='tab'+(t==='iku'?' active':'');
+  $('tabB').className='tab'+(t==='btl'?' active':'');
+  $('panelI').className='panel'+(t==='iku'?'':' hidden');
+  $('panelB').className='panel'+(t==='btl'?'':' hidden');
+  if(t==='iku'&&G.ikuOn) $('ikuIn').focus();
+  if(t==='btl'&&G.btlOn) $('btlIn').focus();
+}
+
+// ── Character ─────────────────────────────────────────────────────────────────
+function updateChar(checkEvo){
+  const newIdx=stageFor(G.lv);
+  const evolved=checkEvo&&newIdx>G.stageIdx;
+  G.stageIdx=newIdx;
+  const s=STAGES[G.stageIdx];
+  $('charEmoji').textContent=s.emoji;
+  $('lvBadge').textContent=`Lv.${G.lv}`;
+  $('expLv').textContent=`Lv.${G.lv}  ${s.name}`;
+  if(evolved) $('charEmoji').style.filter=`drop-shadow(0 0 22px ${s.col}aa)`;
+  return evolved;
+}
+
+function updateExpBar(){
+  const pct=Math.min(100,G.exp/G.expNext*100);
+  $('expBar').style.width=pct+'%';
+  $('expNum').textContent=`${G.exp} / ${G.expNext} EXP`;
+}
+
+// ── EXP & level-up ───────────────────────────────────────────────────────────
+function addExp(n){
+  G.exp+=n;
+  while(G.exp>=G.expNext){
+    G.exp-=G.expNext; G.lv++;
+    G.expNext=expFor(G.lv);
+    G.maxHp=Math.floor(80+G.lv*12); G.hp=G.maxHp;
+    const evo=updateChar(true);
+    showLu(evo); return;
+  }
+  updateExpBar(); updateChar(false);
+}
+
+let luT=null;
+function showLu(evo){
+  const s=STAGES[G.stageIdx];
+  $('luEmoji').textContent=s.emoji;
+  $('luLv').textContent=`Lv.${G.lv}`;
+  $('luMsg').textContent=evo?`🎉 進化！ ${s.name} になった！`:'おめでとう！さらに強くなった！';
+  $('lu').classList.add('show');
+  clearTimeout(luT);
+  if(!evo) luT=setTimeout(closeLu,1800);
+}
+function closeLu(){
+  clearTimeout(luT); $('lu').classList.remove('show');
+  updateExpBar();
+  if(G.tab==='iku'&&G.ikuOn) $('ikuIn').focus();
+  if(G.tab==='btl'&&G.btlOn) $('btlIn').focus();
+}
+
+// ── Word render ───────────────────────────────────────────────────────────────
+function renderWord(el,word,typed=''){
+  let h='';
+  for(let i=0;i<word.length;i++){
+    h+=i<typed.length ? `<span class="${typed[i]===word[i]?'cc':'cw'}">${word[i]}</span>`
+      : i===typed.length ? `<span class="cx">${word[i]}</span>`
+      : `<span class="cp">${word[i]}</span>`;
+  }
+  $(el).innerHTML=h;
+}
+
+// ── Ikusei ────────────────────────────────────────────────────────────────────
+function startIku(){
+  G.ikuOn=true; G.ikuStart=Date.now();
+  G.correct=G.hits=G.misses=G.combo=G.score=0;
+  $('ikuBtn').classList.add('hidden');
+  $('ikuIn').classList.remove('hidden'); $('ikuIn').disabled=false; $('ikuIn').focus();
+  fillQ(); nextIku();
+}
+function nextIku(){
+  fillQ(); G.word=G.queue.shift(); G.wordStart=Date.now();
+  renderWord('ikuWord',G.word);
+  $('ikuNext').innerHTML=G.queue.slice(0,3).map(w=>`<span class="nw">${w}</span>`).join('');
+}
+function updateIkuStats(){
+  const mins=(Date.now()-G.ikuStart)/60000;
+  const wpm=G.correct>0?Math.round(G.correct/mins):0;
+  const tot=G.hits+G.misses;
+  const acc=tot>0?Math.round(G.hits/tot*100):100;
+  $('sWpm').textContent=wpm; $('sAcc').textContent=acc+'%';
+  $('sCombo').textContent=G.combo; $('sScore').textContent=G.score.toLocaleString();
+  $('sWords').textContent=G.correct;
+}
+function onIkuDone(){
+  G.correct++; G.combo++;
+  const el=Math.max(100,Date.now()-G.wordStart);
+  const spd=Math.max(1,Math.floor(2500/el));
+  const mul=1+(G.combo-1)*.12;
+  const exp=Math.floor((G.word.length*6+spd*2)*mul);
+  G.score+=Math.floor(G.word.length*12*mul*spd);
+  charAnim('bounce'); floatChar('+'+exp,'#c44dff');
+  setMsg('ikuMsg',G.combo>=10?`🔥 ${G.combo}コンボ！`:PRAISE[Math.random()*PRAISE.length|0]);
+  addExp(exp); updateIkuStats(); nextIku();
+}
+let msgT={}; function setMsg(id,t){ clearTimeout(msgT[id]); $(id).textContent=t; msgT[id]=setTimeout(()=>$(id).textContent='',1500); }
+
+$('ikuIn').addEventListener('keydown',e=>{
+  if(!G.ikuOn||e.key.length!==1) return;
+  const pos=$('ikuIn').value.length;
+  if(pos>=G.word.length) return;
+  e.key===G.word[pos]?G.hits++:G.misses++;
+});
+$('ikuIn').addEventListener('input',()=>{
+  if(!G.ikuOn) return;
+  const t=$('ikuIn').value;
+  renderWord('ikuWord',G.word,t);
+  const ok=t.split('').every((c,i)=>c===G.word[i]);
+  $('ikuIn').className='type-input'+(!t?'':ok?' ok':' ng');
+  if(!ok&&t) charAnim('shake');
+  if(t===G.word){ $('ikuIn').value=''; $('ikuIn').className='type-input'; onIkuDone(); }
+});
+
+// ── Battle ────────────────────────────────────────────────────────────────────
+function bestEnemy(){
+  const avail=ENEMIES.filter(e=>G.lv>=e.lv);
+  return avail[avail.length-1];
+}
+function startBtl(){
+  const e=bestEnemy(); G.enemy=e; G.eHp=e.hp; G.btlOn=true; G.btlCombo=0;
+  // room
+  $('enemyArea').classList.remove('hidden');
+  $('enemyEmoji').textContent=e.emoji; $('enemyTag').textContent=e.name;
+  $('hpOverlay').classList.remove('hidden');
+  $('pHpName').textContent=STAGES[G.stageIdx].name;
+  $('eHpName').textContent=e.name;
+  updateHpBars();
+  // panel
+  $('ecEmoji').textContent=e.emoji; $('ecName').textContent=e.name;
+  $('ecSub').textContent=`HP ${e.hp}　攻撃力 ${e.atk}　${e.ms/1000}秒ごとに攻撃`;
+  $('btlBtn').classList.add('hidden');
+  $('btlIn').classList.remove('hidden'); $('btlIn').disabled=false; $('btlIn').focus();
+  $('btlLog').innerHTML='';
+  addLog(`⚔️ <b>${e.name}</b>が現れた！`);
+  fillQ(); nextBtl();
+  G.atkTimer=setInterval(enemyAtk,e.ms);
+}
+function nextBtl(){ fillQ(); G.word=G.queue.shift(); G.wordStart=Date.now(); renderWord('btlWord',G.word); }
+function onBtlDone(){
+  G.btlCombo++;
+  const mul=1+(G.btlCombo-1)*.15;
+  const dmg=Math.floor((G.word.length*8+G.lv*2)*mul);
+  G.eHp=Math.max(0,G.eHp-dmg);
+  charAnim('bounce'); floatChar('-'+dmg,'#ff4466');
+  addLog(`<span class="log-hit">⚡ ${dmg} ダメージ（${G.btlCombo}コンボ）</span>`);
+  updateHpBars();
+  if(G.eHp<=0){ btlWin(); return; }
+  nextBtl();
+}
+function enemyAtk(){
+  if(!G.btlOn) return;
+  G.hp=Math.max(0,G.hp-G.enemy.atk); G.btlCombo=0;
+  $('room').classList.add('flash'); setTimeout(()=>$('room').classList.remove('flash'),350);
+  charAnim('shake');
+  addLog(`<span class="log-atk">💥 ${G.enemy.name}の攻撃！ ${G.enemy.atk} ダメージ！</span>`);
+  updateHpBars();
+  if(G.hp<=0) btlLose();
+}
+function updateHpBars(){
+  const pp=G.hp/G.maxHp*100, ep=G.eHp/G.enemy.hp*100;
+  $('pHpBar').style.width=pp+'%'; $('eHpBar').style.width=ep+'%';
+  $('pHpNum').textContent=G.hp; $('eHpNum').textContent=G.eHp;
+}
+function btlWin(){
+  clearInterval(G.atkTimer); G.btlOn=false;
+  const r=G.enemy.exp;
+  addLog(`<span class="log-win">🎉 勝利！ +${r} EXP</span>`);
+  renderWord('btlWord',''); $('btlWord').innerHTML='<span style="color:#ffd700;font-size:1.3rem">🎉 VICTORY!</span>';
+  $('btlIn').disabled=true; $('btlIn').value='';
+  addExp(r); setTimeout(resetBtl,2200);
+}
+function btlLose(){
+  clearInterval(G.atkTimer); G.btlOn=false;
+  G.hp=Math.floor(G.maxHp*.3);
+  const r=Math.floor(G.enemy.exp*.2);
+  addLog(`<span class="log-lose">💀 やられた… +${r} EXP</span>`);
+  $('btlWord').innerHTML='<span style="color:#ff4466;font-size:1.3rem">💀 DEFEATED</span>';
+  $('btlIn').disabled=true; $('btlIn').value='';
+  addExp(r); setTimeout(resetBtl,2200);
+}
+function resetBtl(){
+  $('enemyArea').classList.add('hidden'); $('hpOverlay').classList.add('hidden');
+  $('btlIn').classList.add('hidden'); $('btlBtn').classList.remove('hidden');
+  $('btlWord').innerHTML='<span class="cp" style="font-size:1rem">バトルスタートを押してね</span>';
+  G.hp=Math.min(G.maxHp,G.hp+Math.floor(G.maxHp*.5));
+  const e=bestEnemy();
+  $('ecEmoji').textContent=e.emoji; $('ecName').textContent=e.name;
+  $('ecSub').textContent=`HP ${e.hp}　攻撃力 ${e.atk}　${e.ms/1000}秒ごとに攻撃`;
+}
+function addLog(msg){ const d=document.createElement('div'); d.innerHTML=msg; $('btlLog').appendChild(d); $('btlLog').scrollTop=$('btlLog').scrollHeight; }
+
+$('btlIn').addEventListener('keydown',e=>{ if(!G.btlOn||e.key.length!==1) return; const pos=$('btlIn').value.length; if(pos>=G.word.length) return; if(e.key!==G.word[pos]) G.btlCombo=0; });
+$('btlIn').addEventListener('input',()=>{
+  if(!G.btlOn) return;
+  const t=$('btlIn').value;
+  renderWord('btlWord',G.word,t);
+  const ok=t.split('').every((c,i)=>c===G.word[i]);
+  $('btlIn').className='type-input'+(!t?'':ok?' ok':' ng');
+  if(t===G.word){ $('btlIn').value=''; $('btlIn').className='type-input'; onBtlDone(); }
+});
+
+// ── Animations ────────────────────────────────────────────────────────────────
+function charAnim(cls){
+  const el=$('charEmoji'); el.classList.remove('bounce','shake');
+  void el.offsetWidth; el.classList.add(cls);
+  el.addEventListener('animationend',()=>el.classList.remove(cls),{once:true});
+}
+function floatChar(txt,col){
+  const r=$('charEmoji').getBoundingClientRect();
+  const el=document.createElement('div');
+  el.className='floater'; el.textContent=txt; el.style.color=col;
+  el.style.left=(r.left+r.width/2-16)+'px'; el.style.top=r.top+'px';
+  document.body.appendChild(el); el.addEventListener('animationend',()=>el.remove());
+}
+
+// ── Focus helper ──────────────────────────────────────────────────────────────
+document.addEventListener('click',()=>{
+  if(!$('lu').classList.contains('show')){
+    if(G.tab==='iku'&&G.ikuOn) $('ikuIn').focus();
+    if(G.tab==='btl'&&G.btlOn) $('btlIn').focus();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateChar(false); updateExpBar();
+const e0=bestEnemy(); $('ecEmoji').textContent=e0.emoji; $('ecName').textContent=e0.name;
+$('ecSub').textContent=`HP ${e0.hp}　攻撃力 ${e0.atk}　${e0.ms/1000}秒ごとに攻撃`;
+</script>
+</body>
+</html>
