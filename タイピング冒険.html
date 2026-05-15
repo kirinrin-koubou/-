@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>タイピング冒険</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { width:100vw; height:100vh; overflow:hidden; font-family:'Hiragino Sans','Yu Gothic','Meiryo',sans-serif; }
+
+    /* ===== ホーム画面 ===== */
+    #home-screen {
+      position:absolute; inset:0;
+      transition:opacity .4s;
+    }
+    #home-screen.fade-out { opacity:0; pointer-events:none; }
+    .map-svg { width:100%; height:100%; display:block; }
+
+    /* 地図上のタブボタン */
+    .map-tab {
+      position:absolute; z-index:10;
+      padding:9px 18px;
+      border-radius:10px;
+      font-size:clamp(.9rem,3.8vw,1.15rem);
+      font-weight:900; letter-spacing:2px;
+      cursor:pointer; border:2.5px solid transparent;
+      box-shadow:0 4px 10px rgba(0,0,0,.45);
+      transition:transform .15s,box-shadow .15s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .map-tab:active { transform:scale(.95); box-shadow:0 2px 5px rgba(0,0,0,.4); }
+
+    /* ばっさい：緑・右上の森エリア */
+    .tab-bassai {
+      top:6%; right:3%;
+      background:linear-gradient(160deg,#4aaa28,#2d7a18);
+      color:#fff;
+      border-color:#1d5a08;
+      text-shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+    /* はっくつ：灰色・左上の洞窟エリア */
+    .tab-hakkutsu {
+      top:24%; left:3%;
+      background:linear-gradient(160deg,#888,#666);
+      color:#7adaff;
+      border-color:#444;
+    }
+
+    @keyframes smoke {
+      0%   { transform:translateY(0)    scale(1);   opacity:.6; }
+      100% { transform:translateY(-18px) scale(1.5); opacity:0;  }
+    }
+    .smoke1 { animation:smoke 2.2s ease-out infinite; }
+    .smoke2 { animation:smoke 2.2s ease-out .9s infinite; }
+
+    /* ===== 共通タイピング画面 ===== */
+    .typing-screen {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center;
+      opacity:0; pointer-events:none;
+      transition:opacity .35s;
+    }
+    .typing-screen.active { opacity:1; pointer-events:all; }
+
+    .back-btn {
+      position:absolute; top:14px; right:14px;
+      border:1.5px solid rgba(255,255,255,.5);
+      color:#fff; background:rgba(255,255,255,.1);
+      padding:7px 18px; border-radius:20px;
+      font-size:.85rem; cursor:pointer; letter-spacing:1px;
+      transition:background .2s;
+    }
+    .back-btn:hover { background:rgba(255,255,255,.2); }
+
+    .mode-label {
+      position:absolute; top:18px; left:16px;
+      font-size:clamp(.9rem,3.8vw,1.2rem);
+      font-weight:900; letter-spacing:2px;
+    }
+
+    /* カウンター */
+    .counter-area {
+      position:absolute; top:46px; left:16px;
+      font-size:clamp(.8rem,3.2vw,1rem);
+      font-weight:700;
+    }
+    .counter-num {
+      font-size:clamp(1rem,4vw,1.4rem);
+      font-weight:900;
+    }
+
+    /* 単語パネル */
+    .word-panel {
+      margin-top:clamp(55px,15vh,100px);
+      text-align:center;
+      padding:20px 32px 24px;
+      border-radius:18px;
+      min-width:min(300px,82vw);
+      backdrop-filter:blur(6px);
+    }
+
+    .furigana-text {
+      font-size:clamp(.95rem,3.8vw,1.3rem);
+      letter-spacing:4px;
+      margin-bottom:5px;
+      min-height:1.6em;
+    }
+    /* 小文字かな（ゃゅょ等）を小さく表示 */
+    .furigana-text .sk {
+      font-size:.65em;
+      vertical-align:top;
+      line-height:1.9;
+    }
+
+    .kanji-text {
+      font-size:clamp(2.6rem,11vw,4.5rem);
+      font-weight:900; line-height:1.1;
+      transition:color .15s,text-shadow .15s;
+    }
+    .kanji-text.wrong   { color:#e74c3c !important; }
+    .kanji-text.correct { color:#2ecc71 !important; }
+
+    .romaji-text {
+      margin-top:12px;
+      font-size:clamp(1.1rem,4.5vw,1.8rem);
+      letter-spacing:5px; font-weight:700;
+      min-height:1.8em;
+      display:flex; justify-content:center; align-items:center;
+    }
+    .r-typed   { color:#2ecc71; }
+    .r-current { color:#f1c40f; text-decoration:underline; text-underline-offset:4px; }
+    .r-remain  { color:rgba(255,255,255,.3); }
+
+    /* キーボード */
+    .keyboard {
+      position:absolute; bottom:14px; left:0; right:0;
+      padding:0 5px;
+    }
+    .key-row {
+      display:flex; justify-content:center;
+      gap:clamp(2px,.8vw,5px);
+      margin-bottom:clamp(3px,.7vw,5px);
+    }
+    .key {
+      width:clamp(26px,8.5vw,44px); height:clamp(30px,9vw,46px);
+      border-radius:7px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:clamp(9px,2.6vw,15px); font-weight:700;
+      background:rgba(160,160,180,.18);
+      color:rgba(255,255,255,.4);
+      border:1px solid rgba(255,255,255,.15);
+      cursor:pointer; user-select:none;
+      transition:background .1s,color .1s,transform .08s;
+    }
+    .key.hit {
+      background:#f1c40f !important; color:#1a1a00 !important;
+      border-color:#d4a700 !important;
+      box-shadow:0 0 12px rgba(241,196,15,.7),0 2px 0 #a07800;
+      transform:translateY(1px);
+    }
+    .key:active { transform:translateY(2px); }
+
+    /* ===== ばっさい画面 ===== */
+    #bassai-screen {
+      background:
+        repeating-linear-gradient(90deg,
+          transparent 0,transparent 36px,rgba(0,0,0,.07) 36px,rgba(0,0,0,.07) 38px),
+        repeating-linear-gradient(0deg,
+          transparent 0,transparent 5px,rgba(0,0,0,.04) 5px,rgba(0,0,0,.04) 6px),
+        linear-gradient(175deg,#7a4510 0%,#5a3008 40%,#6b3c10 100%);
+    }
+    #bassai-screen .mode-label { color:#d4ff80; }
+    #bassai-screen .counter-area { color:#e8d090; }
+    #bassai-screen .counter-num  { color:#ffe060; }
+    #bassai-screen .word-panel {
+      background:rgba(0,0,0,.38);
+      border:1px solid rgba(255,200,80,.25);
+    }
+    #bassai-screen .furigana-text { color:#ffd080; }
+    #bassai-screen .kanji-text    { color:#fff8e0; text-shadow:0 0 18px rgba(255,200,80,.5); }
+
+    /* 材木の山 */
+    #lumber-pile {
+      position:absolute; bottom:125px; right:12px;
+      display:flex; flex-direction:column-reverse;
+      align-items:center; gap:2px;
+      pointer-events:none;
+    }
+    .log {
+      width:clamp(36px,9vw,52px); height:clamp(10px,2.5vw,16px);
+      background:linear-gradient(0deg,#4a2808,#8b5a20,#6a4010);
+      border-radius:8px; border:1px solid #3a2008;
+      box-shadow:0 1px 4px rgba(0,0,0,.5);
+      animation:logDrop .3s ease-out;
+    }
+    @keyframes logDrop {
+      from { transform:translateY(-24px); opacity:0; }
+      to   { transform:translateY(0);    opacity:1; }
+    }
+
+    /* ===== はっくつ画面 ===== */
+    #hakkutsu-screen {
+      background:radial-gradient(ellipse at 30% 20%,#221808 0%,#140e04 50%,#0a0702 100%);
+    }
+    #hakkutsu-screen .mode-label  { color:#7adaff; }
+    #hakkutsu-screen .counter-area{ color:#c0e8ff; }
+    #hakkutsu-screen .counter-num { color:#7adaff; }
+    #hakkutsu-screen .word-panel {
+      background:rgba(0,0,0,.52);
+      border:1px solid rgba(100,200,255,.2);
+    }
+    #hakkutsu-screen .furigana-text { color:#80d0ff; }
+    #hakkutsu-screen .kanji-text    { color:#e0f4ff; text-shadow:0 0 20px rgba(80,180,255,.4); }
+
+    /* 洞窟の宝石装飾 */
+    #gems-bg {
+      position:absolute; inset:0;
+      pointer-events:none; overflow:hidden;
+    }
+    .gem-deco {
+      position:absolute;
+      clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);
+      animation:gemTwinkle var(--gd) ease-in-out infinite var(--gdelay);
+    }
+    @keyframes gemTwinkle {
+      0%,100% { opacity:.1;  transform:scale(1);   }
+      50%     { opacity:.85; transform:scale(1.25); }
+    }
+
+    /* タイマー */
+    #timer-wrap {
+      width:min(320px,82vw);
+      margin-top:10px;
+    }
+    #timer-bg {
+      width:100%; height:11px;
+      background:rgba(255,255,255,.12);
+      border-radius:6px; overflow:hidden;
+    }
+    #timer-fill {
+      height:100%; border-radius:6px;
+      background:linear-gradient(90deg,#7adaff,#40b0ff);
+      transition:width .1s linear,background .4s;
+    }
+    #timer-fill.danger { background:linear-gradient(90deg,#ff7060,#ff3030); }
+    #timer-num {
+      text-align:right; margin-top:3px;
+      font-size:.82rem; color:rgba(255,255,255,.55);
+    }
+
+    /* 集めた宝石の山 */
+    #gem-pile {
+      position:absolute; bottom:125px; right:10px;
+      display:flex; flex-wrap:wrap-reverse;
+      width:clamp(44px,11vw,64px);
+      gap:3px; justify-content:center;
+      pointer-events:none;
+    }
+    .gem-collected {
+      width:clamp(11px,2.8vw,16px); height:clamp(11px,2.8vw,16px);
+      clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);
+      animation:gemPop .4s ease-out;
+    }
+    @keyframes gemPop {
+      0%  { transform:scale(0); opacity:0; }
+      60% { transform:scale(1.4); }
+      100%{ transform:scale(1); opacity:1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== ホーム画面 ===== -->
+<div id="home-screen">
+  <button class="map-tab tab-bassai"   id="btn-bassai">ばっさい</button>
+  <button class="map-tab tab-hakkutsu" id="btn-hakkutsu">はっくつ</button>
+
+  <svg class="map-svg" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#87ceeb"/>
+        <stop offset="70%" stop-color="#b5dfa0"/>
+        <stop offset="100%" stop-color="#6fb85a"/>
+      </linearGradient>
+      <linearGradient id="riverG" x1="0" y1="0" x2="1" y2=".2">
+        <stop offset="0%"   stop-color="#3a7abe"/>
+        <stop offset="40%"  stop-color="#55a0e0"/>
+        <stop offset="100%" stop-color="#3a7abe"/>
+      </linearGradient>
+      <linearGradient id="mtnG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#9e8260"/>
+        <stop offset="55%"  stop-color="#7a6040"/>
+        <stop offset="100%" stop-color="#4a7a38"/>
+      </linearGradient>
+      <filter id="sh"><feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity=".5"/></filter>
+    </defs>
+
+    <rect width="400" height="700" fill="url(#skyG)"/>
+    <!-- 雲 -->
+    <g opacity=".75" fill="white">
+      <ellipse cx="120" cy="65" rx="38" ry="16"/>
+      <ellipse cx="100" cy="68" rx="22" ry="13"/>
+      <ellipse cx="148" cy="69" rx="20" ry="11"/>
+      <ellipse cx="290" cy="50" rx="30" ry="12"/>
+      <ellipse cx="272" cy="53" rx="18" ry="10"/>
+      <ellipse cx="313" cy="53" rx="16" ry="9"/>
+    </g>
+
+    <!-- 地面 -->
+    <rect x="0" y="390" width="400" height="310" fill="#4a8a30"/>
+    <ellipse cx="200" cy="390" rx="230" ry="50" fill="#5a9a3a"/>
+
+    <!-- 草原（中央） -->
+    <ellipse cx="200" cy="370" rx="130" ry="75" fill="#7fd060"/>
+    <ellipse cx="185" cy="395" rx="80"  ry="35" fill="#8ae068"/>
+    <g fill="#5aaa40" opacity=".5">
+      <ellipse cx="155" cy="380" rx="18" ry="6"/>
+      <ellipse cx="215" cy="368" rx="14" ry="5"/>
+      <ellipse cx="248" cy="382" rx="16" ry="6"/>
+      <ellipse cx="175" cy="405" rx="12" ry="4"/>
+    </g>
+
+    <!-- 洞窟（左上） -->
+    <polygon points="0,0 130,0 150,90 100,200 40,230 0,220" fill="#aaa"/>
+    <polygon points="0,0 90,0 110,70 60,160 0,180" fill="#bbb"/>
+    <polygon points="60,40 100,35 120,110 80,150 40,130" fill="#999" opacity=".5"/>
+    <ellipse cx="62" cy="148" rx="38" ry="50" fill="#444"/>
+    <ellipse cx="62" cy="152" rx="30" ry="40" fill="#222"/>
+    <ellipse cx="38" cy="120" rx="14" ry="10" fill="#888"/>
+    <ellipse cx="88" cy="116" rx="12" ry="9"  fill="#888"/>
+    <polygon points="44,152 62,138 80,152" fill="#555"/>
+    <ellipse cx="62" cy="165" rx="20" ry="18" fill="#111" opacity=".8"/>
+    <text x="62" y="215" text-anchor="middle" font-size="13" fill="#bbb" font-family="sans-serif" filter="url(#sh)">洞窟</text>
+
+    <!-- 山・木々（右上） -->
+    <polygon points="230,0 400,0 400,220 200,220" fill="url(#mtnG)"/>
+    <polygon points="268,0 400,0 400,200 230,200" fill="#8a7050"/>
+    <polygon points="268,0 298,68 238,68" fill="white" opacity=".92"/>
+    <polygon points="340,0 365,50 316,50" fill="white" opacity=".88"/>
+    <g>
+      <rect x="210" y="208" width="7" height="14" fill="#5a3210"/>
+      <polygon points="200,210 213,170 226,210" fill="#247824"/>
+      <polygon points="203,192 213,155 223,192" fill="#2a8a2a"/>
+      <rect x="234" y="205" width="7" height="15" fill="#5a3210"/>
+      <polygon points="224,207 237,165 250,207" fill="#1e6e1e"/>
+      <polygon points="227,188 237,150 247,188" fill="#259025"/>
+      <rect x="261" y="204" width="7" height="14" fill="#5a3210"/>
+      <polygon points="252,206 265,162 278,206" fill="#207020"/>
+      <polygon points="255,186 265,148 275,186" fill="#279027"/>
+      <rect x="289" y="202" width="8" height="14" fill="#5a3210"/>
+      <polygon points="280,204 293,158 306,204" fill="#236e23"/>
+      <polygon points="283,184 293,144 303,184" fill="#268a26"/>
+      <rect x="317" y="200" width="8" height="15" fill="#5a3210"/>
+      <polygon points="308,202 321,157 334,202" fill="#1e701e"/>
+      <polygon points="311,182 321,143 331,182" fill="#24882a"/>
+      <rect x="345" y="198" width="8" height="15" fill="#5a3210"/>
+      <polygon points="336,200 349,154 362,200" fill="#226022"/>
+      <polygon points="339,180 349,140 359,180" fill="#288028"/>
+      <rect x="372" y="196" width="7" height="14" fill="#5a3210"/>
+      <polygon points="364,198 374,156 385,198" fill="#1e601e"/>
+      <polygon points="367,178 374,142 381,178" fill="#258025"/>
+    </g>
+    <text x="370" y="215" text-anchor="middle" font-size="13" fill="#c8a060" font-family="sans-serif" filter="url(#sh)">山</text>
+
+    <!-- 畑（左下） -->
+    <rect x="8" y="445" width="118" height="90" rx="6" fill="#8dc050" stroke="#5a8820" stroke-width="2"/>
+    <line x1="8"  y1="465" x2="126" y2="465" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8"  y1="480" x2="126" y2="480" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8"  y1="495" x2="126" y2="495" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8"  y1="510" x2="126" y2="510" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8"  y1="525" x2="126" y2="525" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="46" y1="445" x2="46"  y2="535" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="84" y1="445" x2="84"  y2="535" stroke="#4a7818" stroke-width="1.8"/>
+    <g fill="#2d6010" opacity=".8">
+      <circle cx="24" cy="457" r="3.5"/><circle cx="35" cy="457" r="3.5"/>
+      <circle cx="62" cy="457" r="3.5"/><circle cx="73" cy="457" r="3.5"/>
+      <circle cx="100" cy="457" r="3.5"/><circle cx="111" cy="457" r="3.5"/>
+      <circle cx="24" cy="472" r="3.5"/><circle cx="35" cy="472" r="3.5"/>
+    </g>
+    <text x="67" y="552" text-anchor="middle" font-size="13" fill="#4a7818" font-family="sans-serif" filter="url(#sh)">畑</text>
+
+    <!-- 家（右下） -->
+    <g transform="translate(278,430)">
+      <rect x="0" y="38" width="80" height="62" rx="2" fill="#deb887"/>
+      <rect x="0" y="38" width="80" height="8"  fill="#c8a060"/>
+      <polygon points="-6,40 40,0 86,40" fill="#8b3520"/>
+      <polygon points="40,0 86,40 40,40" fill="#6a2818" opacity=".3"/>
+      <rect x="54" y="8" width="12" height="26" fill="#9a4530" rx="1"/>
+      <circle class="smoke1" cx="60" cy="5" r="6" fill="rgba(210,210,210,.65)"/>
+      <circle class="smoke2" cx="63" cy="-2" r="5" fill="rgba(210,210,210,.45)"/>
+      <rect x="28" y="68" width="24" height="32" rx="3" fill="#7a4010"/>
+      <circle cx="49" cy="84" r="2.5" fill="#c8a000"/>
+      <rect x="5"  y="48" width="20" height="16" rx="2" fill="#87ceeb" stroke="#8b3520" stroke-width="1.5"/>
+      <line x1="15" y1="48" x2="15" y2="64" stroke="#8b3520" stroke-width="1"/>
+      <line x1="5"  y1="56" x2="25" y2="56" stroke="#8b3520" stroke-width="1"/>
+      <rect x="55" y="48" width="20" height="16" rx="2" fill="#87ceeb" stroke="#8b3520" stroke-width="1.5"/>
+      <line x1="65" y1="48" x2="65" y2="64" stroke="#8b3520" stroke-width="1"/>
+      <line x1="55" y1="56" x2="75" y2="56" stroke="#8b3520" stroke-width="1"/>
+    </g>
+    <text x="318" y="512" text-anchor="middle" font-size="13" fill="#8b5020" font-family="sans-serif" filter="url(#sh)">家</text>
+
+    <!-- 川（手前） -->
+    <path d="M0,570 Q60,548 120,562 Q180,576 240,560 Q300,544 360,558 Q385,564 400,558
+             L400,615 Q370,622 320,608 Q260,594 200,610 Q140,626 80,612 Q40,603 0,615 Z"
+          fill="url(#riverG)" opacity=".88"/>
+    <path d="M0,577 Q60,562 120,572 Q180,582 240,568 Q300,554 360,566 Q385,571 400,565"
+          fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2.2"/>
+    <path d="M0,593 Q60,578 120,588 Q180,598 240,584 Q300,570 360,582 Q385,587 400,581"
+          fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>
+    <text x="200" y="640" text-anchor="middle" font-size="13" fill="#2a6aaa" font-family="sans-serif" filter="url(#sh)">川</text>
+
+    <!-- タイトル -->
+    <text x="200" y="280" text-anchor="middle" font-size="34" font-weight="900"
+          fill="white" font-family="sans-serif" filter="url(#sh)" letter-spacing="4">タイピング</text>
+    <text x="200" y="322" text-anchor="middle" font-size="34" font-weight="900"
+          fill="white" font-family="sans-serif" filter="url(#sh)" letter-spacing="4">冒険</text>
+    <text x="200" y="365" text-anchor="middle" font-size="14"
+          fill="rgba(255,255,255,.7)" font-family="sans-serif">ボタンをタップしてはじめよう</text>
+  </svg>
+</div>
+
+<!-- ===== ばっさい画面 ===== -->
+<div id="bassai-screen" class="typing-screen">
+  <div class="mode-label">🪓 ばっさい</div>
+  <div class="counter-area">材木 <span class="counter-num" id="lumber-num">0</span></div>
+  <button class="back-btn" id="back-bassai">◀ もどる</button>
+
+  <div class="word-panel">
+    <div class="furigana-text" id="b-furigana"></div>
+    <div class="kanji-text"   id="b-kanji"></div>
+    <div class="romaji-text"  id="b-romaji"></div>
+  </div>
+
+  <div id="lumber-pile"></div>
+  <div class="keyboard" id="b-keyboard"></div>
+</div>
+
+<!-- ===== はっくつ画面 ===== -->
+<div id="hakkutsu-screen" class="typing-screen">
+  <div id="gems-bg"></div>
+
+  <div class="mode-label">⛏ はっくつ</div>
+  <div class="counter-area">宝石 <span class="counter-num" id="gem-num">0</span></div>
+  <button class="back-btn" id="back-hakkutsu">◀ もどる</button>
+
+  <div class="word-panel">
+    <div class="furigana-text" id="h-furigana"></div>
+    <div class="kanji-text"   id="h-kanji"></div>
+    <div class="romaji-text"  id="h-romaji"></div>
+  </div>
+
+  <div id="timer-wrap">
+    <div id="timer-bg"><div id="timer-fill"></div></div>
+    <div id="timer-num">15</div>
+  </div>
+
+  <div id="gem-pile"></div>
+  <div class="keyboard" id="h-keyboard"></div>
+</div>
+
+<script>
+// ===== 単語データ =====
+const WORDS = [
+  { kanji:'嵐',     furigana:'あらし'     },
+  { kanji:'稲妻',   furigana:'いなずま'   },
+  { kanji:'宇宙',   furigana:'うちゅう'   },
+  { kanji:'遠雷',   furigana:'えんらい'   },
+  { kanji:'大蛇',   furigana:'おろち'     },
+  { kanji:'霧',     furigana:'きり'       },
+  { kanji:'荒野',   furigana:'こうや'     },
+  { kanji:'大地',   furigana:'だいち'     },
+  { kanji:'滝',     furigana:'たき'       },
+  { kanji:'虹',     furigana:'にじ'       },
+  { kanji:'沼',     furigana:'ぬま'       },
+  { kanji:'野火',   furigana:'のび'       },
+  { kanji:'蛇',     furigana:'へび'       },
+  { kanji:'氷河',   furigana:'ひょうが'   },
+  { kanji:'火山',   furigana:'かざん'     },
+  { kanji:'深淵',   furigana:'しんえん'   },
+  { kanji:'絶壁',   furigana:'ぜっぺき'   },
+  { kanji:'洞窟',   furigana:'どうくつ'   },
+  { kanji:'蒼天',   furigana:'そうてん'   },
+  { kanji:'蝶',     furigana:'ちょう'     },
+  { kanji:'炎',     furigana:'ほのお'     },
+  { kanji:'惑星',   furigana:'わくせい'   },
+  { kanji:'龍',     furigana:'りゅう'     },
+  { kanji:'鳳凰',   furigana:'ほうおう'   },
+  { kanji:'精霊',   furigana:'せいれい'   },
+  { kanji:'妖精',   furigana:'ようせい'   },
+  { kanji:'幽霊',   furigana:'ゆうれい'   },
+  { kanji:'鬼',     furigana:'おに'       },
+  { kanji:'狼',     furigana:'おおかみ'   },
+  { kanji:'巨人',   furigana:'きょじん'   },
+  { kanji:'銀龍',   furigana:'ぎんりゅう' },
+  { kanji:'化け物', furigana:'ばけもの'   },
+  { kanji:'魔像',   furigana:'まぞう'     },
+  { kanji:'剣',     furigana:'つるぎ'     },
+  { kanji:'勇者',   furigana:'ゆうしゃ'   },
+  { kanji:'魔王',   furigana:'まおう'     },
+  { kanji:'賢者',   furigana:'けんじゃ'   },
+  { kanji:'魔女',   furigana:'まじょ'     },
+  { kanji:'天使',   furigana:'てんし'     },
+  { kanji:'武者',   furigana:'むしゃ'     },
+  { kanji:'巫女',   furigana:'みこ'       },
+  { kanji:'侍',     furigana:'さむらい'   },
+  { kanji:'守護者', furigana:'しゅごしゃ' },
+  { kanji:'夜叉',   furigana:'やしゃ'     },
+  { kanji:'魔法',   furigana:'まほう'     },
+  { kanji:'呪文',   furigana:'じゅもん'   },
+  { kanji:'封印',   furigana:'ふういん'   },
+  { kanji:'結晶',   furigana:'けっしょう' },
+  { kanji:'霊力',   furigana:'れいりょく' },
+  { kanji:'業火',   furigana:'ごうか'     },
+  { kanji:'聖水',   furigana:'せいすい'   },
+  { kanji:'神殿',   furigana:'しんでん'   },
+  { kanji:'迷宮',   furigana:'めいきゅう' },
+  { kanji:'呪縛',   furigana:'じゅばく'   },
+  { kanji:'秘宝',   furigana:'ひほう'     },
+  { kanji:'武器',   furigana:'ぶき'       },
+  { kanji:'破滅',   furigana:'はめつ'     },
+  { kanji:'幻影',   furigana:'げんえい'   },
+  { kanji:'具足',   furigana:'ぐそく'     },
+  { kanji:'魂魄',   furigana:'こんぱく'   },
+  { kanji:'忘却',   furigana:'ぼうきゃく' },
+  { kanji:'眠り',   furigana:'ねむり'     },
+  { kanji:'討伐',   furigana:'とうばつ'   },
+  { kanji:'言霊',   furigana:'ことだま'   },
+  { kanji:'聖域',   furigana:'せいいき'   },
+];
+
+// ===== キーボード配列 =====
+const KEY_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M'],
+];
+
+// ===== ローマ字変換テーブル =====
+const SINGLE_MAP = {
+  'あ':['a'],  'い':['i'],  'う':['u'],  'え':['e'],  'お':['o'],
+  'か':['ka'], 'き':['ki'], 'く':['ku'], 'け':['ke'], 'こ':['ko'],
+  'さ':['sa'], 'し':['si','shi'], 'す':['su'], 'せ':['se'], 'そ':['so'],
+  'た':['ta'], 'ち':['ti','chi'], 'つ':['tu','tsu'], 'て':['te'], 'と':['to'],
+  'な':['na'], 'に':['ni'], 'ぬ':['nu'], 'ね':['ne'], 'の':['no'],
+  'は':['ha'], 'ひ':['hi'], 'ふ':['fu','hu'], 'へ':['he'], 'ほ':['ho'],
+  'ま':['ma'], 'み':['mi'], 'む':['mu'], 'め':['me'], 'も':['mo'],
+  'や':['ya'], 'ゆ':['yu'], 'よ':['yo'],
+  'ら':['ra'], 'り':['ri'], 'る':['ru'], 'れ':['re'], 'ろ':['ro'],
+  'わ':['wa'], 'ゐ':['i','wi'], 'ゑ':['e','we'], 'を':['wo'],
+  'が':['ga'], 'ぎ':['gi'], 'ぐ':['gu'], 'げ':['ge'], 'ご':['go'],
+  'ざ':['za'], 'じ':['ji','zi'], 'ず':['zu'], 'ぜ':['ze'], 'ぞ':['zo'],
+  'だ':['da'], 'ぢ':['di','ji','zi'], 'づ':['du','zu'], 'で':['de'], 'ど':['do'],
+  'ば':['ba'], 'び':['bi'], 'ぶ':['bu'], 'べ':['be'], 'ぼ':['bo'],
+  'ぱ':['pa'], 'ぴ':['pi'], 'ぷ':['pu'], 'ぺ':['pe'], 'ぽ':['po'],
+  'ぁ':['la','xa'], 'ぃ':['li','xi'], 'ぅ':['lu','xu'], 'ぇ':['le','xe'], 'ぉ':['lo','xo'],
+  'ゃ':['lya','xya'], 'ゅ':['lyu','xyu'], 'ょ':['lyo','xyo'],
+  'っ':['ltu','xtu','ltsu','xtsu'],
+  'ん':['nn'],
+};
+const COMPOUND_MAP = {
+  'きゃ':['kya'],'きぃ':['kyi'],'きゅ':['kyu'],'きぇ':['kye'],'きょ':['kyo'],
+  'しゃ':['sha','sya'],'しぃ':['syi'],'しゅ':['shu','syu'],'しぇ':['she','sye'],'しょ':['sho','syo'],
+  'ちゃ':['cha','tya','cya'],'ちぃ':['tyi'],'ちゅ':['chu','tyu','cyu'],'ちぇ':['che','tye'],'ちょ':['cho','tyo','cyo'],
+  'にゃ':['nya'],'にぃ':['nyi'],'にゅ':['nyu'],'にぇ':['nye'],'にょ':['nyo'],
+  'ひゃ':['hya'],'ひぃ':['hyi'],'ひゅ':['hyu'],'ひぇ':['hye'],'ひょ':['hyo'],
+  'みゃ':['mya'],'みぃ':['myi'],'みゅ':['myu'],'みぇ':['mye'],'みょ':['myo'],
+  'りゃ':['rya'],'りぃ':['ryi'],'りゅ':['ryu'],'りぇ':['rye'],'りょ':['ryo'],
+  'ぎゃ':['gya'],'ぎぃ':['gyi'],'ぎゅ':['gyu'],'ぎぇ':['gye'],'ぎょ':['gyo'],
+  'じゃ':['ja','jya','zya'],'じぃ':['jyi','zyi'],'じゅ':['ju','jyu','zyu'],'じぇ':['je','jye','zye'],'じょ':['jo','jyo','zyo'],
+  'ぢゃ':['dya'],'ぢぃ':['dyi'],'ぢゅ':['dyu'],'ぢぇ':['dye'],'ぢょ':['dyo'],
+  'びゃ':['bya'],'びぃ':['byi'],'びゅ':['byu'],'びぇ':['bye'],'びょ':['byo'],
+  'ぴゃ':['pya'],'ぴぃ':['pyi'],'ぴゅ':['pyu'],'ぴぇ':['pye'],'ぴょ':['pyo'],
+  'ふぁ':['fa'],'ふぃ':['fi'],'ふぇ':['fe'],'ふぉ':['fo'],
+  'てぃ':['thi'],'てゅ':['thu'],'でぃ':['dhi'],'でゅ':['dhu'],
+  'うぁ':['wha'],'うぃ':['whi'],'うぇ':['whe'],'うぉ':['who'],
+  'いぇ':['ye'],
+};
+
+// ===== セグメント構築 =====
+function buildSegments(kana) {
+  const segs = [];
+  let i = 0;
+  while (i < kana.length) {
+    if (i + 1 < kana.length) {
+      const two = kana[i] + kana[i+1];
+      if (COMPOUND_MAP[two]) {
+        segs.push({ kana:two, opts:[...COMPOUND_MAP[two]], special:null });
+        i += 2; continue;
+      }
+    }
+    const c = kana[i];
+    if (c === 'っ')      segs.push({ kana:c, opts:['ltu','xtu','ltsu','xtsu'], special:'sokuon' });
+    else if (c === 'ん') segs.push({ kana:c, opts:['nn'], special:'n' });
+    else                 segs.push({ kana:c, opts:[...(SINGLE_MAP[c]||[c])], special:null });
+    i++;
+  }
+  // 後処理: っ促音・ん文脈
+  for (let j = 0; j < segs.length; j++) {
+    const seg = segs[j], next = segs[j+1];
+    if (seg.special === 'sokuon' && next) {
+      const cs = new Set();
+      next.opts.forEach(o => { if(!'aiueo'.includes(o[0])) cs.add(o[0]); });
+      seg.opts = [...cs, ...seg.opts];
+    }
+    if (seg.special === 'n') {
+      if (!next) seg.opts = ['nn','n'];
+      else if (!'aiueoyn'.includes(next.opts[0][0])) seg.opts = ['nn','n'];
+    }
+  }
+  return segs;
+}
+
+// ===== タイピング状態 =====
+let st = { segs:[], idx:0, partial:'', valid:[], done:'' };
+
+function initTyping(furigana) {
+  st.segs=buildSegments(furigana); st.idx=0; st.partial=''; st.done='';
+  st.valid = st.segs.length ? [...st.segs[0].opts] : [];
+}
+
+function advanceSeg(typed) {
+  st.done += typed; st.idx++;  st.partial='';
+  if (st.idx < st.segs.length) st.valid=[...st.segs[st.idx].opts];
+}
+
+function processChar(c) {
+  c = c.toLowerCase();
+  if (st.idx >= st.segs.length) return 'complete';
+  const np = st.partial + c;
+  const nv = st.valid.filter(o => o.startsWith(np));
+  if (!nv.length) {
+    if (st.valid.includes(st.partial)) { advanceSeg(st.partial); return processChar(c); }
+    return 'wrong';
+  }
+  const exact = nv.includes(np);
+  const hasLonger = nv.some(o => o.length > np.length);
+  if (exact) {
+    if (hasLonger && st.segs[st.idx].special==='n') { st.partial=np; st.valid=nv; return 'correct'; }
+    advanceSeg(np);
+    if (st.idx >= st.segs.length) return 'complete';
+    return 'correct';
+  }
+  st.partial=np; st.valid=nv; return 'correct';
+}
+
+function getRomajiParts() {
+  if (!st.segs.length) return {done:'',cur:'',rest:''};
+  const seg = st.segs[st.idx];
+  if (!seg) return {done:st.done,cur:'',rest:''};
+  const opt = st.valid[0]||'';
+  return {
+    done: st.done + st.partial,
+    cur:  opt[st.partial.length]||'',
+    rest: opt.slice(st.partial.length+1) + st.segs.slice(st.idx+1).map(s=>s.opts[0]).join('')
+  };
+}
+function getNextKey() { return getRomajiParts().cur.toUpperCase()||null; }
+
+// ===== ふりがな小文字レンダリング =====
+const SMALL_KANA = new Set('ぁぃぅぇぉゃゅょっ');
+function renderFurigana(kana) {
+  return [...kana].map(c => SMALL_KANA.has(c)
+    ? `<span class="sk">${c}</span>` : c
+  ).join('');
+}
+
+// ===== ゲーム状態 =====
+let mode      = null; // 'bassai' | 'hakkutsu'
+let lumber    = 0;
+let gems      = 0;
+let wordPool  = [];
+let timerSec  = 15;
+let timerMax  = 15;
+let timerRAF  = null;
+let timerStart= 0;
+
+// IDs per mode
+const IDS = {
+  bassai:   { furigana:'b-furigana', kanji:'b-kanji', romaji:'b-romaji', kb:'b-keyboard' },
+  hakkutsu: { furigana:'h-furigana', kanji:'h-kanji', romaji:'h-romaji', kb:'h-keyboard' },
+};
+
+// ===== キーボード構築 =====
+function buildKeyboard(kbId) {
+  const kb = document.getElementById(kbId);
+  kb.innerHTML = '';
+  KEY_ROWS.forEach(row => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'key-row';
+    row.forEach(k => {
+      const d = document.createElement('div');
+      d.className='key'; d.id=kbId+'-key-'+k; d.textContent=k;
+      d.addEventListener('pointerdown', ()=>onKey(k));
+      rowDiv.appendChild(d);
+    });
+    kb.appendChild(rowDiv);
+  });
+}
+
+function updateDisplay() {
+  if (!mode) return;
+  const ids = IDS[mode];
+  const {done,cur,rest} = getRomajiParts();
+  document.getElementById(ids.romaji).innerHTML =
+    `<span class="r-typed">${done}</span><span class="r-current">${cur}</span><span class="r-remain">${rest}</span>`;
+
+  const kbId = ids.kb;
+  document.querySelectorAll(`#${kbId} .key`).forEach(k => k.classList.remove('hit'));
+  const nk = getNextKey();
+  if (nk) {
+    const el = document.getElementById(kbId+'-key-'+nk);
+    if (el) el.classList.add('hit');
+  }
+}
+
+function loadWord() {
+  if (!mode) return;
+  if (!wordPool.length) wordPool = [...WORDS].sort(()=>Math.random()-.5);
+  const word = wordPool.pop();
+  const ids = IDS[mode];
+  document.getElementById(ids.furigana).innerHTML = renderFurigana(word.furigana);
+  document.getElementById(ids.kanji).textContent  = word.kanji;
+  initTyping(word.furigana);
+  updateDisplay();
+  if (mode === 'hakkutsu') resetTimer();
+}
+
+function onKey(ch) {
+  const result = processChar(ch);
+  const kanjiEl = document.getElementById(IDS[mode].kanji);
+  if (result === 'wrong') {
+    kanjiEl.classList.add('wrong');
+    setTimeout(()=>kanjiEl.classList.remove('wrong'), 180);
+  } else {
+    updateDisplay();
+    if (result === 'complete') onWordComplete();
+  }
+}
+
+function onWordComplete() {
+  const kanjiEl = document.getElementById(IDS[mode].kanji);
+  kanjiEl.classList.add('correct');
+  setTimeout(()=>kanjiEl.classList.remove('correct'), 250);
+
+  if (mode === 'bassai') {
+    lumber++;
+    document.getElementById('lumber-num').textContent = lumber;
+    addLog();
+  } else if (mode === 'hakkutsu') {
+    stopTimer();
+    gems++;
+    document.getElementById('gem-num').textContent = gems;
+    addGem();
+  }
+  setTimeout(loadWord, 300);
+}
+
+// ===== 材木を追加 =====
+function addLog() {
+  const pile = document.getElementById('lumber-pile');
+  if (pile.children.length >= 16) pile.removeChild(pile.lastChild);
+  const log = document.createElement('div');
+  log.className = 'log';
+  pile.prepend(log);
+}
+
+// ===== 宝石を追加 =====
+const GEM_COLORS = ['#ff5555','#55aaff','#55ff88','#cc55ff','#ffcc44','#ff88cc'];
+function addGem() {
+  const pile = document.getElementById('gem-pile');
+  if (pile.children.length >= 18) pile.removeChild(pile.lastChild);
+  const g = document.createElement('div');
+  g.className = 'gem-collected';
+  g.style.background = GEM_COLORS[Math.floor(Math.random()*GEM_COLORS.length)];
+  pile.prepend(g);
+}
+
+// ===== タイマー（はっくつ） =====
+function resetTimer() {
+  stopTimer();
+  timerSec = timerMax;
+  timerStart = performance.now();
+  document.getElementById('timer-fill').style.width = '100%';
+  document.getElementById('timer-fill').classList.remove('danger');
+  document.getElementById('timer-num').textContent = timerMax;
+  timerRAF = requestAnimationFrame(tickTimer);
+}
+function stopTimer() {
+  if (timerRAF) { cancelAnimationFrame(timerRAF); timerRAF=null; }
+}
+function tickTimer(now) {
+  const elapsed = (now - timerStart) / 1000;
+  const remain  = Math.max(0, timerMax - elapsed);
+  const pct     = (remain / timerMax) * 100;
+  const fill    = document.getElementById('timer-fill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('danger', remain < 5);
+  document.getElementById('timer-num').textContent = Math.ceil(remain);
+  if (remain <= 0) { loadWord(); return; }
+  timerRAF = requestAnimationFrame(tickTimer);
+}
+
+// ===== 洞窟の宝石背景を生成 =====
+function buildGemsBg() {
+  const bg = document.getElementById('gems-bg');
+  bg.innerHTML = '';
+  const positions = [
+    [8,15],[18,35],[5,55],[25,70],[12,82],
+    [88,8],[75,22],[92,40],[80,60],[70,75],[85,88],
+    [40,5],[55,12],[45,90],[60,85],
+    [30,45],[65,50],[50,70],
+  ];
+  positions.forEach(([left,top]) => {
+    const g = document.createElement('div');
+    g.className = 'gem-deco';
+    const size = 8 + Math.random()*14;
+    g.style.cssText = `
+      left:${left}%;top:${top}%;
+      width:${size}px;height:${size}px;
+      background:${GEM_COLORS[Math.floor(Math.random()*GEM_COLORS.length)]};
+      --gd:${(1.5+Math.random()*2.5).toFixed(1)}s;
+      --gdelay:${(Math.random()*3).toFixed(1)}s;
+    `;
+    bg.appendChild(g);
+  });
+}
+
+// ===== 画面遷移 =====
+function startMode(m) {
+  mode = m;
+  document.getElementById('home-screen').classList.add('fade-out');
+  document.getElementById(m+'-screen').classList.add('active');
+  buildKeyboard(IDS[m].kb);
+  if (m === 'bassai') {
+    lumber = 0;
+    document.getElementById('lumber-num').textContent = '0';
+    document.getElementById('lumber-pile').innerHTML = '';
+  } else {
+    gems = 0;
+    document.getElementById('gem-num').textContent = '0';
+    document.getElementById('gem-pile').innerHTML = '';
+    buildGemsBg();
+  }
+  wordPool = [];
+  loadWord();
+  document.addEventListener('keydown', handleKeyDown);
+}
+
+function stopMode() {
+  if (!mode) return;
+  stopTimer();
+  document.getElementById(mode+'-screen').classList.remove('active');
+  document.getElementById('home-screen').classList.remove('fade-out');
+  document.removeEventListener('keydown', handleKeyDown);
+  mode = null;
+}
+
+function handleKeyDown(e) {
+  if (e.key.length===1 && /[a-zA-Z]/.test(e.key)) onKey(e.key);
+}
+
+// ===== 初期化 =====
+document.getElementById('btn-bassai').addEventListener('click', ()=>startMode('bassai'));
+document.getElementById('btn-hakkutsu').addEventListener('click', ()=>startMode('hakkutsu'));
+document.getElementById('back-bassai').addEventListener('click', (e)=>{ e.stopPropagation(); stopMode(); });
+document.getElementById('back-hakkutsu').addEventListener('click', (e)=>{ e.stopPropagation(); stopMode(); });
+</script>
+</body>
+</html>
