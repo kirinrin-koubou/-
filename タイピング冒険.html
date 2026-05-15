@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>タイピング冒険</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+      background: #2a5a20;
+    }
+
+    /* ===== ホーム画面 ===== */
+    #home-screen {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      transition: opacity 0.4s;
+    }
+
+    #home-screen.fade-out { opacity: 0; pointer-events: none; }
+
+    .map-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes flow {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-40px); }
+    }
+    @keyframes smoke {
+      0% { transform: translateY(0) scale(1); opacity: 0.6; }
+      100% { transform: translateY(-18px) scale(1.5); opacity: 0; }
+    }
+
+    .tap-hint { animation: pulse 1.8s ease-in-out infinite; }
+    .smoke1 { animation: smoke 2.2s ease-out infinite; }
+    .smoke2 { animation: smoke 2.2s ease-out 0.9s infinite; }
+
+    /* ===== タイピング画面 ===== */
+    #typing-screen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(170deg, #0d1b35 0%, #1a3560 55%, #0d2040 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+    }
+    #typing-screen.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .stop-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255,255,255,0.12);
+      border: 1.5px solid rgba(255,255,255,0.5);
+      color: white;
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s;
+    }
+    .stop-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* 星の背景 */
+    .stars {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle var(--d) ease-in-out infinite var(--delay);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; }
+      50% { opacity: var(--bright); }
+    }
+
+    /* 単語表示エリア */
+    .word-panel {
+      margin-top: clamp(60px, 16vh, 110px);
+      text-align: center;
+      padding: 22px 36px 26px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      min-width: min(300px, 80vw);
+    }
+
+    .furigana-text {
+      font-size: clamp(1rem, 4vw, 1.4rem);
+      color: #90c8f0;
+      letter-spacing: 5px;
+      margin-bottom: 6px;
+      min-height: 1.6em;
+    }
+
+    .kanji-text {
+      font-size: clamp(2.8rem, 12vw, 5rem);
+      color: white;
+      font-weight: 900;
+      line-height: 1.1;
+      transition: color 0.15s;
+      text-shadow: 0 0 20px rgba(100,180,255,0.4);
+    }
+    .kanji-text.wrong { color: #e74c3c; }
+
+    .romaji-text {
+      margin-top: 14px;
+      font-size: clamp(1.3rem, 5vw, 2rem);
+      letter-spacing: 6px;
+      font-weight: 700;
+      min-height: 2em;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1px;
+    }
+    .r-typed   { color: #2ecc71; }
+    .r-current { color: #f1c40f; text-decoration: underline; text-underline-offset: 4px; }
+    .r-remain  { color: rgba(255,255,255,0.35); }
+
+    /* スコア */
+    .score-bar {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+    .score-val {
+      font-size: 1.2rem;
+      color: #f1c40f;
+      font-weight: 700;
+    }
+
+    /* キーボード */
+    .keyboard {
+      position: absolute;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      padding: 0 6px;
+    }
+    .key-row {
+      display: flex;
+      justify-content: center;
+      gap: clamp(2px, 0.8vw, 5px);
+      margin-bottom: clamp(3px, 0.8vw, 5px);
+    }
+    .key {
+      width: clamp(26px, 8.5vw, 44px);
+      height: clamp(30px, 9vw, 46px);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(9px, 2.6vw, 15px);
+      font-weight: 700;
+      background: rgba(160,160,180,0.18);
+      color: rgba(255,255,255,0.4);
+      border: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s, color 0.1s, transform 0.08s;
+      letter-spacing: 0;
+    }
+    .key.hit {
+      background: #f1c40f !important;
+      color: #1a1a00 !important;
+      border-color: #d4a700 !important;
+      box-shadow: 0 0 12px rgba(241,196,15,0.7), 0 2px 0 #a07800;
+      transform: translateY(1px);
+    }
+    .key:active { transform: translateY(2px); }
+  </style>
+</head>
+<body>
+
+<!-- ===== ホーム画面 ===== -->
+<div id="home-screen">
+  <svg class="map-svg" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice"
+       xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#87ceeb"/>
+        <stop offset="70%" stop-color="#b5dfa0"/>
+        <stop offset="100%" stop-color="#6fb85a"/>
+      </linearGradient>
+      <linearGradient id="grassG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#7fc95e"/>
+        <stop offset="100%" stop-color="#4a8a30"/>
+      </linearGradient>
+      <linearGradient id="riverG" x1="0" y1="0" x2="1" y2="0.2">
+        <stop offset="0%" stop-color="#3a7abe"/>
+        <stop offset="40%" stop-color="#55a0e0"/>
+        <stop offset="100%" stop-color="#3a7abe"/>
+      </linearGradient>
+      <linearGradient id="mtnG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#9e8260"/>
+        <stop offset="55%" stop-color="#7a6040"/>
+        <stop offset="100%" stop-color="#4a7a38"/>
+      </linearGradient>
+      <linearGradient id="caveRockG" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#aaa"/>
+        <stop offset="100%" stop-color="#777"/>
+      </linearGradient>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+        <feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity="0.5"/>
+      </filter>
+    </defs>
+
+    <!-- 空 -->
+    <rect width="400" height="700" fill="url(#skyG)"/>
+
+    <!-- 雲 -->
+    <g opacity="0.75" fill="white">
+      <ellipse cx="120" cy="65" rx="38" ry="16"/>
+      <ellipse cx="100" cy="68" rx="22" ry="13"/>
+      <ellipse cx="148" cy="69" rx="20" ry="11"/>
+      <ellipse cx="290" cy="50" rx="30" ry="12"/>
+      <ellipse cx="272" cy="53" rx="18" ry="10"/>
+      <ellipse cx="313" cy="53" rx="16" ry="9"/>
+    </g>
+
+    <!-- ===== 地面ベース ===== -->
+    <rect x="0" y="390" width="400" height="310" fill="#4a8a30"/>
+    <ellipse cx="200" cy="390" rx="230" ry="50" fill="#5a9a3a"/>
+
+    <!-- ===== 草原（中央） ===== -->
+    <ellipse cx="200" cy="370" rx="130" ry="75" fill="#7fd060"/>
+    <ellipse cx="185" cy="395" rx="80" ry="35" fill="#8ae068"/>
+    <!-- 草の点 -->
+    <g fill="#5aaa40" opacity="0.5">
+      <ellipse cx="155" cy="380" rx="18" ry="6"/>
+      <ellipse cx="215" cy="368" rx="14" ry="5"/>
+      <ellipse cx="248" cy="382" rx="16" ry="6"/>
+      <ellipse cx="175" cy="405" rx="12" ry="4"/>
+    </g>
+
+    <!-- ===== 洞窟（左上） ===== -->
+    <!-- 岩山 -->
+    <polygon points="0,0 130,0 150,90 100,200 40,230 0,220" fill="url(#caveRockG)"/>
+    <polygon points="0,0 90,0 110,70 60,160 0,180" fill="#bbb"/>
+    <!-- 岩の影 -->
+    <polygon points="60,40 100,35 120,110 80,150 40,130" fill="#999" opacity="0.5"/>
+    <!-- 洞窟の入り口（楕円） -->
+    <ellipse cx="62" cy="148" rx="38" ry="50" fill="#444"/>
+    <ellipse cx="62" cy="152" rx="30" ry="40" fill="#222"/>
+    <!-- 入り口の岩 -->
+    <ellipse cx="38" cy="120" rx="14" ry="10" fill="#888"/>
+    <ellipse cx="88" cy="116" rx="12" ry="9" fill="#888"/>
+    <polygon points="44,152 62,138 80,152" fill="#555"/>
+    <!-- 暗闇の奥 -->
+    <ellipse cx="62" cy="165" rx="20" ry="18" fill="#111" opacity="0.8"/>
+    <!-- ラベル -->
+    <text x="62" y="215" text-anchor="middle" font-size="13" fill="#bbb"
+          font-family="sans-serif" filter="url(#shadow)">洞窟</text>
+
+    <!-- ===== 山（右上、木がたくさん） ===== -->
+    <!-- 山体 -->
+    <polygon points="230,0 400,0 400,220 200,220" fill="url(#mtnG)"/>
+    <polygon points="268,0 400,0 400,200 230,200" fill="#8a7050"/>
+    <!-- 雪 -->
+    <polygon points="268,0 298,68 238,68" fill="white" opacity="0.92"/>
+    <polygon points="340,0 365,50 316,50" fill="white" opacity="0.88"/>
+    <!-- 木々 -->
+    <g>
+      <!-- 木 helper: trunk + 2 triangle tiers -->
+      <!-- tree at 205,210 -->
+      <rect x="210" y="208" width="7" height="14" fill="#5a3210"/>
+      <polygon points="200,210 213,170 226,210" fill="#247824"/>
+      <polygon points="203,192 213,155 223,192" fill="#2a8a2a"/>
+      <!-- tree 230,208 -->
+      <rect x="234" y="205" width="7" height="15" fill="#5a3210"/>
+      <polygon points="224,207 237,165 250,207" fill="#1e6e1e"/>
+      <polygon points="227,188 237,150 247,188" fill="#259025"/>
+      <!-- tree 258,207 -->
+      <rect x="261" y="204" width="7" height="14" fill="#5a3210"/>
+      <polygon points="252,206 265,162 278,206" fill="#207020"/>
+      <polygon points="255,186 265,148 275,186" fill="#279027"/>
+      <!-- tree 286,205 -->
+      <rect x="289" y="202" width="8" height="14" fill="#5a3210"/>
+      <polygon points="280,204 293,158 306,204" fill="#236e23"/>
+      <polygon points="283,184 293,144 303,184" fill="#268a26"/>
+      <!-- tree 314,204 -->
+      <rect x="317" y="200" width="8" height="15" fill="#5a3210"/>
+      <polygon points="308,202 321,157 334,202" fill="#1e701e"/>
+      <polygon points="311,182 321,143 331,182" fill="#24882a"/>
+      <!-- tree 342,202 -->
+      <rect x="345" y="198" width="8" height="15" fill="#5a3210"/>
+      <polygon points="336,200 349,154 362,200" fill="#226022"/>
+      <polygon points="339,180 349,140 359,180" fill="#288028"/>
+      <!-- tree 368,200 small -->
+      <rect x="372" y="196" width="7" height="14" fill="#5a3210"/>
+      <polygon points="364,198 374,156 385,198" fill="#1e601e"/>
+      <polygon points="367,178 374,142 381,178" fill="#258025"/>
+    </g>
+    <!-- 山ラベル -->
+    <text x="370" y="215" text-anchor="middle" font-size="13" fill="#c8a060"
+          font-family="sans-serif" filter="url(#shadow)">山</text>
+
+    <!-- ===== 畑（左下） ===== -->
+    <rect x="8" y="445" width="118" height="90" rx="6" fill="#8dc050" stroke="#5a8820" stroke-width="2"/>
+    <!-- 畝 -->
+    <line x1="8" y1="465" x2="126" y2="465" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8" y1="480" x2="126" y2="480" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8" y1="495" x2="126" y2="495" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8" y1="510" x2="126" y2="510" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="8" y1="525" x2="126" y2="525" stroke="#4a7818" stroke-width="1.8"/>
+    <!-- 縦の区切り -->
+    <line x1="46" y1="445" x2="46" y2="535" stroke="#4a7818" stroke-width="1.8"/>
+    <line x1="84" y1="445" x2="84" y2="535" stroke="#4a7818" stroke-width="1.8"/>
+    <!-- 作物 -->
+    <g fill="#2d6010" opacity="0.8">
+      <circle cx="24" cy="457" r="3.5"/><circle cx="35" cy="457" r="3.5"/>
+      <circle cx="62" cy="457" r="3.5"/><circle cx="73" cy="457" r="3.5"/>
+      <circle cx="100" cy="457" r="3.5"/><circle cx="111" cy="457" r="3.5"/>
+      <circle cx="24" cy="472" r="3.5"/><circle cx="35" cy="472" r="3.5"/>
+      <circle cx="62" cy="472" r="3.5"/><circle cx="73" cy="472" r="3.5"/>
+    </g>
+    <!-- 畑ラベル -->
+    <text x="67" y="552" text-anchor="middle" font-size="13" fill="#4a7818"
+          font-family="sans-serif" filter="url(#shadow)">畑</text>
+
+    <!-- ===== 小さな家（右下） ===== -->
+    <g transform="translate(278, 430)">
+      <!-- 本体 -->
+      <rect x="0" y="38" width="80" height="62" rx="2" fill="#deb887"/>
+      <rect x="0" y="38" width="80" height="8" fill="#c8a060"/>
+      <!-- 屋根 -->
+      <polygon points="-6,40 40,0 86,40" fill="#8b3520"/>
+      <!-- 屋根の影 -->
+      <polygon points="40,0 86,40 40,40" fill="#6a2818" opacity="0.3"/>
+      <!-- 煙突 -->
+      <rect x="54" y="8" width="12" height="26" fill="#9a4530" rx="1"/>
+      <!-- 煙 -->
+      <circle class="smoke1" cx="60" cy="5" r="6" fill="rgba(210,210,210,0.65)"/>
+      <circle class="smoke2" cx="63" cy="-2" r="5" fill="rgba(210,210,210,0.45)"/>
+      <!-- ドア -->
+      <rect x="28" y="68" width="24" height="32" rx="3" fill="#7a4010"/>
+      <circle cx="49" cy="84" r="2.5" fill="#c8a000"/>
+      <!-- 窓 左 -->
+      <rect x="5" y="48" width="20" height="16" rx="2" fill="#87ceeb" stroke="#8b3520" stroke-width="1.5"/>
+      <line x1="15" y1="48" x2="15" y2="64" stroke="#8b3520" stroke-width="1"/>
+      <line x1="5" y1="56" x2="25" y2="56" stroke="#8b3520" stroke-width="1"/>
+      <!-- 窓 右 -->
+      <rect x="55" y="48" width="20" height="16" rx="2" fill="#87ceeb" stroke="#8b3520" stroke-width="1.5"/>
+      <line x1="65" y1="48" x2="65" y2="64" stroke="#8b3520" stroke-width="1"/>
+      <line x1="55" y1="56" x2="75" y2="56" stroke="#8b3520" stroke-width="1"/>
+    </g>
+    <!-- 家ラベル -->
+    <text x="318" y="512" text-anchor="middle" font-size="13" fill="#8b5020"
+          font-family="sans-serif" filter="url(#shadow)">家</text>
+
+    <!-- ===== 川（手前の下） ===== -->
+    <path d="M0,570 Q60,548 120,562 Q180,576 240,560 Q300,544 360,558 Q385,564 400,558
+             L400,615 Q370,622 320,608 Q260,594 200,610 Q140,626 80,612 Q40,603 0,615 Z"
+          fill="url(#riverG)" opacity="0.88"/>
+    <!-- 波ハイライト -->
+    <path d="M0,577 Q60,562 120,572 Q180,582 240,568 Q300,554 360,566 Q385,571 400,565"
+          fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2.2"/>
+    <path d="M0,593 Q60,578 120,588 Q180,598 240,584 Q300,570 360,582 Q385,587 400,581"
+          fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5"/>
+    <!-- 川底の揺らぎ -->
+    <path d="M20,600 Q50,596 80,601 Q110,606 140,600 Q170,594 200,600"
+          fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+    <!-- 川ラベル -->
+    <text x="200" y="640" text-anchor="middle" font-size="13" fill="#2a6aaa"
+          font-family="sans-serif" filter="url(#shadow)">川</text>
+
+    <!-- ===== タイトル ===== -->
+    <text x="200" y="285" text-anchor="middle" font-size="34" font-weight="900"
+          fill="white" font-family="sans-serif" filter="url(#shadow)"
+          letter-spacing="4">タイピング</text>
+    <text x="200" y="328" text-anchor="middle" font-size="34" font-weight="900"
+          fill="white" font-family="sans-serif" filter="url(#shadow)"
+          letter-spacing="4">冒険</text>
+
+    <!-- タップヒント -->
+    <text class="tap-hint" x="200" y="370" text-anchor="middle" font-size="16"
+          fill="rgba(255,255,255,0.85)" font-family="sans-serif"
+          filter="url(#shadow)">▶ タップしてスタート</text>
+  </svg>
+</div>
+
+<!-- ===== タイピング画面 ===== -->
+<div id="typing-screen">
+  <!-- 星 -->
+  <div class="stars" id="stars"></div>
+
+  <div class="score-bar">スコア: <span class="score-val" id="score-val">0</span></div>
+  <button class="stop-btn" id="stop-btn">■ やめる</button>
+
+  <div class="word-panel">
+    <div class="furigana-text" id="furigana-disp"></div>
+    <div class="kanji-text"   id="kanji-disp"></div>
+    <div class="romaji-text"  id="romaji-disp"></div>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<script>
+// ===== 単語データ =====
+const WORDS = [
+  { kanji:'山',    furigana:'やま',       romaji:'yama'     },
+  { kanji:'川',    furigana:'かわ',       romaji:'kawa'     },
+  { kanji:'空',    furigana:'そら',       romaji:'sora'     },
+  { kanji:'森',    furigana:'もり',       romaji:'mori'     },
+  { kanji:'木',    furigana:'き',         romaji:'ki'       },
+  { kanji:'火',    furigana:'ひ',         romaji:'hi'       },
+  { kanji:'海',    furigana:'うみ',       romaji:'umi'      },
+  { kanji:'花',    furigana:'はな',       romaji:'hana'     },
+  { kanji:'雨',    furigana:'あめ',       romaji:'ame'      },
+  { kanji:'雪',    furigana:'ゆき',       romaji:'yuki'     },
+  { kanji:'風',    furigana:'かぜ',       romaji:'kaze'     },
+  { kanji:'星',    furigana:'ほし',       romaji:'hoshi'    },
+  { kanji:'月',    furigana:'つき',       romaji:'tsuki'    },
+  { kanji:'石',    furigana:'いし',       romaji:'ishi'     },
+  { kanji:'土',    furigana:'つち',       romaji:'tsuchi'   },
+  { kanji:'草',    furigana:'くさ',       romaji:'kusa'     },
+  { kanji:'畑',    furigana:'はたけ',     romaji:'hatake'   },
+  { kanji:'洞窟',  furigana:'どうくつ',   romaji:'doukutsu' },
+  { kanji:'草原',  furigana:'そうげん',   romaji:'sougen'   },
+  { kanji:'太陽',  furigana:'たいよう',   romaji:'taiyou'   },
+  { kanji:'冒険',  furigana:'ぼうけん',   romaji:'bouken'   },
+  { kanji:'村',    furigana:'むら',       romaji:'mura'     },
+  { kanji:'家',    furigana:'いえ',       romaji:'ie'       },
+  { kanji:'道',    furigana:'みち',       romaji:'michi'    },
+  { kanji:'橋',    furigana:'はし',       romaji:'hashi'    },
+];
+
+// ===== キーボード配列 =====
+const KEY_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M'],
+];
+
+let currentWord  = null;
+let typedIndex   = 0;
+let score        = 0;
+let wordPool     = [];
+
+// ===== 星を生成 =====
+function makeStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.8;
+    s.style.cssText = `
+      left:${Math.random()*100}%;top:${Math.random()*70}%;
+      width:${size}px;height:${size}px;
+      --d:${(Math.random()*3+1.5).toFixed(1)}s;
+      --delay:${(Math.random()*4).toFixed(1)}s;
+      --bright:${(Math.random()*0.5+0.3).toFixed(2)};
+    `;
+    container.appendChild(s);
+  }
+}
+
+// ===== キーボード構築 =====
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  KEY_ROWS.forEach(row => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'key-row';
+    row.forEach(k => {
+      const div = document.createElement('div');
+      div.className = 'key';
+      div.id = 'key-' + k;
+      div.textContent = k;
+      div.addEventListener('pointerdown', () => onVirtualKey(k));
+      rowDiv.appendChild(div);
+    });
+    kb.appendChild(rowDiv);
+  });
+}
+
+// ===== キーハイライト更新 =====
+function updateKeyboard() {
+  document.querySelectorAll('.key').forEach(k => k.classList.remove('hit'));
+  if (!currentWord) return;
+  const next = currentWord.romaji[typedIndex];
+  if (next) {
+    const el = document.getElementById('key-' + next.toUpperCase());
+    if (el) el.classList.add('hit');
+  }
+}
+
+// ===== ローマ字表示更新 =====
+function updateRomaji() {
+  const r = currentWord.romaji;
+  const typed   = r.slice(0, typedIndex);
+  const cur     = r[typedIndex] || '';
+  const remain  = r.slice(typedIndex + 1);
+  document.getElementById('romaji-disp').innerHTML =
+    `<span class="r-typed">${typed}</span>` +
+    `<span class="r-current">${cur}</span>` +
+    `<span class="r-remain">${remain}</span>`;
+}
+
+// ===== 次の単語をロード =====
+function loadWord() {
+  if (wordPool.length === 0)
+    wordPool = [...WORDS].sort(() => Math.random() - 0.5);
+  currentWord = wordPool.pop();
+  typedIndex  = 0;
+  document.getElementById('kanji-disp').textContent   = currentWord.kanji;
+  document.getElementById('furigana-disp').textContent = currentWord.furigana;
+  updateRomaji();
+  updateKeyboard();
+}
+
+// ===== キー入力処理 =====
+function processKey(ch) {
+  if (!currentWord) return;
+  const expected = currentWord.romaji[typedIndex];
+  if (!expected) return;
+  if (ch.toLowerCase() === expected.toLowerCase()) {
+    typedIndex++;
+    if (typedIndex >= currentWord.romaji.length) {
+      score++;
+      document.getElementById('score-val').textContent = score;
+      setTimeout(loadWord, 280);
+    } else {
+      updateRomaji();
+      updateKeyboard();
+    }
+  } else {
+    // 不正解フラッシュ
+    const kEl = document.getElementById('kanji-disp');
+    kEl.classList.add('wrong');
+    setTimeout(() => kEl.classList.remove('wrong'), 180);
+  }
+}
+
+function onVirtualKey(k) { processKey(k); }
+
+// ===== PC キーボード =====
+function handleKeyDown(e) {
+  if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) processKey(e.key);
+}
+
+// ===== 画面切り替え =====
+function startGame() {
+  document.getElementById('home-screen').classList.add('fade-out');
+  const ts = document.getElementById('typing-screen');
+  ts.classList.add('active');
+  score = 0;
+  document.getElementById('score-val').textContent = '0';
+  wordPool = [];
+  buildKeyboard();
+  loadWord();
+  document.addEventListener('keydown', handleKeyDown);
+}
+
+function stopGame() {
+  document.getElementById('typing-screen').classList.remove('active');
+  const hs = document.getElementById('home-screen');
+  hs.classList.remove('fade-out');
+  document.removeEventListener('keydown', handleKeyDown);
+  currentWord = null;
+}
+
+// ===== 初期化 =====
+makeStars();
+document.getElementById('home-screen').addEventListener('click', startGame);
+document.getElementById('stop-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  stopGame();
+});
+</script>
+</body>
+</html>
