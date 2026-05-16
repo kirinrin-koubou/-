@@ -69,6 +69,15 @@
   .sec-label { font-size:12px; font-weight:bold; color:#5e3613; text-align:center; margin-bottom:6px; }
   .sec-items { flex:1; display:flex; flex-wrap:wrap; gap:5px; align-content:flex-start; justify-content:center; }
   .ing-chip { background:rgba(255,250,240,.92); border:1px solid #b5651d; border-radius:8px; padding:4px 8px; font-size:14px; box-shadow:0 1px 3px rgba(80,50,10,.35);}
+  .eb-board { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:14px 0;}
+  .eb-card {
+    background:#fff4e0; border:3px solid #e0a96d; border-radius:14px; padding:12px 14px;
+    display:flex; flex-direction:column; align-items:center; gap:4px; min-width:110px;
+  }
+  .eb-card.eb-dessert { border-color:#e0b000; background:#fff8d8; box-shadow:0 0 14px rgba(224,176,0,.6);}
+  .eb-letter {
+    font-size:40px; font-weight:bold; color:#b5651d; font-family:monospace; line-height:1;
+  }
   .pick-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0;}
   .pick-list button { background:#ffd6a5; border:2px solid #d98e3b; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:14px;}
   .pick-list button:disabled { opacity:.4; cursor:not-allowed;}
@@ -94,6 +103,7 @@
 <div id="homeView" class="home">
   <div class="panel">
     <h2>メニュー</h2>
+    <button class="menu-btn" onclick="startMode('easybuy')">⚡ 簡単購入</button>
     <button class="menu-btn" onclick="startMode('buy')">🛒 具材購入</button>
     <button class="menu-btn" onclick="startMode('pack')">🍱 お弁当詰め</button>
     <button class="menu-btn" onclick="startMode('deco')">✨ 期間限定の飾り</button>
@@ -448,8 +458,15 @@ const SPECIAL_ING = [
   {n:"きんぱく",e:"✨",v:400,rank:"特別",special:true,cat:"おかず"},
   {n:"きゃびあ",e:"⚫",v:450,rank:"特別",special:true,cat:"おかず"},
 ];
+const DESSERT_ING = [
+  {n:"いちご",v:150,rank:"デザート",dessert:true,cat:"おかず"},
+  {n:"めろん",v:170,rank:"デザート",dessert:true,cat:"おかず"},
+  {n:"ぶどう",v:140,rank:"デザート",dessert:true,cat:"おかず"},
+  {n:"もも",v:160,rank:"デザート",dessert:true,cat:"おかず"},
+  {n:"みかん",v:130,rank:"デザート",dessert:true,cat:"おかず"},
+];
 const ALL_ING = {};
-[...ING,...SPECIAL_ING].forEach(x=>ALL_ING[x.n]=x);
+[...ING,...SPECIAL_ING,...DESSERT_ING].forEach(x=>ALL_ING[x.n]=x);
 
 /* オリジナルSVGイラスト（自作フリー素材：著作権の心配なし） */
 const ICON={
@@ -472,7 +489,12 @@ const ICON={
  "いくら":'<g fill="#f4753a"><circle cx="9" cy="10" r="2.4"/><circle cx="14" cy="9" r="2.4"/><circle cx="12" cy="13" r="2.4"/><circle cx="16" cy="13" r="2.4"/><circle cx="8" cy="14" r="2.4"/></g><circle cx="9" cy="10" r="1" fill="#c63"/>',
  "うに":'<circle cx="12" cy="12" r="5" fill="#f5b942"/><g stroke="#e09a1f" stroke-width="1.4"><path d="M12 4v4M12 16v4M4 12h4M16 12h4M6 6l3 3M18 6l-3 3M6 18l3-3M18 18l-3-3"/></g>',
  "わぎゅう":'<path d="M5 13q2-5 7-5t7 5-7 5-7-5z" fill="#d65c5c"/><path d="M8 12q2-2 4 0t4 0" stroke="#fff" stroke-width="1.2" fill="none"/><path d="M7 14q3-2 5 0t5 0" stroke="#fff" stroke-width="1" fill="none"/>',
- "きゃびあ":'<g fill="#2b2b35"><circle cx="9" cy="10" r="2.2"/><circle cx="13" cy="9" r="2.2"/><circle cx="15" cy="13" r="2.2"/><circle cx="11" cy="13" r="2.2"/><circle cx="8" cy="14" r="2.2"/></g><circle cx="9" cy="10" r=".8" fill="#6a6a80"/>'
+ "きゃびあ":'<g fill="#2b2b35"><circle cx="9" cy="10" r="2.2"/><circle cx="13" cy="9" r="2.2"/><circle cx="15" cy="13" r="2.2"/><circle cx="11" cy="13" r="2.2"/><circle cx="8" cy="14" r="2.2"/></g><circle cx="9" cy="10" r=".8" fill="#6a6a80"/>',
+ "いちご":'<path d="M12 21q-6-3-6-9 0-3 6-3t6 3q0 6-6 9z" fill="#e2344b"/><path d="M12 9l-3-4h6z" fill="#3d8b3d"/><g fill="#ffe08a"><circle cx="10" cy="13" r=".7"/><circle cx="14" cy="13" r=".7"/><circle cx="12" cy="16" r=".7"/><circle cx="9" cy="16" r=".7"/><circle cx="15" cy="16" r=".7"/></g>',
+ "めろん":'<circle cx="12" cy="13" r="8" fill="#9bcf6a"/><path d="M5 11q7-4 14 0M5 15q7 4 14 0M9 6q-2 7 0 14M15 6q2 7 0 14" stroke="#6fae4a" stroke-width="1" fill="none"/>',
+ "ぶどう":'<g fill="#7d4fb0"><circle cx="12" cy="9" r="2.4"/><circle cx="9" cy="12" r="2.4"/><circle cx="15" cy="12" r="2.4"/><circle cx="12" cy="14" r="2.4"/><circle cx="10" cy="16" r="2.4"/><circle cx="14" cy="16" r="2.4"/></g><path d="M12 6V4h2" stroke="#3d8b3d" stroke-width="1.4" fill="none"/>',
+ "もも":'<path d="M12 21q-7-3-7-9 0-4 7-4t7 4q0 6-7 9z" fill="#f3a6c0"/><path d="M12 8q3-3 5-3" stroke="#3d8b3d" stroke-width="1.6" fill="none"/><path d="M12 9v9" stroke="#e07aa0" stroke-width="1" fill="none"/>',
+ "みかん":'<circle cx="12" cy="13" r="7.5" fill="#f29130"/><circle cx="12" cy="13" r="7.5" fill="none" stroke="#d9731f" stroke-width="1"/><path d="M12 6q-1 1 0 2" stroke="#3d8b3d" stroke-width="1.6"/><path d="M12 13l5 3M12 13l-5 3M12 13v6" stroke="#e07f22" stroke-width=".7"/>'
 };
 function ico(name,size){
   size=size||22;
@@ -600,9 +622,72 @@ function startMode(mode){
   $("bentoBox").classList.add("hidden");
   $("gameControls").innerHTML="";
   $("gameMsg").textContent="";
+  if(mode==="easybuy") initEasyBuy();
   if(mode==="buy") initBuy();
   if(mode==="pack") initPack();
   if(mode==="deco") initDeco();
+}
+
+/* ---- 簡単購入（時間制限なし・5つの標的） ---- */
+const EB_LETTERS="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+function ebMakeTarget(used){
+  let L; do{ L=EB_LETTERS[Math.floor(Math.random()*EB_LETTERS.length)]; }while(used.has(L));
+  used.add(L);
+  const name=ING[Math.floor(Math.random()*ING.length)].n;
+  return {name, letter:L};
+}
+function initEasyBuy(){
+  $("gameTitle").textContent="⚡ 簡単購入";
+  $("gameSub").textContent="時間制限なし";
+  M={mode:"easybuy", got:0, streak:0, dessert:null, targets:[]};
+  const used=new Set();
+  for(let i=0;i<5;i++) M.targets.push(ebMakeTarget(used));
+  $("bentoBox").classList.add("hidden");
+  $("romaDisplay").innerHTML="";
+  renderEasyBuy("中央の大文字を打つと具材を購入できます");
+}
+function renderEasyBuy(msg){
+  $("wordDisplay").textContent = M.dessert ? "🍰 デザートチャンス！" : "標的を打とう";
+  $("statRow").innerHTML=`<span>獲得:<b>${M.got}</b></span><span>連続ノーミス:<b>${M.streak}</b>/10</span>`;
+  if(msg!=null) $("gameMsg").textContent=msg;
+  let html='<div class="eb-board">';
+  if(M.dessert){
+    const d=M.dessert;
+    html+=`<div class="eb-card eb-dessert">${ico(d.name,64)}<div class="eb-letter">${d.letter}</div>
+           <div class="small">${d.name}（デザート）</div></div>`;
+  }else{
+    M.targets.forEach(t=>{
+      html+=`<div class="eb-card">${ico(t.name,52)}<div class="eb-letter">${t.letter}</div>
+             <div class="small">${t.name}</div></div>`;
+    });
+  }
+  html+='</div><button class="back-btn" style="margin-top:10px;" onclick="goHome()">やめる（ホームへ）</button>';
+  $("gameControls").innerHTML=html;
+}
+function easyBuyKey(up){
+  if(M.dessert){
+    if(up!==M.dessert.letter){ M.streak=0; renderEasyBuy("ミス！デザートの文字を打とう"); return; }
+    const dn=M.dessert.name;
+    DB.inv[dn]=(DB.inv[dn]||0)+1; M.got++; DB.totalTyped=(DB.totalTyped||0)+1; save();
+    M.dessert=null; M.streak=0;
+    renderEasyBuy(`🍰 デザート「${dn}」をゲット！`);
+    return;
+  }
+  const idx=M.targets.findIndex(t=>t.letter===up);
+  if(idx<0){ M.streak=0; renderEasyBuy("ミス！標的の大文字を打とう（連続ノーミスがリセット）"); return; }
+  const t=M.targets[idx];
+  DB.inv[t.name]=(DB.inv[t.name]||0)+1; M.got++; DB.totalTyped=(DB.totalTyped||0)+1;
+  M.streak++; save();
+  if(M.streak>=10){
+    const d=DESSERT_ING[Math.floor(Math.random()*DESSERT_ING.length)];
+    let L=EB_LETTERS[Math.floor(Math.random()*EB_LETTERS.length)];
+    M.dessert={name:d.n, letter:L};
+    renderEasyBuy(`✨ 10連続ノーミス！デザートチャンス！「${d.n}」の文字を打とう`);
+    return;
+  }
+  const used=new Set(M.targets.map(x=>x.letter)); used.delete(t.letter);
+  M.targets[idx]=ebMakeTarget(used);
+  renderEasyBuy(`${t.name} を購入！（連続${M.streak}）`);
 }
 
 /* ---- 具材購入（制限時間あり） ---- */
@@ -751,6 +836,12 @@ function buildDecoSentence(weak){
    ============================================================ */
 document.addEventListener("keydown",e=>{
   if($("gameView").classList.contains("hidden")) return;
+  if(M && M.mode==="easybuy"){
+    if(e.key.length!==1 || !/[a-zA-Z]/.test(e.key)) return;
+    e.preventDefault();
+    easyBuyKey(e.key.toUpperCase());
+    return;
+  }
   if(!M || !M.s || M.s.done) return;
   if(e.key.length!==1) return;
   const ch=e.key.toLowerCase();
