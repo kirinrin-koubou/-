@@ -109,7 +109,8 @@
       ・<b>期間限定の飾り</b>：苦手文字入りに挑戦して特別具材<br>
       ・<b>弁当一覧</b>：直近14個＋最高傑作1個を表示
     </p>
-    <div class="best-box" id="homeWeak"></div>
+    <div class="best-box" id="homeCap"></div>
+    <div class="best-box" id="homeWeak" style="margin-top:8px;"></div>
   </div>
   <div class="panel">
     <h2>所持具材</h2>
@@ -418,29 +419,29 @@ function scheduleRefresh(){
    データ（具材・単語）
    ============================================================ */
 const ING = [
-  // 通常具材：購入＆詰め対象
-  {n:"ごはん",e:"🍚",v:10,rank:"普通"},
-  {n:"うめぼし",e:"🔴",v:15,rank:"普通"},
-  {n:"たまごやき",e:"🟨",v:25,rank:"良"},
-  {n:"からあげ",e:"🍗",v:30,rank:"良"},
-  {n:"えびふらい",e:"🍤",v:40,rank:"良"},
-  {n:"しゃけ",e:"🐟",v:28,rank:"良"},
-  {n:"ぎょうざ",e:"🥟",v:32,rank:"良"},
-  {n:"ぶろっこりー",e:"🥦",v:22,rank:"普通"},
-  {n:"みにとまと",e:"🍅",v:18,rank:"普通"},
-  {n:"ういんなー",e:"🌭",v:24,rank:"普通"},
-  {n:"ちくわ",e:"🍢",v:16,rank:"普通"},
-  {n:"ぽてとさらだ",e:"🥗",v:26,rank:"良"},
-  {n:"きんぴら",e:"🥕",v:20,rank:"普通"},
-  {n:"しゅうまい",e:"🥟",v:30,rank:"良"},
-  {n:"ひじき",e:"⚫",v:14,rank:"普通"},
+  // 通常具材：購入＆詰め対象（cat=主食/おかず/野菜）
+  {n:"ごはん",e:"🍚",v:10,rank:"普通",cat:"主食"},
+  {n:"うめぼし",e:"🔴",v:15,rank:"普通",cat:"主食"},
+  {n:"たまごやき",e:"🟨",v:25,rank:"良",cat:"おかず"},
+  {n:"からあげ",e:"🍗",v:30,rank:"良",cat:"おかず"},
+  {n:"えびふらい",e:"🍤",v:40,rank:"良",cat:"おかず"},
+  {n:"しゃけ",e:"🐟",v:28,rank:"良",cat:"おかず"},
+  {n:"ぎょうざ",e:"🥟",v:32,rank:"良",cat:"おかず"},
+  {n:"ぶろっこりー",e:"🥦",v:22,rank:"普通",cat:"野菜"},
+  {n:"みにとまと",e:"🍅",v:18,rank:"普通",cat:"野菜"},
+  {n:"ういんなー",e:"🌭",v:24,rank:"普通",cat:"おかず"},
+  {n:"ちくわ",e:"🍢",v:16,rank:"普通",cat:"おかず"},
+  {n:"ぽてとさらだ",e:"🥗",v:26,rank:"良",cat:"野菜"},
+  {n:"きんぴら",e:"🥕",v:20,rank:"普通",cat:"野菜"},
+  {n:"しゅうまい",e:"🥟",v:30,rank:"良",cat:"おかず"},
+  {n:"ひじき",e:"⚫",v:14,rank:"普通",cat:"野菜"},
 ];
 const SPECIAL_ING = [
-  {n:"きんぱく",e:"✨",v:120,rank:"特別",special:true},
-  {n:"いくら",e:"🟠",v:90,rank:"特別",special:true},
-  {n:"うに",e:"🟡",v:100,rank:"特別",special:true},
-  {n:"わぎゅう",e:"🥩",v:110,rank:"特別",special:true},
-  {n:"きゃびあ",e:"⚫",v:130,rank:"特別",special:true},
+  {n:"きんぱく",e:"✨",v:120,rank:"特別",special:true,cat:"おかず"},
+  {n:"いくら",e:"🟠",v:90,rank:"特別",special:true,cat:"おかず"},
+  {n:"うに",e:"🟡",v:100,rank:"特別",special:true,cat:"おかず"},
+  {n:"わぎゅう",e:"🥩",v:110,rank:"特別",special:true,cat:"おかず"},
+  {n:"きゃびあ",e:"⚫",v:130,rank:"特別",special:true,cat:"おかず"},
 ];
 const ALL_ING = {};
 [...ING,...SPECIAL_ING].forEach(x=>ALL_ING[x.n]=x);
@@ -493,7 +494,22 @@ function load(){
   return { inv:{}, bentos:[], stats:{}, bestEver:null, settings:{diff:"normal"} };
 }
 if(!DB.settings) DB.settings={diff:"normal"};
+if(DB.totalTyped==null) DB.totalTyped=0;
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(DB)); }
+/* お弁当の容量：タイピングするほど増える。
+   主食:おかず:野菜 = 2.5 : 5 : 2.5 の割合で入る */
+function bentoCap(){
+  const total = 4 + Math.floor((DB.totalTyped||0)/40); // 打つほど総容量UP
+  return {
+    total,
+    主食: Math.max(1, Math.round(total*0.25)),
+    おかず: Math.max(1, Math.round(total*0.50)),
+    野菜: Math.max(1, Math.round(total*0.25))
+  };
+}
+function catCount(placed, cat){
+  return placed.filter(k=>(ALL_ING[k]||{}).cat===cat).length;
+}
 function diffCfg(){
   const d=(DB.settings&&DB.settings.diff)||"normal";
   if(d==="easy") return {key:"easy", label:"やさしい", buyMult:1.7, dropLimit:5};
@@ -535,6 +551,11 @@ function renderHome(){
   $("homeBest").innerHTML = b
     ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>ico(x,24)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
     : "まだありません";
+  const cap=bentoCap();
+  const capEl=$("homeCap");
+  if(capEl) capEl.innerHTML=
+    `お弁当容量：<b>${cap.total}</b>（累計 ${DB.totalTyped||0} 打）<br>`+
+    `<span class="small">主食 ${cap.主食} ・ おかず ${cap.おかず} ・ 野菜 ${cap.野菜}（割合 2.5 : 5 : 2.5）<br>たくさん打つほど大きくなります</span>`;
   const w=weakChars();
   $("homeWeak").innerHTML = w.length
     ? "苦手な文字（ミス率70%以上）：<br>"+w.slice(0,12).map(x=>`<span class="weak-tag">${x.c} ${x.rate}%</span>`).join("")
@@ -621,20 +642,31 @@ function initPack(){
 }
 function packPick(){
   const avail=Object.keys(M.pool).filter(k=>M.pool[k]>0);
-  $("gameSub").textContent=`詰めた具材:${M.placed.length}　落とした:${M.dropped}`;
+  const cap=bentoCap();
+  const used={主食:catCount(M.placed,"主食"),おかず:catCount(M.placed,"おかず"),野菜:catCount(M.placed,"野菜")};
+  $("gameSub").textContent=`詰めた:${M.placed.length}　落とした:${M.dropped}　お弁当容量:${cap.total}`;
   renderBentoBox();
-  if(!avail.length){ finishBento("全具材を使い切った！"); return; }
   $("wordDisplay").textContent="詰める具材を選ぼう";
   $("romaDisplay").innerHTML="";
-  $("statRow").innerHTML="";
+  $("statRow").innerHTML=
+    `<span>主食 <b>${used.主食}/${cap.主食}</b></span>`+
+    `<span>おかず <b>${used.おかず}/${cap.おかず}</b></span>`+
+    `<span>野菜 <b>${used.野菜}/${cap.野菜}</b></span>`;
+  if(!avail.length){ finishBento("全具材を使い切った！"); return; }
   let html='<div class="pick-list">';
   avail.forEach(k=>{
-    html+=`<button onclick="packStart('${k}')">${ico(k,20)} ${k} ×${M.pool[k]}</button>`;
+    const c=(ALL_ING[k]||{}).cat||"おかず";
+    const full = used[c] >= cap[c];
+    html+= full
+      ? `<button disabled>${ico(k,20)} ${k} <span class="small">[${c}満杯]</span></button>`
+      : `<button onclick="packStart('${k}')">${ico(k,20)} ${k} <span class="small">[${c}]</span> ×${M.pool[k]}</button>`;
   });
   html+='</div><button class="primary-btn" onclick="finishBento(\'決定！\')">✅ 決定（お弁当を保存）</button>';
   $("gameControls").innerHTML=html;
 }
 function packStart(k){
+  const c=(ALL_ING[k]||{}).cat||"おかず", cap=bentoCap();
+  if(catCount(M.placed,c) >= cap[c]){ $("gameMsg").textContent=`${c}はこれ以上入りません`; return; }
   M.cur=k; M.s=makeSession(k); M.curMiss=0; M.dropLimit=diffCfg().dropLimit;
   $("wordDisplay").innerHTML=`${ico(k,30)} ${k}`;
   $("romaDisplay").innerHTML=renderRoma(M.s);
@@ -651,6 +683,8 @@ function renderBentoBox(){
 }
 function finishBento(reason){
   if(!M.placed.length){ $("gameMsg").textContent="空のお弁当は保存できません。具材を詰めよう"; return; }
+  const miss=["主食","おかず","野菜"].filter(c=>catCount(M.placed,c)===0);
+  if(miss.length){ $("gameMsg").textContent=`${miss.join("・")}が入っていません。お弁当には主食・おかず・野菜を入れよう`; return; }
   let score=M.placed.reduce((s,k)=>s+((ALL_ING[k]||{v:5}).v),0);
   if(M.placed.length>=8) score=Math.round(score*1.2); // 品数ボーナス
   const bento={items:[...M.placed], score, date:new Date().toLocaleString("ja-JP")};
@@ -768,6 +802,7 @@ function recordSessionStats(s){
     DB.stats[t.disp].a += Math.max(1,Math.round(s.hits/perToken));
     DB.stats[t.disp].m += Math.round(s.miss/perToken);
   });
+  DB.totalTyped = (DB.totalTyped||0) + (s.hits||0); // 打つほどお弁当容量UP
   save();
 }
 
