@@ -232,16 +232,26 @@ for (let y=0;y<SIZE;y++){
     if (dist > edgeR[ai]) map[idx(x,y)] = T_OCEAN;
   }
 }
-// 海から内側7マスは砂浜で確定
+// 海岸：内側7マスは砂浜確定。さらに外側へフェザーして砂利との境目を自然に。
+// 川(水)は砂浜で塞がず残す＝砂浜にも河口ができる。
 const om = map.slice();
 for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
-    if (om[idx(x,y)]===T_OCEAN) continue;
-    let coast=false;
-    for (let j=-7;j<=7 && !coast;j++) for (let i=-7;i<=7;i++){
-      if (i*i+j*j<=49 && inb(x+i,y+j) && om[idx(x+i,y+j)]===T_OCEAN){ coast=true; break; }
+    const here = om[idx(x,y)];
+    if (here===T_OCEAN || here===T_WATER) continue;   // 河口の川は残す
+    let best = 99;
+    for (let j=-12;j<=12;j++) for (let i=-12;i<=12;i++){
+      const d2=i*i+j*j;
+      if (d2>144) continue;
+      if (inb(x+i,y+j) && om[idx(x+i,y+j)]===T_OCEAN){
+        const d=Math.sqrt(d2); if (d<best) best=d;
+      }
     }
-    if (coast) map[idx(x,y)] = T_SAND;
+    if (best<=7) map[idx(x,y)] = T_SAND;                       // 確定の砂浜
+    else if (best<=12 && rnd() < (12-best)/5 + 0.1)            // 自然な遷移帯
+      map[idx(x,y)] = T_SAND;
+    else if (here===T_GRAVEL && best<=14 && rnd()<0.5)         // 境目の砂利を間引き
+      map[idx(x,y)] = T_SAND;
   }
 }
 
