@@ -33,6 +33,7 @@
   .t3 { background: #356fa8; }                                   /* 水 */
   .t4 { background: #d9c879; }                                   /* 砂浜 */
   .t5 { background: #8f8f93; box-shadow: inset 0 0 0 1px rgba(0,0,0,.30); } /* タイル */
+  .t6 { background: radial-gradient(circle at 30% 30%,#b3a98f 0 2px,#8d8472 3px,#9a9182 60%); } /* 砂利 */
   #mini { position: absolute; right: 12px; bottom: 12px; border: 2px solid #5b6ee1; border-radius: 6px; background: #0c0e15; image-rendering: pixelated; }
   #legend {
     position: absolute; left: 12px; bottom: 12px;
@@ -54,6 +55,7 @@
       <span><i style="background:#4f7d3a"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
       <span><i style="background:#9c7a44"></i>畑</span><span><i style="background:#356fa8"></i>水</span>
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8f8f93"></i>タイル(村跡)</span>
+      <span><i style="background:#9a9182"></i>砂利</span>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -69,7 +71,7 @@ grid.style.width = MAP_PX + 'px';
 grid.style.height = MAP_PX + 'px';
 
 // ---- 地形生成 -----------------------------------------------------------
-const T_GRASS=0, T_DIRT=1, T_FIELD=2, T_WATER=3, T_SAND=4, T_TILE=5;
+const T_GRASS=0, T_DIRT=1, T_FIELD=2, T_WATER=3, T_SAND=4, T_TILE=5, T_GRAVEL=6;
 const map = new Uint8Array(SIZE * SIZE);          // 既定=草(0)
 const idx = (x,y) => y * SIZE + x;
 const inb = (x,y) => x>=0 && y>=0 && x<SIZE && y<SIZE;
@@ -141,34 +143,36 @@ for (let y=-6;y<vh+10;y++){
 const lakeCenters = [[40,150],[160,55],[55,45]];
 for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*4|0), T_WATER, ()=>true);
 
-// 5) 川を3本、別々の縁へ流して河口を3つ作る
+// 5) 川：中心の右上の合流点から3本に分かれ、指定の3河口へ
 function carveDisk(cx,cy,r){
   for (let y=-r;y<=r;y++) for (let x=-r;x<=r;x++)
     if (x*x+y*y<=r*r && inb(cx+x,cy+y)) map[idx(cx+x,cy+y)] = T_WATER;
 }
-function river(sx,sy,edge){
-  let x=sx, y=sy, steps=0;
-  while (inb(x,y) && steps<SIZE*2){
-    let dx=0, dy=0;
-    if (edge==='E') dx=1; else if (edge==='W') dx=-1;
-    else if (edge==='S') dy=1; else dy=-1;
-    if (rnd()<0.45){ if (dx!==0) y += rnd()<0.5?1:-1; else x += rnd()<0.5?1:-1; }
-    x+=dx; y+=dy;
-    if (!inb(x,y)) break;
-    let dEdge;
-    if (edge==='E') dEdge=SIZE-1-x; else if (edge==='W') dEdge=x;
-    else if (edge==='S') dEdge=SIZE-1-y; else dEdge=y;
-    const r = dEdge<18 ? (1 + Math.round((18-dEdge)/5)) : 1;  // 河口に向かい拡幅
+const CONFLUENCE = [120, 82];                 // 中心(100,100)の右上側
+const MOUTHS = [
+  [SIZE-1, 100],   // 右真ん中（東の縁）
+  [0, 152],        // 左下（西の縁の下寄り）
+  [88, 0]          // 上・真ん中より左寄り（北の縁）
+];
+function river(C, M, phase){
+  const dist = Math.hypot(M[0]-C[0], M[1]-C[1]);
+  const steps = Math.ceil(dist*1.5);
+  const nx = -(M[1]-C[1])/dist, ny = (M[0]-C[0])/dist;   // 進行方向の垂直単位ベクトル
+  for (let i=0;i<=steps;i++){
+    const t = i/steps;
+    const bx = C[0] + (M[0]-C[0])*t;
+    const by = C[1] + (M[1]-C[1])*t;
+    const mead = Math.sin(t*Math.PI*3 + phase) * 6 * Math.sin(t*Math.PI); // 蛇行
+    const x = Math.round(bx + nx*mead);
+    const y = Math.round(by + ny*mead);
+    const r = 1 + Math.round(t*t*4);          // 合流点は細く、河口に向かい拡幅
     carveDisk(x,y,r);
-    if (dEdge<=0) break;                                      // 河口に到達
-    steps++;
   }
 }
-river(112, 92, 'N');   // 村の泉から北の縁へ
-river(124,112, 'E');   // 東の縁へ
-river( 96,124, 'S');   // 南の縁へ
+MOUTHS.forEach((m,i)=> river(CONFLUENCE, m, i*2.1));
+carveDisk(CONFLUENCE[0], CONFLUENCE[1], 2);   // 合流点
 
-// 6) 水際を砂浜に（湖・川・河口の岸）
+// 6) 水際を砂浜と砂利に（湖・川・河口の岸）
 const snap = map.slice();
 for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
@@ -177,12 +181,14 @@ for (let y=0;y<SIZE;y++){
     for (let j=-1;j<=1 && !near;j++) for (let i=-1;i<=1;i++){
       if (inb(x+i,y+j) && snap[idx(x+i,y+j)]===T_WATER){ near=true; break; }
     }
-    if (near && rnd()<0.85) map[idx(x,y)] = T_SAND;
+    if (near){ const r=rnd(); if (r<0.55) map[idx(x,y)]=T_SAND; else if (r<0.85) map[idx(x,y)]=T_GRAVEL; }
   }
 }
+// 7) 乾いた砂利の堆積をあちこちに（新ブロック）
+for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
-const PAL = {0:[79,125,58],1:[138,106,69],2:[156,122,68],3:[53,111,168],4:[217,200,121],5:[143,143,147]};
+const PAL = {0:[79,125,58],1:[138,106,69],2:[156,122,68],3:[53,111,168],4:[217,200,121],5:[143,143,147],6:[154,145,130]};
 const mapImg = document.createElement('canvas');
 mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
