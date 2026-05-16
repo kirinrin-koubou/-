@@ -53,10 +53,22 @@
   .bento-card { background:#fff4e0; border:2px solid #e0a96d; border-radius:10px; padding:8px; font-size:13px;}
   .bento-card.best { border-color:#e0b000; box-shadow:0 0 10px rgba(224,176,0,.6); background:#fff8d8;}
   .bento-box-visual {
-    background:#d98e3b; border:6px solid #8a5a1d; border-radius:10px; padding:10px;
-    display:flex; flex-wrap:wrap; gap:6px; min-height:90px; margin:10px 0; justify-content:center; align-items:center;
+    border-radius:14px; padding:22px 18px; min-height:140px; margin:10px 0;
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+    background-color:#7a4a1d;
+    background-image:url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" preserveAspectRatio="none">\
+<rect x="4" y="4" width="392" height="192" rx="18" fill="%238a5a1d"/>\
+<rect x="14" y="14" width="372" height="172" rx="12" fill="%23a9712f"/>\
+<rect x="22" y="22" width="356" height="156" rx="9" fill="%23c98a3e"/>\
+<rect x="30" y="30" width="150" height="140" rx="7" fill="%23e8c98a"/>\
+<rect x="190" y="30" width="180" height="64" rx="7" fill="%23dcb56b"/>\
+<rect x="190" y="104" width="180" height="66" rx="7" fill="%23dcb56b"/>\
+<rect x="14" y="14" width="372" height="172" rx="12" fill="none" stroke="%236b3f17" stroke-width="3"/>\
+</svg>');
+    background-size:100% 100%; background-repeat:no-repeat;
   }
-  .ing-chip { background:#fffaf0; border:1px solid #d98e3b; border-radius:8px; padding:4px 8px; font-size:14px;}
+  .ing-chip { background:rgba(255,250,240,.92); border:1px solid #b5651d; border-radius:8px; padding:4px 8px; font-size:14px; box-shadow:0 1px 3px rgba(80,50,10,.35);}
   .pick-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0;}
   .pick-list button { background:#ffd6a5; border:2px solid #d98e3b; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:14px;}
   .pick-list button:disabled { opacity:.4; cursor:not-allowed;}
@@ -433,6 +445,35 @@ const SPECIAL_ING = [
 const ALL_ING = {};
 [...ING,...SPECIAL_ING].forEach(x=>ALL_ING[x.n]=x);
 
+/* オリジナルSVGイラスト（自作フリー素材：著作権の心配なし） */
+const ICON={
+ "ごはん":'<ellipse cx="12" cy="15" rx="9" ry="6" fill="#fff"/><ellipse cx="12" cy="13" rx="8.5" ry="5" fill="#fffefb"/><circle cx="9" cy="13" r="1" fill="#eee"/><circle cx="14" cy="14" r="1" fill="#eee"/><circle cx="12" cy="11" r="1" fill="#eee"/>',
+ "うめぼし":'<ellipse cx="12" cy="14" rx="9" ry="6" fill="#fff"/><circle cx="12" cy="13" r="4.5" fill="#d63b3b"/><circle cx="12" cy="13" r="2" fill="#a82020"/>',
+ "たまごやき":'<rect x="4" y="8" width="16" height="9" rx="2" fill="#f7c948"/><path d="M8 8v9M12 8v9M16 8v9" stroke="#e0a82e" stroke-width="1.2"/><path d="M5 8q3-3 6 0t6 0" fill="#fbe08a"/>',
+ "からあげ":'<path d="M6 14q-1-6 6-6t6 6q1 5-6 5t-6-5z" fill="#c8852f"/><circle cx="10" cy="12" r="1.3" fill="#a86a1f"/><circle cx="14" cy="14" r="1.3" fill="#a86a1f"/>',
+ "えびふらい":'<path d="M5 16q2-9 11-9l4 2-3 2q-6 1-7 7z" fill="#e08a3c"/><path d="M6 15q2-7 10-7" stroke="#b5651d" stroke-width="1" fill="none"/><circle cx="17" cy="8" r="1" fill="#b5651d"/>',
+ "しゃけ":'<path d="M4 12q4-5 11-5t5 5-5 5T4 12z" fill="#f08a5d"/><path d="M7 12h11M7 9.5h10M7 14.5h10" stroke="#fff" stroke-width="1.1"/>',
+ "ぎょうざ":'<path d="M4 15q2-7 8-7t8 7q-8 4-16 0z" fill="#ecd9a0"/><path d="M4 15q2-3 4 0t4-3 4 3 4 0" stroke="#c9a45b" stroke-width="1.2" fill="none"/>',
+ "ぶろっこりー":'<circle cx="9" cy="9" r="3.5" fill="#3d8b3d"/><circle cx="14" cy="8" r="3.5" fill="#357a35"/><circle cx="12" cy="12" r="3.5" fill="#3d8b3d"/><rect x="11" y="13" width="2.4" height="7" rx="1" fill="#7cb342"/>',
+ "みにとまと":'<circle cx="12" cy="14" r="6" fill="#e23b3b"/><circle cx="10" cy="12" r="1.6" fill="#ff7a6b"/><path d="M12 8l-2-2m2 2l2-2m-2 2v1" stroke="#3d8b3d" stroke-width="1.4"/>',
+ "ういんなー":'<rect x="4" y="9" width="16" height="7" rx="3.5" fill="#d9533b"/><rect x="6" y="10.5" width="12" height="2" rx="1" fill="#ef7a63"/>',
+ "ちくわ":'<ellipse cx="12" cy="13" rx="8" ry="6" fill="#f0e2c0"/><ellipse cx="12" cy="13" rx="3" ry="2.4" fill="#cdb98a"/><path d="M5 11q7-3 14 0" stroke="#caa85e" stroke-width="1" fill="none"/>',
+ "ぽてとさらだ":'<path d="M5 15a7 5 0 0 0 14 0z" fill="#e9d8a6"/><ellipse cx="12" cy="13" rx="7" ry="3.5" fill="#f3e8c2"/><circle cx="10" cy="13" r="1.1" fill="#e2703a"/><circle cx="14" cy="12.5" r="1.1" fill="#5fa84a"/>',
+ "きんぴら":'<path d="M5 16l9-9M8 17l9-9M11 18l8-8" stroke="#d98e3b" stroke-width="2.4" stroke-linecap="round"/><path d="M6 15l8-8" stroke="#b5651d" stroke-width="1" stroke-linecap="round"/>',
+ "しゅうまい":'<path d="M6 16q0-7 6-7t6 7z" fill="#f2e3a8"/><rect x="7" y="14" width="10" height="5" rx="1.5" fill="#e9d27a"/><circle cx="12" cy="11" r="1.6" fill="#6fae4a"/>',
+ "ひじき":'<path d="M6 18q1-9 3-12M10 18q0-9 2-13M14 18q1-8 2-12M17 18q0-7 1-10" stroke="#2b2b2b" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+ "きんぱく":'<rect x="5" y="6" width="14" height="13" rx="1" fill="#f4d03f"/><path d="M5 9l14 3M5 13l14 3M9 6l-2 13M15 6l2 13" stroke="#c9a227" stroke-width=".8"/><circle cx="9" cy="9" r="1" fill="#fff8d0"/>',
+ "いくら":'<g fill="#f4753a"><circle cx="9" cy="10" r="2.4"/><circle cx="14" cy="9" r="2.4"/><circle cx="12" cy="13" r="2.4"/><circle cx="16" cy="13" r="2.4"/><circle cx="8" cy="14" r="2.4"/></g><circle cx="9" cy="10" r="1" fill="#c63"/>',
+ "うに":'<circle cx="12" cy="12" r="5" fill="#f5b942"/><g stroke="#e09a1f" stroke-width="1.4"><path d="M12 4v4M12 16v4M4 12h4M16 12h4M6 6l3 3M18 6l-3 3M6 18l3-3M18 18l-3-3"/></g>',
+ "わぎゅう":'<path d="M5 13q2-5 7-5t7 5-7 5-7-5z" fill="#d65c5c"/><path d="M8 12q2-2 4 0t4 0" stroke="#fff" stroke-width="1.2" fill="none"/><path d="M7 14q3-2 5 0t5 0" stroke="#fff" stroke-width="1" fill="none"/>',
+ "きゃびあ":'<g fill="#2b2b35"><circle cx="9" cy="10" r="2.2"/><circle cx="13" cy="9" r="2.2"/><circle cx="15" cy="13" r="2.2"/><circle cx="11" cy="13" r="2.2"/><circle cx="8" cy="14" r="2.2"/></g><circle cx="9" cy="10" r=".8" fill="#6a6a80"/>'
+};
+function ico(name,size){
+  size=size||22;
+  const body=ICON[name]||'<circle cx="12" cy="12" r="8" fill="#cdb98a"/><text x="12" y="16" font-size="9" text-anchor="middle" fill="#fff">?</text>';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex:none">${body}</svg>`;
+}
+
 // 購入用の単語・文章（濁音半濁音小書き入り）
 const BUY_WORDS = [
  "ごはん","うめぼし","たまごやき","からあげ","えびふらい","しゃけ","ぎょうざ",
@@ -487,12 +528,12 @@ function renderHome(){
   const keys=Object.keys(DB.inv).filter(k=>DB.inv[k]>0);
   if(!keys.length) inv.innerHTML="<li>まだありません</li>";
   keys.forEach(k=>{
-    const ing=ALL_ING[k]||{e:"❓",rank:""};
-    inv.innerHTML+=`<li><span>${ing.e} ${k} <span class="small">(${ing.rank})</span></span><b>×${DB.inv[k]}</b></li>`;
+    const ing=ALL_ING[k]||{rank:""};
+    inv.innerHTML+=`<li><span>${ico(k,20)} ${k} <span class="small">(${ing.rank})</span></span><b>×${DB.inv[k]}</b></li>`;
   });
   const b=DB.bestEver;
   $("homeBest").innerHTML = b
-    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
+    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>ico(x,24)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
     : "まだありません";
   const w=weakChars();
   $("homeWeak").innerHTML = w.length
@@ -588,16 +629,14 @@ function packPick(){
   $("statRow").innerHTML="";
   let html='<div class="pick-list">';
   avail.forEach(k=>{
-    const ing=ALL_ING[k]||{e:"❓"};
-    html+=`<button onclick="packStart('${k}')">${ing.e} ${k} ×${M.pool[k]}</button>`;
+    html+=`<button onclick="packStart('${k}')">${ico(k,20)} ${k} ×${M.pool[k]}</button>`;
   });
   html+='</div><button class="primary-btn" onclick="finishBento(\'決定！\')">✅ 決定（お弁当を保存）</button>';
   $("gameControls").innerHTML=html;
 }
 function packStart(k){
   M.cur=k; M.s=makeSession(k); M.curMiss=0; M.dropLimit=diffCfg().dropLimit;
-  const ing=ALL_ING[k]||{e:"❓"};
-  $("wordDisplay").textContent=`${ing.e} ${k}`;
+  $("wordDisplay").innerHTML=`${ico(k,30)} ${k}`;
   $("romaDisplay").innerHTML=renderRoma(M.s);
   $("gameMsg").textContent=`正確に打って詰めよう（ミス${M.dropLimit}回で落下）`;
   $("statRow").innerHTML=`<span>落下まで残り <b id='dropLeft'>${M.dropLimit}</b> ミス</span>`;
@@ -607,8 +646,7 @@ function renderBentoBox(){
   const box=$("bentoBox");
   if(!M.placed.length){ box.innerHTML="<span class='small' style='color:#fff'>まだ空っぽ</span>"; return; }
   box.innerHTML=M.placed.map(k=>{
-    const ing=ALL_ING[k]||{e:"❓"};
-    return `<span class="ing-chip">${ing.e} ${k}</span>`;
+    return `<span class="ing-chip">${ico(k,18)} ${k}</span>`;
   }).join("");
 }
 function finishBento(reason){
@@ -640,7 +678,7 @@ function initDeco(){
   M.reward=SPECIAL_ING[Math.floor(Math.random()*SPECIAL_ING.length)];
   $("wordDisplay").textContent=sentence;
   $("romaDisplay").innerHTML=renderRoma(M.s);
-  $("statRow").innerHTML=`<span>報酬: <b>${M.reward.e} ${M.reward.n}</b></span><span class="small">${target?("苦手「"+target+"」入り"):"分析中につき通常文"}</span>`;
+  $("statRow").innerHTML=`<span>報酬: ${ico(M.reward.n,20)} <b>${M.reward.n}</b></span><span class="small">${target?("苦手「"+target+"」入り"):"分析中につき通常文"}</span>`;
   $("gameMsg").textContent="ミスしてもOK。最後まで打ち切れば特別具材ゲット";
   $("gameControls").innerHTML="";
 }
@@ -704,8 +742,7 @@ document.addEventListener("keydown",e=>{
       // 単語に対応する具材があれば付与、なければランダム通常具材
       let gain = ALL_ING[M.word] ? M.word : ING[Math.floor(Math.random()*ING.length)].n;
       DB.inv[gain]=(DB.inv[gain]||0)+1; M.got++; save();
-      const ing=ALL_ING[gain];
-      $("gameMsg").innerHTML=`🎁 ${ing.e} <b>${gain}</b> をゲット！`;
+      $("gameMsg").innerHTML=`🎁 ${ico(gain,22)} <b>${gain}</b> をゲット！`;
       setTimeout(nextBuyWord,800);
     }
     return;
@@ -717,7 +754,7 @@ document.addEventListener("keydown",e=>{
       DB.inv[M.reward.n]=(DB.inv[M.reward.n]||0)+1; save();
       stopTimer();
       $("wordDisplay").textContent="✨ 飾りつけ成功！";
-      $("gameMsg").innerHTML=`特別具材 ${M.reward.e} <b>${M.reward.n}</b> をゲット！`;
+      $("gameMsg").innerHTML=`特別具材 ${ico(M.reward.n,22)} <b>${M.reward.n}</b> をゲット！`;
       $("gameControls").innerHTML=`<button class="primary-btn" onclick="goHome()">ホームへ</button>`;
     }
     return;
@@ -742,13 +779,13 @@ function renderList(){
   let html="";
   if(best){
     html+=`<div class="bento-card best"><b>👑 最高傑作</b><br>豪華さ ${best.score}点<br>
-      <div style="font-size:20px;margin:6px 0;">${best.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;">${best.items.map(x=>ico(x,24)).join("")}</div>
       <span class="small">${best.items.join("・")}<br>${best.date||""}</span></div>`;
   }
   if(!recent.length && !best){ grid.innerHTML="<p>まだお弁当がありません。「お弁当詰め」で作ろう！</p>"; return; }
   recent.forEach(b=>{
     html+=`<div class="bento-card"><b>豪華さ ${b.score}点</b><br>
-      <div style="font-size:20px;margin:6px 0;">${b.items.map(x=>(ALL_ING[x]||{e:"❓"}).e).join(" ")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;">${b.items.map(x=>ico(x,24)).join("")}</div>
       <span class="small">${b.items.join("・")}<br>${b.date||""}</span></div>`;
   });
   grid.innerHTML=html;
