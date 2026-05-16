@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>200×200 グリッド探検ゲーム</title>
+<title>200×200 古代村跡 探検マップ</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
@@ -19,185 +19,249 @@
     display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
     font-size: 14px; font-weight: bold;
   }
-  header .pill {
-    background: rgba(255,255,255,.18);
-    padding: 5px 11px; border-radius: 999px;
-  }
+  header .pill { background: rgba(255,255,255,.18); padding: 5px 11px; border-radius: 999px; }
   header .hint { margin-left: auto; font-weight: normal; opacity: .9; font-size: 13px; }
-  #stage {
-    flex: 1; position: relative; overflow: hidden;
-    background: #0f1118;
+  #stage { flex: 1; position: relative; overflow: hidden; background: #0f1118; }
+  #grid { position: absolute; top: 0; left: 0; will-change: transform; }
+  .cell {
+    position: absolute; width: 24px; height: 24px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
   }
-  #grid {
-    position: absolute; top: 0; left: 0;
-    will-change: transform;
-    background:
-      repeating-linear-gradient(0deg,  #232838 0 1px, transparent 1px 24px),
-      repeating-linear-gradient(90deg, #232838 0 1px, transparent 1px 24px),
-      #161a26;
+  .t0 { background: #4f7d3a; }                                   /* 草 */
+  .t1 { background: #8a6a45; }                                   /* 土 */
+  .t2 { background: repeating-linear-gradient(0deg,#9c7a44 0 4px,#82632f 4px 8px); } /* 畑 */
+  .t3 { background: #356fa8; }                                   /* 水 */
+  .t4 { background: #d9c879; }                                   /* 砂浜 */
+  .t5 { background: #8f8f93; box-shadow: inset 0 0 0 1px rgba(0,0,0,.30); } /* タイル */
+  #mini { position: absolute; right: 12px; bottom: 12px; border: 2px solid #5b6ee1; border-radius: 6px; background: #0c0e15; image-rendering: pixelated; }
+  #legend {
+    position: absolute; left: 12px; bottom: 12px;
+    background: rgba(0,0,0,.55); padding: 8px 10px; border-radius: 6px;
+    font-size: 12px; display: grid; grid-template-columns: auto auto; gap: 3px 12px;
   }
-  .cell { position: absolute; width: 24px; height: 24px; }
-  .gem {
-    background: radial-gradient(circle at 35% 30%, #8ff, #2bb 70%);
-    border-radius: 50%;
-    box-shadow: 0 0 8px #4dd;
-  }
-  .wall { background: #3a4060; box-shadow: inset 0 0 0 1px #525a82; }
-  #mini {
-    position: absolute; right: 12px; bottom: 12px;
-    border: 2px solid #5b6ee1; border-radius: 6px;
-    background: #0c0e15; image-rendering: pixelated;
-  }
+  #legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 </style>
 </head>
 <body>
 <div id="wrap">
   <header>
     <span class="pill">📍 中心マス: <span id="pos">100, 100</span></span>
-    <span class="hint">矢印キー / WASD で画面をスクロール（200×200マス）</span>
+    <span class="hint">矢印キー / WASD で画面を滑らかにスクロール（200×200マス）</span>
   </header>
   <div id="stage">
     <div id="grid"></div>
+    <div id="legend">
+      <span><i style="background:#4f7d3a"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
+      <span><i style="background:#9c7a44"></i>畑</span><span><i style="background:#356fa8"></i>水</span>
+      <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8f8f93"></i>タイル(村跡)</span>
+    </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
 </div>
 <script>
-const SIZE = 200;          // 200 x 200 マス
-const CELL = 24;           // 1マスの描画ピクセル
-const MAP_PX = SIZE * CELL;
-const stage  = document.getElementById('stage');
-const grid   = document.getElementById('grid');
-const mini   = document.getElementById('mini');
-const mctx   = mini.getContext('2d');
-const posEl  = document.getElementById('pos');
-
-grid.style.width  = MAP_PX + 'px';
+const SIZE = 200, CELL = 24, MAP_PX = SIZE * CELL;
+const stage = document.getElementById('stage');
+const grid  = document.getElementById('grid');
+const mini  = document.getElementById('mini');
+const mctx  = mini.getContext('2d');
+const posEl = document.getElementById('pos');
+grid.style.width = MAP_PX + 'px';
 grid.style.height = MAP_PX + 'px';
 
-// カメラ中心（マップ上のピクセル座標、float）。初期は中央。
-let camX = 100.5 * CELL;
-let camY = 100.5 * CELL;
-const SPEED = 520;         // スクロール速度 px/秒
+// ---- 地形生成 -----------------------------------------------------------
+const T_GRASS=0, T_DIRT=1, T_FIELD=2, T_WATER=3, T_SAND=4, T_TILE=5;
+const map = new Uint8Array(SIZE * SIZE);          // 既定=草(0)
+const idx = (x,y) => y * SIZE + x;
+const inb = (x,y) => x>=0 && y>=0 && x<SIZE && y<SIZE;
 
-// 壁・ジェムを乱数生成（風景として表示）
-const walls = new Set();
-const gems  = new Set();
-function key(x, y){ return x + ',' + y; }
-let seed = 1234567;
-function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
-for (let i = 0; i < SIZE * SIZE * 0.10; i++) {
-  walls.add(key((rnd() * SIZE) | 0, (rnd() * SIZE) | 0));
-}
-for (let i = 0; i < 120; i++) {
-  const x = (rnd() * SIZE) | 0, y = (rnd() * SIZE) | 0, k = key(x, y);
-  if (!walls.has(k)) gems.add(k);
+let seed = 20260516;
+function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+// ランダムウォークで丸い塊を塗る（湖・土の侵食地に使用）
+function blob(cx, cy, count, type, overOK){
+  const frontier = [[cx,cy]];
+  let placed = 0;
+  while (frontier.length && placed < count) {
+    const i = (rnd()*frontier.length)|0;
+    const [x,y] = frontier.splice(i,1)[0];
+    if (!inb(x,y)) continue;
+    const cur = map[idx(x,y)];
+    if (overOK && !overOK(cur)) continue;
+    if (cur === type) continue;
+    map[idx(x,y)] = type; placed++;
+    frontier.push([x+1,y],[x-1,y],[x,y+1],[x,y-1],
+                   [x+1,y+1],[x-1,y-1],[x+1,y-1],[x-1,y+1]);
+  }
+  return placed;
 }
 
-// 表示セルのプール
+// 1) 自然な土の侵食地をあちこちに
+for (let i=0;i<28;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 18+(rnd()*40|0), T_DIRT, c=>c===T_GRASS);
+
+// 2) 太古の村（中央付近）：石タイルの区画と道、周囲に畑
+const vx0=78, vy0=78, vw=46, vh=44;
+for (let y=0;y<vh;y++){
+  for (let x=0;x<vw;x++){
+    const gx=vx0+x, gy=vy0+y;
+    if (!inb(gx,gy)) continue;
+    const onRoad = (x%9===0) || (y%9===0);
+    if (onRoad){ map[idx(gx,gy)] = T_DIRT; }                 // 風化した道
+    else {
+      const bx=x%9, by=y%9;
+      // 各区画の内側に石床（建物跡）
+      if (bx>=2 && bx<=7 && by>=2 && by<=7) map[idx(gx,gy)] = T_TILE;
+      else map[idx(gx,gy)] = T_GRASS;
+    }
+  }
+}
+// 村の南東に畑（一部は雑草に戻っている）
+for (let y=0;y<22;y++){
+  for (let x=0;x<30;x++){
+    const gx=vx0+vw-2+x, gy=vy0+10+y;
+    if (!inb(gx,gy)) continue;
+    if (rnd()<0.78) map[idx(gx,gy)] = T_FIELD;
+  }
+}
+
+// 3) 自然侵食パス：村跡をまだら状に草・土へ戻す
+for (let y=-6;y<vh+10;y++){
+  for (let x=-6;x<vw+34;x++){
+    const gx=vx0+x, gy=vy0+y;
+    if (!inb(gx,gy)) continue;
+    const t = map[idx(gx,gy)];
+    if (t===T_TILE || t===T_FIELD){
+      const r = rnd();
+      if (r<0.42) map[idx(gx,gy)] = T_GRASS;
+      else if (r<0.52) map[idx(gx,gy)] = T_DIRT;
+    }
+  }
+}
+
+// 4) 湖を3つ（それぞれ水およそ20マス）
+const lakeCenters = [[40,150],[160,55],[55,45]];
+for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*4|0), T_WATER, ()=>true);
+
+// 5) 川を3本、別々の縁へ流して河口を3つ作る
+function carveDisk(cx,cy,r){
+  for (let y=-r;y<=r;y++) for (let x=-r;x<=r;x++)
+    if (x*x+y*y<=r*r && inb(cx+x,cy+y)) map[idx(cx+x,cy+y)] = T_WATER;
+}
+function river(sx,sy,edge){
+  let x=sx, y=sy, steps=0;
+  while (inb(x,y) && steps<SIZE*2){
+    let dx=0, dy=0;
+    if (edge==='E') dx=1; else if (edge==='W') dx=-1;
+    else if (edge==='S') dy=1; else dy=-1;
+    if (rnd()<0.45){ if (dx!==0) y += rnd()<0.5?1:-1; else x += rnd()<0.5?1:-1; }
+    x+=dx; y+=dy;
+    if (!inb(x,y)) break;
+    let dEdge;
+    if (edge==='E') dEdge=SIZE-1-x; else if (edge==='W') dEdge=x;
+    else if (edge==='S') dEdge=SIZE-1-y; else dEdge=y;
+    const r = dEdge<18 ? (1 + Math.round((18-dEdge)/5)) : 1;  // 河口に向かい拡幅
+    carveDisk(x,y,r);
+    if (dEdge<=0) break;                                      // 河口に到達
+    steps++;
+  }
+}
+river(112, 92, 'N');   // 村の泉から北の縁へ
+river(124,112, 'E');   // 東の縁へ
+river( 96,124, 'S');   // 南の縁へ
+
+// 6) 水際を砂浜に（湖・川・河口の岸）
+const snap = map.slice();
+for (let y=0;y<SIZE;y++){
+  for (let x=0;x<SIZE;x++){
+    if (snap[idx(x,y)]===T_WATER) continue;
+    let near=false;
+    for (let j=-1;j<=1 && !near;j++) for (let i=-1;i<=1;i++){
+      if (inb(x+i,y+j) && snap[idx(x+i,y+j)]===T_WATER){ near=true; break; }
+    }
+    if (near && rnd()<0.85) map[idx(x,y)] = T_SAND;
+  }
+}
+
+// ---- ミニマップを一度だけプリレンダ -------------------------------------
+const PAL = {0:[79,125,58],1:[138,106,69],2:[156,122,68],3:[53,111,168],4:[217,200,121],5:[143,143,147]};
+const mapImg = document.createElement('canvas');
+mapImg.width = SIZE; mapImg.height = SIZE;
+const ic = mapImg.getContext('2d');
+const imgd = ic.createImageData(SIZE, SIZE);
+for (let i=0;i<SIZE*SIZE;i++){
+  const c = PAL[map[i]]; const o=i*4;
+  imgd.data[o]=c[0]; imgd.data[o+1]=c[1]; imgd.data[o+2]=c[2]; imgd.data[o+3]=255;
+}
+ic.putImageData(imgd,0,0);
+mctx.imageSmoothingEnabled = false;
+
+// ---- 描画 ---------------------------------------------------------------
+let camX = 100.5*CELL, camY = 100.5*CELL;
+const SPEED = 520;
 const pool = [];
-function makeCell(){
-  const d = document.createElement('div');
-  d.className = 'cell';
-  grid.appendChild(d);
-  return d;
-}
+function makeCell(){ const d=document.createElement('div'); d.className='cell'; grid.appendChild(d); return d; }
 
-let lastOX = null, lastOY = null;
+let lastOX=null, lastOY=null;
 function render(){
-  const vw = stage.clientWidth, vh = stage.clientHeight;
-  let ox = vw / 2 - camX;
-  let oy = vh / 2 - camY;
-  // マップ外が見えないようにクランプ
-  ox = Math.min(0, Math.max(vw - MAP_PX, ox));
-  oy = Math.min(0, Math.max(vh - MAP_PX, oy));
+  const vw=stage.clientWidth, vh=stage.clientHeight;
+  let ox = vw/2 - camX, oy = vh/2 - camY;
+  ox = Math.min(0, Math.max(vw-MAP_PX, ox));
+  oy = Math.min(0, Math.max(vh-MAP_PX, oy));
   grid.style.transform = `translate3d(${ox}px, ${oy}px, 0)`;
 
-  // オフセットが大きく変わった時だけセル再配置（毎フレームは不要）
-  if (lastOX === null || Math.abs(ox - lastOX) >= CELL || Math.abs(oy - lastOY) >= CELL) {
-    lastOX = ox; lastOY = oy;
-    const x0 = Math.max(0, Math.floor(-ox / CELL) - 1);
-    const y0 = Math.max(0, Math.floor(-oy / CELL) - 1);
-    const x1 = Math.min(SIZE - 1, x0 + Math.ceil(vw / CELL) + 2);
-    const y1 = Math.min(SIZE - 1, y0 + Math.ceil(vh / CELL) + 2);
-    let n = 0;
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const k = key(x, y);
-        let cls = null;
-        if (walls.has(k)) cls = 'cell wall';
-        else if (gems.has(k)) cls = 'cell gem';
-        if (!cls) continue;
-        const el = pool[n] || (pool[n] = makeCell());
-        el.className = cls;
-        el.style.left = x * CELL + 'px';
-        el.style.top  = y * CELL + 'px';
-        el.style.display = 'block';
+  if (lastOX===null || Math.abs(ox-lastOX)>=CELL || Math.abs(oy-lastOY)>=CELL){
+    lastOX=ox; lastOY=oy;
+    const x0=Math.max(0, Math.floor(-ox/CELL)-1);
+    const y0=Math.max(0, Math.floor(-oy/CELL)-1);
+    const x1=Math.min(SIZE-1, x0+Math.ceil(vw/CELL)+2);
+    const y1=Math.min(SIZE-1, y0+Math.ceil(vh/CELL)+2);
+    let n=0;
+    for (let y=y0;y<=y1;y++){
+      for (let x=x0;x<=x1;x++){
+        const el = pool[n] || (pool[n]=makeCell());
+        el.className = 'cell t'+map[idx(x,y)];
+        el.style.left = x*CELL+'px';
+        el.style.top  = y*CELL+'px';
+        el.style.display='block';
         n++;
       }
     }
-    for (let i = n; i < pool.length; i++) pool[i].style.display = 'none';
+    for (let i=n;i<pool.length;i++) pool[i].style.display='none';
   }
-
-  posEl.textContent = (camX / CELL | 0) + ', ' + (camY / CELL | 0);
+  posEl.textContent = (camX/CELL|0)+', '+(camY/CELL|0);
   drawMini();
 }
-
 function drawMini(){
-  mctx.fillStyle = '#0c0e15';
-  mctx.fillRect(0, 0, 160, 160);
-  const s = 160 / SIZE;
-  mctx.fillStyle = '#4dd';
-  gems.forEach(k => {
-    const [x, y] = k.split(',').map(Number);
-    mctx.fillRect(x * s, y * s, Math.max(1, s), Math.max(1, s));
-  });
-  mctx.strokeStyle = '#ffce4f';
-  mctx.strokeRect((camX / CELL) * s - 4, (camY / CELL) * s - 4, 8, 8);
+  mctx.clearRect(0,0,160,160);
+  mctx.drawImage(mapImg,0,0,SIZE,SIZE,0,0,160,160);
+  const s=160/SIZE;
+  mctx.strokeStyle='#ffce4f';
+  mctx.strokeRect((camX/CELL)*s-4,(camY/CELL)*s-4,8,8);
 }
 
-// 押下中のキーを追跡し、毎フレーム滑らかにスクロール
-const held = new Set();
-const DIR = {
-  ArrowUp:'u', ArrowDown:'d', ArrowLeft:'l', ArrowRight:'r',
-  w:'u', s:'d', a:'l', d:'r', W:'u', S:'d', A:'l', D:'r'
-};
-window.addEventListener('keydown', e => {
-  const dir = DIR[e.key];
-  if (dir) { e.preventDefault(); held.add(dir); }
-});
-window.addEventListener('keyup', e => {
-  const dir = DIR[e.key];
-  if (dir) held.delete(dir);
-});
-window.addEventListener('blur', () => held.clear());
+const held=new Set();
+const DIR={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',
+  w:'u',s:'d',a:'l',d:'r',W:'u',S:'d',A:'l',D:'r'};
+window.addEventListener('keydown',e=>{ const k=DIR[e.key]; if(k){e.preventDefault();held.add(k);} });
+window.addEventListener('keyup',e=>{ const k=DIR[e.key]; if(k) held.delete(k); });
+window.addEventListener('blur',()=>held.clear());
 
-let last = performance.now();
+let last=performance.now();
 function loop(now){
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
-  let dx = 0, dy = 0;
-  if (held.has('l')) dx -= 1;
-  if (held.has('r')) dx += 1;
-  if (held.has('u')) dy -= 1;
-  if (held.has('d')) dy += 1;
-  if (dx || dy) {
-    if (dx && dy) { const inv = Math.SQRT1_2; dx *= inv; dy *= inv; }
-    camX += dx * SPEED * dt;
-    camY += dy * SPEED * dt;
-    // 画面端でオフセットがクランプされる範囲までしかカメラを動かさない
-    // （そうしないと画面は止まったまま座標数字だけ動いてしまう）
-    const vw = stage.clientWidth, vh = stage.clientHeight;
-    const clamp = (v, view) => MAP_PX <= view
-      ? MAP_PX / 2
-      : Math.max(view / 2, Math.min(MAP_PX - view / 2, v));
-    camX = clamp(camX, vw);
-    camY = clamp(camY, vh);
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  let dx=0,dy=0;
+  if(held.has('l'))dx-=1; if(held.has('r'))dx+=1;
+  if(held.has('u'))dy-=1; if(held.has('d'))dy+=1;
+  if(dx||dy){
+    if(dx&&dy){const inv=Math.SQRT1_2;dx*=inv;dy*=inv;}
+    camX+=dx*SPEED*dt; camY+=dy*SPEED*dt;
+    const vw=stage.clientWidth, vh=stage.clientHeight;
+    const clamp=(v,view)=> MAP_PX<=view ? MAP_PX/2 : Math.max(view/2,Math.min(MAP_PX-view/2,v));
+    camX=clamp(camX,vw); camY=clamp(camY,vh);
   }
   render();
   requestAnimationFrame(loop);
 }
-
-window.addEventListener('resize', render);
+window.addEventListener('resize',render);
 requestAnimationFrame(loop);
 </script>
 </body>
