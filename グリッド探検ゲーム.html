@@ -232,14 +232,14 @@ for (let y=0;y<SIZE;y++){
     if (dist > edgeR[ai]) map[idx(x,y)] = T_OCEAN;
   }
 }
-// 海から内側3マスは砂浜で確定
+// 海から内側7マスは砂浜で確定
 const om = map.slice();
 for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
     if (om[idx(x,y)]===T_OCEAN) continue;
     let coast=false;
-    for (let j=-3;j<=3 && !coast;j++) for (let i=-3;i<=3;i++){
-      if (i*i+j*j<=9 && inb(x+i,y+j) && om[idx(x+i,y+j)]===T_OCEAN){ coast=true; break; }
+    for (let j=-7;j<=7 && !coast;j++) for (let i=-7;i<=7;i++){
+      if (i*i+j*j<=49 && inb(x+i,y+j) && om[idx(x+i,y+j)]===T_OCEAN){ coast=true; break; }
     }
     if (coast) map[idx(x,y)] = T_SAND;
   }
