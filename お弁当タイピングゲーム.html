@@ -53,21 +53,21 @@
   .bento-card { background:#fff4e0; border:2px solid #e0a96d; border-radius:10px; padding:8px; font-size:13px;}
   .bento-card.best { border-color:#e0b000; box-shadow:0 0 10px rgba(224,176,0,.6); background:#fff8d8;}
   .bento-box-visual {
-    border-radius:14px; padding:22px 18px; min-height:140px; margin:10px 0;
-    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
-    background-color:#7a4a1d;
-    background-image:url('data:image/svg+xml;utf8,\
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" preserveAspectRatio="none">\
-<rect x="4" y="4" width="392" height="192" rx="18" fill="%238a5a1d"/>\
-<rect x="14" y="14" width="372" height="172" rx="12" fill="%23a9712f"/>\
-<rect x="22" y="22" width="356" height="156" rx="9" fill="%23c98a3e"/>\
-<rect x="30" y="30" width="150" height="140" rx="7" fill="%23e8c98a"/>\
-<rect x="190" y="30" width="180" height="64" rx="7" fill="%23dcb56b"/>\
-<rect x="190" y="104" width="180" height="66" rx="7" fill="%23dcb56b"/>\
-<rect x="14" y="14" width="372" height="172" rx="12" fill="none" stroke="%236b3f17" stroke-width="3"/>\
-</svg>');
-    background-size:100% 100%; background-repeat:no-repeat;
+    border-radius:16px; padding:14px; min-height:170px; margin:10px 0;
+    background:#7a4a1d; border:7px solid #5e3613; box-shadow:0 4px 10px rgba(60,35,10,.4) inset;
   }
+  .bento-grid-in {
+    display:grid; grid-template-columns:2.5fr 5fr 2.5fr; gap:10px; width:100%; min-height:140px;
+  }
+  .bento-sec {
+    border-radius:9px; padding:8px 6px 10px; display:flex; flex-direction:column;
+    border:2px solid rgba(94,54,19,.55); box-shadow:0 1px 3px rgba(60,35,10,.35) inset;
+  }
+  .sec-shu { background:#e8c98a; }
+  .sec-oka { background:#d9a35c; }
+  .sec-yas { background:#bcd49a; }
+  .sec-label { font-size:12px; font-weight:bold; color:#5e3613; text-align:center; margin-bottom:6px; }
+  .sec-items { flex:1; display:flex; flex-wrap:wrap; gap:5px; align-content:flex-start; justify-content:center; }
   .ing-chip { background:rgba(255,250,240,.92); border:1px solid #b5651d; border-radius:8px; padding:4px 8px; font-size:14px; box-shadow:0 1px 3px rgba(80,50,10,.35);}
   .pick-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0;}
   .pick-list button { background:#ffd6a5; border:2px solid #d98e3b; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:14px;}
@@ -676,10 +676,15 @@ function packStart(k){
 }
 function renderBentoBox(){
   const box=$("bentoBox");
-  if(!M.placed.length){ box.innerHTML="<span class='small' style='color:#fff'>まだ空っぽ</span>"; return; }
-  box.innerHTML=M.placed.map(k=>{
-    return `<span class="ing-chip">${ico(k,18)} ${k}</span>`;
-  }).join("");
+  const cap=bentoCap();
+  const secs=[["主食","sec-shu"],["おかず","sec-oka"],["野菜","sec-yas"]];
+  box.innerHTML='<div class="bento-grid-in">'+secs.map(([cat,cls])=>{
+    const items=M.placed.filter(k=>(ALL_ING[k]||{}).cat===cat);
+    return `<div class="bento-sec ${cls}">`+
+      `<div class="sec-label">${cat} ${items.length}/${cap[cat]}</div>`+
+      `<div class="sec-items">${items.map(k=>ico(k,32)).join("")}</div>`+
+      `</div>`;
+  }).join("")+'</div>';
 }
 function finishBento(reason){
   if(!M.placed.length){ $("gameMsg").textContent="空のお弁当は保存できません。具材を詰めよう"; return; }
