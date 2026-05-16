@@ -639,7 +639,7 @@ function ebMakeTarget(used){
 function initEasyBuy(){
   $("gameTitle").textContent="⚡ 簡単購入";
   $("gameSub").textContent="時間制限なし";
-  M={mode:"easybuy", got:0, streak:0, dessert:null, targets:[]};
+  M={mode:"easybuy", got:0, streak:0, targets:[]};
   const used=new Set();
   for(let i=0;i<5;i++) M.targets.push(ebMakeTarget(used));
   $("bentoBox").classList.add("hidden");
@@ -652,38 +652,34 @@ function renderEasyBuy(msg){
   if(msg!=null) $("gameMsg").textContent=msg;
   let html='<div class="eb-board">';
   M.targets.forEach(t=>{
-    html+=`<div class="eb-card">${ico(t.name,52)}<div class="eb-letter">${t.letter}</div>
+    const cls = t.dessert ? "eb-card eb-dessert" : "eb-card";
+    html+=`<div class="${cls}">${ico(t.name,52)}<div class="eb-letter">${t.letter}</div>
            <div class="small">${t.name}</div></div>`;
   });
-  if(M.dessert){
-    const d=M.dessert;
-    html+=`<div class="eb-card eb-dessert">${ico(d.name,52)}<div class="eb-letter">${d.letter}</div>
-           <div class="small">${d.name}</div></div>`;
-  }
   html+='</div><button class="back-btn" style="margin-top:10px;" onclick="goHome()">やめる（ホームへ）</button>';
   $("gameControls").innerHTML=html;
 }
 function easyBuyKey(up){
-  if(M.dessert && up===M.dessert.letter){
-    const dn=M.dessert.name;
-    DB.inv[dn]=(DB.inv[dn]||0)+1; M.got++; DB.totalTyped=(DB.totalTyped||0)+1; save();
-    M.dessert=null; M.streak=0;
-    renderEasyBuy(`果物「${dn}」をゲット！`);
-    return;
-  }
   const idx=M.targets.findIndex(t=>t.letter===up);
   if(idx<0){ M.streak=0; renderEasyBuy("ミス！連続ノーミスがリセット"); return; }
   const t=M.targets[idx];
+  const used=new Set(M.targets.map(x=>x.letter)); used.delete(t.letter);
+  if(t.dessert){
+    DB.inv[t.name]=(DB.inv[t.name]||0)+1; M.got++; DB.totalTyped=(DB.totalTyped||0)+1;
+    M.streak=0; save();
+    M.targets[idx]=ebMakeTarget(used);
+    renderEasyBuy(`果物「${t.name}」をゲット！`);
+    return;
+  }
   DB.inv[t.name]=(DB.inv[t.name]||0)+1; M.got++; DB.totalTyped=(DB.totalTyped||0)+1;
   M.streak++; save();
-  const used=new Set(M.targets.map(x=>x.letter)); used.delete(t.letter);
-  M.targets[idx]=ebMakeTarget(used);
-  if(M.streak>=10 && !M.dessert){
+  if(M.streak>=10 && !M.targets.some(x=>x.dessert)){
     const d=DESSERT_ING[Math.floor(Math.random()*DESSERT_ING.length)];
-    M.dessert={name:d.n, letter:String(Math.floor(Math.random()*10))};
+    M.targets[idx]={name:d.n, letter:String(Math.floor(Math.random()*10)), dessert:true};
     renderEasyBuy(`${t.name} を購入！　黄色いカードの数字を打つと果物ゲット`);
     return;
   }
+  M.targets[idx]=ebMakeTarget(used);
   renderEasyBuy(`${t.name} を購入！（連続${M.streak}）`);
 }
 
