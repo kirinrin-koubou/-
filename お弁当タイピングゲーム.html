@@ -144,6 +144,11 @@
     <div class="best-box" id="waitInfo"></div>
     <h2 style="margin-top:16px;">🎯 キーごとの正答率</h2>
     <div class="best-box" id="keyAcc" style="max-height:300px;overflow-y:auto;"></div>
+    <h2 style="margin-top:16px;">🎵 BGM</h2>
+    <div class="best-box">
+      <span class="small">ゲーム中にオリジナルのBGMを流します。ミス時には短い音が鳴ります。</span><br>
+      <button class="primary-btn" style="margin-top:8px;" id="bgmBtn" onclick="toggleBGM()"></button>
+    </div>
     <h2 style="margin-top:16px;">🗑 データのリセット</h2>
     <div class="best-box">
       <span class="small">所持具材・お弁当・正答率・難度などすべての記録を消去して最初の状態に戻します（取り消せません）。</span><br>
@@ -530,7 +535,56 @@ function load(){
 }
 if(!DB.settings) DB.settings={diff:"normal"};
 if(DB.totalTyped==null) DB.totalTyped=0;
+if(DB.settings.bgm==null) DB.settings.bgm=true;
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(DB)); }
+
+/* 自前生成のオリジナル音（Web Audio API・著作権の心配なし） */
+const SND={
+  ctx:null, timer:null, step:0,
+  // 明るいオリジナルのループ旋律（ペンタトニック）
+  mel:[523,659,784,659,587,784,880,784,659,523,587,659,523,0,392,0],
+  init(){ if(this.ctx) return; try{ this.ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ this.ctx=null; } },
+  resume(){ if(this.ctx && this.ctx.state==="suspended") this.ctx.resume(); },
+  tone(freq,dur,type,vol){
+    if(!this.ctx||!freq) return;
+    const t=this.ctx.currentTime, o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type||"triangle"; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol||0.12, t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t+dur+0.03);
+  },
+  startBGM(){
+    if(!this.ctx || this.timer || !(DB.settings&&DB.settings.bgm)) return;
+    const beat=240;
+    const tick=()=>{
+      const f=this.mel[this.step%this.mel.length];
+      this.tone(f,0.22,"triangle",0.05);
+      if(this.step%4===0) this.tone(f/2,0.34,"sine",0.05); // 低音
+      this.step++;
+      this.timer=setTimeout(tick,beat);
+    };
+    tick();
+  },
+  stopBGM(){ if(this.timer){ clearTimeout(this.timer); this.timer=null; } },
+  error(){
+    if(!this.ctx) return;
+    this.tone(220,0.10,"square",0.18);
+    setTimeout(()=>this.tone(150,0.12,"square",0.18),90);
+  }
+};
+function audioWake(){
+  SND.init(); SND.resume();
+  if(DB.settings&&DB.settings.bgm) SND.startBGM();
+}
+document.addEventListener("keydown", audioWake, {once:true});
+document.addEventListener("click", audioWake, {once:true});
+function toggleBGM(){
+  DB.settings.bgm = !DB.settings.bgm; save();
+  if(DB.settings.bgm){ SND.init(); SND.resume(); SND.startBGM(); }
+  else SND.stopBGM();
+  if(typeof renderSettings==="function") renderSettings();
+}
 /* お弁当の容量：タイピングするほど増える。
    主食:おかず:野菜 = 2.5 : 5 : 2.5 の割合で入る */
 function bentoCap(){
@@ -661,7 +715,7 @@ function renderEasyBuy(msg){
 }
 function easyBuyKey(up){
   const idx=M.targets.findIndex(t=>t.letter===up);
-  if(idx<0){ M.streak=0; renderEasyBuy("ミス！連続ノーミスがリセット"); return; }
+  if(idx<0){ M.streak=0; SND.error(); renderEasyBuy("ミス！連続ノーミスがリセット"); return; }
   const t=M.targets[idx];
   const used=new Set(M.targets.map(x=>x.letter)); used.delete(t.letter);
   if(t.dessert){
@@ -841,6 +895,7 @@ document.addEventListener("keydown",e=>{
   if(!/[a-z0-9\-,.\/!? ']/.test(ch)) return;
   e.preventDefault();
   const r=feed(M.s,ch);
+  if(!r.ok && r.weakDisp) SND.error();
   $("romaDisplay").innerHTML=renderRoma(M.s);
 
   if(M.mode==="pack"){
@@ -962,6 +1017,8 @@ function renderSettings(){
   $("keyAcc").innerHTML = rows.length
     ? rows.map(r=>`<span class="weak-tag" style="background:${r.acc>=70?'#cdeccd':'#ffc7b0'}">${r.c} ${r.acc}% <span class="small">(${r.a}回)</span></span>`).join("")
     : "<span class='small'>まだデータがありません。タイピングすると正答率が記録されます。</span>";
+  const bb=$("bgmBtn");
+  if(bb) bb.textContent = (DB.settings&&DB.settings.bgm) ? "BGM：オン（タップでオフ）" : "BGM：オフ（タップでオン）";
 }
 
 /* 初期化 */
