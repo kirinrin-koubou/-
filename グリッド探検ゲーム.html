@@ -47,7 +47,7 @@
     background-size: 12px 12px;
     background-position: 0 0, 6px 6px;
   }
-  .t7 { background: #1d2c52; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); } /* 海（島の外） */
+  .t7 { background: #3a55a8; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); } /* 海（川と繋がる色） */
   .t6 {                                                           /* 砂利：薄灰色＋不規則な灰色の丸 */
     background-color: #969696;
     background-image:
@@ -80,7 +80,7 @@
       <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#8c94b8"></i>水</span>
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
       <span><i style="background:#8c8c8c"></i>砂利</span>
-      <span><i style="background:#1d2c52"></i>海</span>
+      <span><i style="background:#3a55a8"></i>海</span>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -256,7 +256,7 @@ for (let y=0;y<SIZE;y++){
 }
 
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
-const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[140,140,140],7:[29,44,82]};
+const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[140,140,140],7:[58,85,168]};
 const mapImg = document.createElement('canvas');
 mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
