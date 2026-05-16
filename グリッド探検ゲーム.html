@@ -33,10 +33,10 @@
   .t3 {                                                          /* 水：砂利の上に半透明の青 */
     background:
       linear-gradient(rgba(38,58,148,.4), rgba(38,58,148,.4)),
-      radial-gradient(circle 3.5px at 18% 28%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 4px   at 80% 66%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 3px   at 33% 74%, #7d7d7d 98%, transparent),
-      #b0b0b0;
+      radial-gradient(circle 5px   at 18% 28%, #636363 98%, transparent),
+      radial-gradient(circle 5.5px at 80% 66%, #636363 98%, transparent),
+      radial-gradient(circle 4px   at 33% 74%, #636363 98%, transparent),
+      #969696;
   }
   .t4 { background: #d9c879; }                                   /* 砂浜 */
   .t5 {                                                           /* タイル：赤茶の市松模様 */
@@ -48,13 +48,13 @@
     background-position: 0 0, 6px 6px;
   }
   .t6 {                                                           /* 砂利：薄灰色＋不規則な灰色の丸 */
-    background-color: #b0b0b0;
+    background-color: #969696;
     background-image:
-      radial-gradient(circle 3.5px at 18% 28%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 3px   at 62% 20%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 4px   at 80% 66%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 3px   at 33% 74%, #7d7d7d 98%, transparent),
-      radial-gradient(circle 2.5px at 52% 48%, #7d7d7d 98%, transparent);
+      radial-gradient(circle 5px   at 18% 28%, #636363 98%, transparent),
+      radial-gradient(circle 4px   at 62% 20%, #636363 98%, transparent),
+      radial-gradient(circle 5.5px at 80% 66%, #636363 98%, transparent),
+      radial-gradient(circle 4px   at 33% 74%, #636363 98%, transparent),
+      radial-gradient(circle 3.5px at 52% 48%, #636363 98%, transparent);
     background-repeat: no-repeat;
   }
   #mini { position: absolute; right: 12px; bottom: 12px; border: 2px solid #5b6ee1; border-radius: 6px; background: #0c0e15; image-rendering: pixelated; }
@@ -78,7 +78,7 @@
       <span><i style="background:#79a85c"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
       <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#8c94b8"></i>水</span>
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
-      <span><i style="background:#a8a8a8"></i>砂利</span>
+      <span><i style="background:#8c8c8c"></i>砂利</span>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -201,17 +201,17 @@ for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
     if (snap[idx(x,y)]===T_WATER) continue;
     let near=0;
-    for (let j=-2;j<=2;j++) for (let i=-2;i<=2;i++){
+    for (let j=-1;j<=1;j++) for (let i=-1;i<=1;i++){
       if (inb(x+i,y+j) && snap[idx(x+i,y+j)]===T_WATER) near++;
     }
-    if (near>0 && rnd() < (near>=4 ? 0.5 : 0.3)) map[idx(x,y)] = T_GRAVEL;
+    if (near>0 && rnd() < (near>=3 ? 0.55 : 0.35)) map[idx(x,y)] = T_GRAVEL;
   }
 }
 // 7) 乾いた砂利の堆積をあちこちに（新ブロック）
 for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
-const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[168,168,168]};
+const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[140,140,140]};
 const mapImg = document.createElement('canvas');
 mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
