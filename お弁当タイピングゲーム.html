@@ -437,11 +437,11 @@ const ING = [
   {n:"ひじき",e:"⚫",v:14,rank:"普通",cat:"野菜"},
 ];
 const SPECIAL_ING = [
-  {n:"きんぱく",e:"✨",v:120,rank:"特別",special:true,cat:"おかず"},
-  {n:"いくら",e:"🟠",v:90,rank:"特別",special:true,cat:"おかず"},
-  {n:"うに",e:"🟡",v:100,rank:"特別",special:true,cat:"おかず"},
-  {n:"わぎゅう",e:"🥩",v:110,rank:"特別",special:true,cat:"おかず"},
-  {n:"きゃびあ",e:"⚫",v:130,rank:"特別",special:true,cat:"おかず"},
+  {n:"いくら",e:"🟠",v:280,rank:"特別",special:true,cat:"おかず"},
+  {n:"うに",e:"🟡",v:320,rank:"特別",special:true,cat:"おかず"},
+  {n:"わぎゅう",e:"🥩",v:360,rank:"特別",special:true,cat:"おかず"},
+  {n:"きんぱく",e:"✨",v:400,rank:"特別",special:true,cat:"おかず"},
+  {n:"きゃびあ",e:"⚫",v:450,rank:"特別",special:true,cat:"おかず"},
 ];
 const ALL_ING = {};
 [...ING,...SPECIAL_ING].forEach(x=>ALL_ING[x.n]=x);
@@ -474,12 +474,12 @@ function ico(name,size){
   const body=ICON[name]||'<circle cx="12" cy="12" r="8" fill="#cdb98a"/><text x="12" y="16" font-size="9" text-anchor="middle" fill="#fff">?</text>';
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex:none">${body}</svg>`;
 }
-// 具材の得点（価値）が高いほどイラストを大きく表示
+// 具材の得点（価値）が高いほどイラストを大きく表示（全体に2〜3倍へ拡大）
 function ingSize(name, base){
   base=base||30;
-  const v=(ALL_ING[name]||{v:10}).v;            // 10〜130 程度
-  const scale=0.8 + Math.min(v,150)/150*1.0;     // 約0.87〜1.67倍
-  return Math.round(base*scale);
+  const v=(ALL_ING[name]||{v:10}).v;
+  const scale=0.8 + Math.min(v,300)/300*1.4;     // 価値で約0.87〜2.2倍
+  return Math.round(base*2.6*scale);             // 従来比およそ2〜3倍
 }
 function icoBy(name, base){ return ico(name, ingSize(name, base)); }
 
