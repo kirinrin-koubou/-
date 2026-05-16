@@ -557,7 +557,7 @@ function renderHome(){
   });
   const b=DB.bestEver;
   $("homeBest").innerHTML = b
-    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>icoBy(x,22)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
+    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>icoBy(x,9)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
     : "まだありません";
   const cap=bentoCap();
   const capEl=$("homeCap");
@@ -827,13 +827,13 @@ function renderList(){
   let html="";
   if(best){
     html+=`<div class="bento-card best"><b>👑 最高傑作</b><br>豪華さ ${best.score}点<br>
-      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${best.items.map(x=>icoBy(x,22)).join("")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:3px;align-items:center;">${best.items.map(x=>icoBy(x,9)).join("")}</div>
       <span class="small">${best.items.join("・")}<br>${best.date||""}</span></div>`;
   }
   if(!recent.length && !best){ grid.innerHTML="<p>まだお弁当がありません。「お弁当詰め」で作ろう！</p>"; return; }
   recent.forEach(b=>{
     html+=`<div class="bento-card"><b>豪華さ ${b.score}点</b><br>
-      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${b.items.map(x=>icoBy(x,22)).join("")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:3px;align-items:center;">${b.items.map(x=>icoBy(x,9)).join("")}</div>
       <span class="small">${b.items.join("・")}<br>${b.date||""}</span></div>`;
   });
   grid.innerHTML=html;
