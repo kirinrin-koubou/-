@@ -27,13 +27,29 @@
     position: absolute; width: 24px; height: 24px;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
   }
-  .t0 { background: #4f7d3a; }                                   /* 草 */
+  .t0 { background: #79a85c; }                                   /* 草（薄め） */
   .t1 { background: #8a6a45; }                                   /* 土 */
-  .t2 { background: repeating-linear-gradient(0deg,#9c7a44 0 4px,#82632f 4px 8px); } /* 畑 */
-  .t3 { background: #356fa8; }                                   /* 水 */
+  .t2 { background: repeating-linear-gradient(0deg,#6b4a26 0 4px,#553a1d 4px 8px); } /* 畑（濃い茶） */
+  .t3 {                                                          /* 水：砂利の上に半透明の青 */
+    background:
+      linear-gradient(rgba(46,99,176,.7), rgba(46,99,176,.7)),
+      radial-gradient(#9a9a9a 1.6px, transparent 2px) 0 0/8px 8px,
+      #cfcfcf;
+  }
   .t4 { background: #d9c879; }                                   /* 砂浜 */
-  .t5 { background: #8f8f93; box-shadow: inset 0 0 0 1px rgba(0,0,0,.30); } /* タイル */
-  .t6 { background: radial-gradient(circle at 30% 30%,#b3a98f 0 2px,#8d8472 3px,#9a9182 60%); } /* 砂利 */
+  .t5 {                                                           /* タイル：赤茶の市松模様 */
+    background-color: #7a3b2e;
+    background-image:
+      linear-gradient(45deg,#9c4a36 25%,transparent 25%,transparent 75%,#9c4a36 75%),
+      linear-gradient(45deg,#9c4a36 25%,transparent 25%,transparent 75%,#9c4a36 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 6px 6px;
+  }
+  .t6 {                                                           /* 砂利：薄灰色＋灰色の丸ぶつぶつ */
+    background-color: #cfcfcf;
+    background-image: radial-gradient(#9a9a9a 1.6px, transparent 2px);
+    background-size: 8px 8px;
+  }
   #mini { position: absolute; right: 12px; bottom: 12px; border: 2px solid #5b6ee1; border-radius: 6px; background: #0c0e15; image-rendering: pixelated; }
   #legend {
     position: absolute; left: 12px; bottom: 12px;
@@ -52,10 +68,10 @@
   <div id="stage">
     <div id="grid"></div>
     <div id="legend">
-      <span><i style="background:#4f7d3a"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
-      <span><i style="background:#9c7a44"></i>畑</span><span><i style="background:#356fa8"></i>水</span>
-      <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8f8f93"></i>タイル(村跡)</span>
-      <span><i style="background:#9a9182"></i>砂利</span>
+      <span><i style="background:#79a85c"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
+      <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#5a7ab0"></i>水</span>
+      <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
+      <span><i style="background:#c8c8c8"></i>砂利</span>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -162,15 +178,15 @@ function river(C, M, phase){
     const t = i/steps;
     const bx = C[0] + (M[0]-C[0])*t;
     const by = C[1] + (M[1]-C[1])*t;
-    const mead = Math.sin(t*Math.PI*3 + phase) * 6 * Math.sin(t*Math.PI); // 蛇行
+    const mead = Math.sin(t*Math.PI*3 + phase) * 4 * Math.sin(t*Math.PI); // 蛇行
     const x = Math.round(bx + nx*mead);
     const y = Math.round(by + ny*mead);
-    const r = 1 + Math.round(t*t*4);          // 合流点は細く、河口に向かい拡幅
+    const r = Math.round(t*t*1.6);            // ごく細い川（河口でわずかに広がる程度）
     carveDisk(x,y,r);
   }
 }
 MOUTHS.forEach((m,i)=> river(CONFLUENCE, m, i*2.1));
-carveDisk(CONFLUENCE[0], CONFLUENCE[1], 2);   // 合流点
+carveDisk(CONFLUENCE[0], CONFLUENCE[1], 1);   // 合流点
 
 // 6) 水際を砂浜と砂利に（湖・川・河口の岸）
 const snap = map.slice();
@@ -188,7 +204,7 @@ for (let y=0;y<SIZE;y++){
 for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
-const PAL = {0:[79,125,58],1:[138,106,69],2:[156,122,68],3:[53,111,168],4:[217,200,121],5:[143,143,147],6:[154,145,130]};
+const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[110,135,180],4:[217,200,121],5:[140,74,54],6:[200,200,200]};
 const mapImg = document.createElement('canvas');
 mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
