@@ -184,8 +184,14 @@ function loop(now){
     if (dx && dy) { const inv = Math.SQRT1_2; dx *= inv; dy *= inv; }
     camX += dx * SPEED * dt;
     camY += dy * SPEED * dt;
-    camX = Math.max(0, Math.min(MAP_PX, camX));
-    camY = Math.max(0, Math.min(MAP_PX, camY));
+    // 画面端でオフセットがクランプされる範囲までしかカメラを動かさない
+    // （そうしないと画面は止まったまま座標数字だけ動いてしまう）
+    const vw = stage.clientWidth, vh = stage.clientHeight;
+    const clamp = (v, view) => MAP_PX <= view
+      ? MAP_PX / 2
+      : Math.max(view / 2, Math.min(MAP_PX - view / 2, v));
+    camX = clamp(camX, vw);
+    camY = clamp(camY, vh);
   }
   render();
   requestAnimationFrame(loop);
