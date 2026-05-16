@@ -474,6 +474,14 @@ function ico(name,size){
   const body=ICON[name]||'<circle cx="12" cy="12" r="8" fill="#cdb98a"/><text x="12" y="16" font-size="9" text-anchor="middle" fill="#fff">?</text>';
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" style="vertical-align:middle;flex:none">${body}</svg>`;
 }
+// 具材の得点（価値）が高いほどイラストを大きく表示
+function ingSize(name, base){
+  base=base||30;
+  const v=(ALL_ING[name]||{v:10}).v;            // 10〜130 程度
+  const scale=0.8 + Math.min(v,150)/150*1.0;     // 約0.87〜1.67倍
+  return Math.round(base*scale);
+}
+function icoBy(name, base){ return ico(name, ingSize(name, base)); }
 
 // 購入用の単語・文章（濁音半濁音小書き入り）
 const BUY_WORDS = [
@@ -549,7 +557,7 @@ function renderHome(){
   });
   const b=DB.bestEver;
   $("homeBest").innerHTML = b
-    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>ico(x,24)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
+    ? `豪華さ <b>${b.score}</b> 点<br>${b.items.map(x=>icoBy(x,22)).join(" ")}<br><span class="small">${b.items.join("・")}</span>`
     : "まだありません";
   const cap=bentoCap();
   const capEl=$("homeCap");
@@ -682,7 +690,7 @@ function renderBentoBox(){
     const items=M.placed.filter(k=>(ALL_ING[k]||{}).cat===cat);
     return `<div class="bento-sec ${cls}">`+
       `<div class="sec-label">${cat} ${items.length}/${cap[cat]}</div>`+
-      `<div class="sec-items">${items.map(k=>ico(k,32)).join("")}</div>`+
+      `<div class="sec-items">${items.map(k=>icoBy(k,30)).join("")}</div>`+
       `</div>`;
   }).join("")+'</div>';
 }
@@ -819,13 +827,13 @@ function renderList(){
   let html="";
   if(best){
     html+=`<div class="bento-card best"><b>👑 最高傑作</b><br>豪華さ ${best.score}点<br>
-      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;">${best.items.map(x=>ico(x,24)).join("")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${best.items.map(x=>icoBy(x,22)).join("")}</div>
       <span class="small">${best.items.join("・")}<br>${best.date||""}</span></div>`;
   }
   if(!recent.length && !best){ grid.innerHTML="<p>まだお弁当がありません。「お弁当詰め」で作ろう！</p>"; return; }
   recent.forEach(b=>{
     html+=`<div class="bento-card"><b>豪華さ ${b.score}点</b><br>
-      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;">${b.items.map(x=>ico(x,24)).join("")}</div>
+      <div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${b.items.map(x=>icoBy(x,22)).join("")}</div>
       <span class="small">${b.items.join("・")}<br>${b.date||""}</span></div>`;
   });
   grid.innerHTML=html;
