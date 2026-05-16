@@ -30,14 +30,8 @@
   .t0 { background: #79a85c; }                                   /* 草（薄め） */
   .t1 { background: #8a6a45; }                                   /* 土 */
   .t2 { background: repeating-linear-gradient(0deg,#6b4a26 0 4px,#553a1d 4px 8px); } /* 畑（濃い茶） */
-  .t3 {                                                          /* 水：砂利の上に半透明の青 */
-    background:
-      linear-gradient(rgba(38,58,148,.4), rgba(38,58,148,.4)),
-      radial-gradient(circle 5px   at 18% 28%, #636363 98%, transparent),
-      radial-gradient(circle 5.5px at 80% 66%, #636363 98%, transparent),
-      radial-gradient(circle 4px   at 33% 74%, #636363 98%, transparent),
-      #969696;
-  }
+  /* 水/海：下地の地形(多くは砂利)はそのまま、半透明の群青を重ねるだけ */
+  .wtr { box-shadow: inset 0 0 0 200px rgba(38,58,148,.4), inset 0 0 0 1px rgba(0,0,0,.12); }
   .t4 { background: #d9c879; }                                   /* 砂浜 */
   .t5 {                                                           /* タイル：赤茶の市松模様 */
     background-color: #7a3b2e;
@@ -46,14 +40,6 @@
       linear-gradient(45deg,#9c4a36 25%,transparent 25%,transparent 75%,#9c4a36 75%);
     background-size: 12px 12px;
     background-position: 0 0, 6px 6px;
-  }
-  .t7 {                                                          /* 海：川と全く同じ色 */
-    background:
-      linear-gradient(rgba(38,58,148,.4), rgba(38,58,148,.4)),
-      radial-gradient(circle 5px   at 18% 28%, #636363 98%, transparent),
-      radial-gradient(circle 5.5px at 80% 66%, #636363 98%, transparent),
-      radial-gradient(circle 4px   at 33% 74%, #636363 98%, transparent),
-      #969696;
   }
   .t6 {                                                           /* 砂利：薄灰色＋不規則な灰色の丸 */
     background-color: #969696;
@@ -84,10 +70,10 @@
     <div id="grid"></div>
     <div id="legend">
       <span><i style="background:#79a85c"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
-      <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#8c94b8"></i>水</span>
+      <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#636b8f"></i>水</span>
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
       <span><i style="background:#8c8c8c"></i>砂利</span>
-      <span><i style="background:#8c94b8"></i>海</span>
+      <span><i style="background:#636b8f"></i>海</span>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -171,6 +157,9 @@ for (let y=-6;y<vh+10;y++){
   }
 }
 
+// 水を置く前の地形を控える（水/海は透過表示でこの下地が透けて見える）
+const sub = map.slice();
+
 // 4) 湖を3つ（それぞれ水およそ20マス）
 const lakeCenters = [[40,150],[160,55],[55,45]];
 for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*4|0), T_WATER, ()=>true);
@@ -203,6 +192,8 @@ function river(C, M, phase){
 }
 MOUTHS.forEach((m,i)=> river(CONFLUENCE, m, i*2.1));
 carveDisk(CONFLUENCE[0], CONFLUENCE[1], 2);   // 合流点
+// 川底・湖底は砂利（透過した水越しに砂利模様が見える）
+for (let i=0;i<SIZE*SIZE;i++) if (map[i]===T_WATER) sub[i]=T_GRAVEL;
 
 // 6) 川や水辺の周りは決まりなし。ただし砂利がやや多めに出るようにする
 const snap = map.slice();
@@ -236,7 +227,7 @@ for (let y=0;y<SIZE;y++){
     const dx=x-cx, dy=y-cy;
     const dist=Math.hypot(dx,dy);
     let ai=((Math.atan2(dy,dx)/(Math.PI*2))*ANG)|0; ai=((ai%ANG)+ANG)%ANG;
-    if (dist > edgeR[ai]) map[idx(x,y)] = T_OCEAN;
+    if (dist > edgeR[ai]){ map[idx(x,y)] = T_OCEAN; sub[idx(x,y)] = T_GRAVEL; }
   }
 }
 // 海岸：内側7マスは砂浜確定。さらに外側へフェザーして砂利との境目を自然に。
@@ -269,7 +260,12 @@ mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
 const imgd = ic.createImageData(SIZE, SIZE);
 for (let i=0;i<SIZE*SIZE;i++){
-  const c = PAL[map[i]]; const o=i*4;
+  const t=map[i]; let c;
+  if (t===T_WATER || t===T_OCEAN){                 // 下地に群青α0.4を合成
+    const b=PAL[sub[i]];
+    c=[Math.round(b[0]*.6+38*.4), Math.round(b[1]*.6+58*.4), Math.round(b[2]*.6+148*.4)];
+  } else c=PAL[t];
+  const o=i*4;
   imgd.data[o]=c[0]; imgd.data[o+1]=c[1]; imgd.data[o+2]=c[2]; imgd.data[o+3]=255;
 }
 ic.putImageData(imgd,0,0);
@@ -299,7 +295,10 @@ function render(){
     for (let y=y0;y<=y1;y++){
       for (let x=x0;x<=x1;x++){
         const el = pool[n] || (pool[n]=makeCell());
-        el.className = 'cell t'+map[idx(x,y)];
+        const t = map[idx(x,y)];
+        el.className = (t===T_WATER || t===T_OCEAN)
+          ? 'cell t'+sub[idx(x,y)]+' wtr'
+          : 'cell t'+t;
         el.style.left = x*CELL+'px';
         el.style.top  = y*CELL+'px';
         el.style.display='block';
