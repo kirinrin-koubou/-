@@ -32,7 +32,7 @@
   .t2 { background: repeating-linear-gradient(0deg,#6b4a26 0 4px,#553a1d 4px 8px); } /* 畑（濃い茶） */
   .t3 {                                                          /* 水：砂利の上に半透明の青 */
     background:
-      linear-gradient(rgba(86,150,210,.42), rgba(86,150,210,.42)),
+      linear-gradient(rgba(38,58,148,.4), rgba(38,58,148,.4)),
       radial-gradient(#9a9a9a 1.6px, transparent 2px) 0 0/8px 8px,
       #cfcfcf;
   }
@@ -69,7 +69,7 @@
     <div id="grid"></div>
     <div id="legend">
       <span><i style="background:#79a85c"></i>草</span><span><i style="background:#8a6a45"></i>土</span>
-      <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#96bcd8"></i>水</span>
+      <span><i style="background:#5d3f20"></i>畑</span><span><i style="background:#8c94b8"></i>水</span>
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
       <span><i style="background:#c8c8c8"></i>砂利</span>
     </div>
@@ -188,23 +188,12 @@ function river(C, M, phase){
 MOUTHS.forEach((m,i)=> river(CONFLUENCE, m, i*2.1));
 carveDisk(CONFLUENCE[0], CONFLUENCE[1], 2);   // 合流点
 
-// 6) 水際を砂浜と砂利に（湖・川・河口の岸）
-const snap = map.slice();
-for (let y=0;y<SIZE;y++){
-  for (let x=0;x<SIZE;x++){
-    if (snap[idx(x,y)]===T_WATER) continue;
-    let near=false;
-    for (let j=-1;j<=1 && !near;j++) for (let i=-1;i<=1;i++){
-      if (inb(x+i,y+j) && snap[idx(x+i,y+j)]===T_WATER){ near=true; break; }
-    }
-    if (near){ const r=rnd(); if (r<0.55) map[idx(x,y)]=T_SAND; else if (r<0.85) map[idx(x,y)]=T_GRAVEL; }
-  }
-}
+// 6) 川や水辺の周りは特に決まりを設けない（岸を強制的に砂浜/砂利にしない）
 // 7) 乾いた砂利の堆積をあちこちに（新ブロック）
 for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
-const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[150,180,210],4:[217,200,121],5:[140,74,54],6:[200,200,200]};
+const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[200,200,200]};
 const mapImg = document.createElement('canvas');
 mapImg.width = SIZE; mapImg.height = SIZE;
 const ic = mapImg.getContext('2d');
