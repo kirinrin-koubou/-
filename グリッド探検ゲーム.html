@@ -188,7 +188,18 @@ function river(C, M, phase){
 MOUTHS.forEach((m,i)=> river(CONFLUENCE, m, i*2.1));
 carveDisk(CONFLUENCE[0], CONFLUENCE[1], 2);   // 合流点
 
-// 6) 川や水辺の周りは特に決まりを設けない（岸を強制的に砂浜/砂利にしない）
+// 6) 川や水辺の周りは決まりなし。ただし砂利がやや多めに出るようにする
+const snap = map.slice();
+for (let y=0;y<SIZE;y++){
+  for (let x=0;x<SIZE;x++){
+    if (snap[idx(x,y)]===T_WATER) continue;
+    let near=0;
+    for (let j=-2;j<=2;j++) for (let i=-2;i<=2;i++){
+      if (inb(x+i,y+j) && snap[idx(x+i,y+j)]===T_WATER) near++;
+    }
+    if (near>0 && rnd() < (near>=4 ? 0.5 : 0.3)) map[idx(x,y)] = T_GRAVEL;
+  }
+}
 // 7) 乾いた砂利の堆積をあちこちに（新ブロック）
 for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
