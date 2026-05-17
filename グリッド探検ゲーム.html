@@ -60,6 +60,16 @@
     font-size: 12px; display: grid; grid-template-columns: auto auto; gap: 3px 12px;
   }
   #legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  #tools {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    background: rgba(0,0,0,.6); padding: 8px 12px; border-radius: 8px;
+    display: flex; gap: 8px; align-items: center; font-size: 12px; z-index: 50;
+  }
+  #tools .sw {
+    width: 26px; height: 26px; border: 2px solid rgba(255,255,255,.35);
+    border-radius: 5px; cursor: pointer; padding: 0;
+  }
+  #tools .sw.sel { border-color: #ffce4f; box-shadow: 0 0 8px #ffce4f; }
 </style>
 </head>
 <body>
@@ -76,6 +86,15 @@
       <span><i style="background:#d9c879"></i>砂浜</span><span><i style="background:#8c4a36"></i>タイル(村跡)</span>
       <span><i style="background:#8c8c8c"></i>砂利</span>
       <span><i style="background:#263e90"></i>海</span>
+    </div>
+    <div id="tools">
+      <span>ブロック設置:</span>
+      <button class="sw t0" data-t="0" title="草"></button>
+      <button class="sw t1" data-t="1" title="土"></button>
+      <button class="sw t6" data-t="6" title="砂利"></button>
+      <button class="sw t4" data-t="4" title="砂浜"></button>
+      <button class="sw t2" data-t="2" title="畑"></button>
+      <button class="sw t5" data-t="5" title="タイル"></button>
     </div>
     <canvas id="mini" width="160" height="160"></canvas>
   </div>
@@ -280,12 +299,13 @@ const SPEED = 520;
 const pool = [];
 function makeCell(){ const d=document.createElement('div'); d.className='cell'; grid.appendChild(d); return d; }
 
-let lastOX=null, lastOY=null;
+let lastOX=null, lastOY=null, curOX=0, curOY=0;
 function render(){
   const vw=stage.clientWidth, vh=stage.clientHeight;
   let ox = vw/2 - camX, oy = vh/2 - camY;
   ox = Math.min(0, Math.max(vw-MAP_PX, ox));
   oy = Math.min(0, Math.max(vh-MAP_PX, oy));
+  curOX=ox; curOY=oy;
   grid.style.transform = `translate3d(${ox}px, ${oy}px, 0)`;
 
   if (lastOX===null || Math.abs(ox-lastOX)>=CELL || Math.abs(oy-lastOY)>=CELL){
@@ -320,6 +340,33 @@ function drawMini(){
   mctx.strokeStyle='#ffce4f';
   mctx.strokeRect((camX/CELL)*s-4,(camY/CELL)*s-4,8,8);
 }
+
+// ---- ブロック設置 ------------------------------------------------------
+let brush=0;
+const swBtns=[...document.querySelectorAll('#tools .sw')];
+function selBrush(b){ brush=b; swBtns.forEach(s=>s.classList.toggle('sel',+s.dataset.t===b)); }
+swBtns.forEach(s=> s.addEventListener('click',()=>selBrush(+s.dataset.t)) );
+selBrush(0);
+
+let painting=false;
+function paintAt(clientX,clientY){
+  const r=stage.getBoundingClientRect();
+  const x=Math.floor((clientX-r.left-curOX)/CELL);
+  const y=Math.floor((clientY-r.top -curOY)/CELL);
+  if(!inb(x,y)) return;
+  if(map[idx(x,y)]===brush) return;
+  map[idx(x,y)]=brush;
+  lastOX=null;                               // セルクラスを再構築させる
+  const c=PAL[brush], o=(y*SIZE+x)*4;        // ミニマップも更新
+  imgd.data[o]=c[0]; imgd.data[o+1]=c[1]; imgd.data[o+2]=c[2]; imgd.data[o+3]=255;
+  ic.putImageData(imgd,0,0);
+}
+stage.addEventListener('mousedown',e=>{ if(e.target.closest('#tools')||e.target.closest('#mini'))return; painting=true; paintAt(e.clientX,e.clientY); });
+stage.addEventListener('mousemove',e=>{ if(painting) paintAt(e.clientX,e.clientY); });
+window.addEventListener('mouseup',()=>painting=false);
+stage.addEventListener('touchstart',e=>{ if(e.target.closest('#tools')||e.target.closest('#mini'))return; painting=true; paintAt(e.touches[0].clientX,e.touches[0].clientY); },{passive:true});
+stage.addEventListener('touchmove',e=>{ if(painting) paintAt(e.touches[0].clientX,e.touches[0].clientY); },{passive:true});
+window.addEventListener('touchend',()=>painting=false);
 
 const held=new Set();
 const DIR={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',
