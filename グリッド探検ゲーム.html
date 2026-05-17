@@ -103,7 +103,7 @@
   </div>
 </div>
 <script>
-const SIZE = 200, CELL = 24, MAP_PX = SIZE * CELL;
+const SIZE = 260, CELL = 24, MAP_PX = SIZE * CELL;  // 全体を拡張（島＋操作できる海を約10周り広く）
 const stage = document.getElementById('stage');
 const grid  = document.getElementById('grid');
 const mini  = document.getElementById('mini');
@@ -143,7 +143,7 @@ function blob(cx, cy, count, type, overOK){
 for (let i=0;i<28;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 18+(rnd()*40|0), T_DIRT, c=>c===T_GRASS);
 
 // 2) 太古の村（中央付近）：石タイルの区画と道、周囲に畑
-const vx0=78, vy0=78, vw=46, vh=44;
+const vx0=108, vy0=108, vw=46, vh=44;
 for (let y=0;y<vh;y++){
   for (let x=0;x<vw;x++){
     const gx=vx0+x, gy=vy0+y;
@@ -185,7 +185,7 @@ for (let y=-6;y<vh+10;y++){
 const sub = map.slice();
 
 // 4) 湖を3つ（それぞれ水およそ20マス）
-const lakeCenters = [[40,150],[160,55],[55,45]];
+const lakeCenters = [[70,180],[190,85],[85,75]];
 for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*4|0), T_WATER, ()=>true);
 
 // 5) 川：中心の右上の合流点から3本に分かれ、指定の3河口へ
@@ -193,11 +193,11 @@ function carveDisk(cx,cy,r){
   for (let y=-r;y<=r;y++) for (let x=-r;x<=r;x++)
     if (x*x+y*y<=r*r && inb(cx+x,cy+y)) map[idx(cx+x,cy+y)] = T_WATER;
 }
-const CONFLUENCE = [120, 82];                 // 中心(100,100)の右上側
+const CONFLUENCE = [150, 112];                // 中心(130,130)の右上側
 const MOUTHS = [
-  [SIZE-1, 100],   // 右真ん中（東の縁）
-  [0, 152],        // 左下（西の縁の下寄り）
-  [88, 0]          // 上・真ん中より左寄り（北の縁）
+  [SIZE-1, 130],   // 右真ん中（東の縁）
+  [0, 182],        // 左下（西の縁の下寄り）
+  [118, 0]         // 上・真ん中より左寄り（北の縁）
 ];
 function river(C, M, phase){
   const dist = Math.hypot(M[0]-C[0], M[1]-C[1]);
@@ -235,16 +235,16 @@ for (let y=0;y<SIZE;y++){
 for (let i=0;i<14;i++) blob((rnd()*SIZE)|0,(rnd()*SIZE)|0, 8+(rnd()*16|0), T_GRAVEL, c=>c===T_GRASS||c===T_DIRT);
 
 // 8) マップ外形を「ギザギザした丸い島」にする（外側は海）。200×200内に収める
-const cx=100, cy=100, ANG=720;
+const cx=130, cy=130, ANG=720;
 const edgeR=new Float32Array(ANG);
 for (let a=0;a<ANG;a++){
   const th=a/ANG*Math.PI*2;
-  let r = 90
-        + 4*Math.sin(th*3+1.1)
-        + 2.5*Math.sin(th*5+2.3)
-        + 1.5*Math.sin(th*8+0.7)
-        + (rnd()-0.5)*4;           // 控えめなギザギザ
-  edgeR[a] = Math.max(60, Math.min(97, r));
+  let r = 104
+        + 5*Math.sin(th*3+1.1)
+        + 3*Math.sin(th*5+2.3)
+        + 2*Math.sin(th*8+0.7)
+        + (rnd()-0.5)*5;           // 控えめなギザギザ
+  edgeR[a] = Math.max(78, Math.min(112, r));
 }
 for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
@@ -305,7 +305,7 @@ ic.putImageData(imgd,0,0);
 mctx.imageSmoothingEnabled = false;
 
 // ---- 描画 ---------------------------------------------------------------
-let camX = 100.5*CELL, camY = 100.5*CELL;
+let camX = 130.5*CELL, camY = 130.5*CELL;
 const SPEED = 520;
 const pool = [];
 function makeCell(){ const d=document.createElement('div'); d.className='cell'; grid.appendChild(d); return d; }
