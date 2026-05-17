@@ -184,9 +184,9 @@ for (let y=-6;y<vh+10;y++){
 // 水を置く前の地形を控える（水/海は透過表示でこの下地が透けて見える）
 const sub = map.slice();
 
-// 4) 湖を3つ（それぞれ水およそ20マス）
+// 4) 湖を3つ（それぞれ水20〜30マスのまとまり）を最初から設置
 const lakeCenters = [[70,180],[190,85],[85,75]];
-for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*4|0), T_WATER, ()=>true);
+for (const [lx,ly] of lakeCenters) blob(lx,ly, 20+(rnd()*11|0), T_WATER, ()=>true);
 
 // 5) 川：中心の右上の合流点から3本に分かれ、指定の3河口へ
 function carveDisk(cx,cy,r){
