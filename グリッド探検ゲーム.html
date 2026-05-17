@@ -306,13 +306,14 @@ for (let y=0;y<SIZE;y++){
     const r = rnd();
     if (t===T_GRASS){
       if (r<0.04) items[idx(x,y)] = I_TREE;
-      else if (r<0.11) items[idx(x,y)] = I_GRASS;
-      else if (r<0.18) items[idx(x,y)] = I_FLOWER;
+      else if (r<0.52) items[idx(x,y)] = I_GRASS;
+      else if (r<0.92) items[idx(x,y)] = I_FLOWER;
     } else if (t===T_DIRT){
       if (r<0.02) items[idx(x,y)] = I_TREE;
-      else if (r<0.05) items[idx(x,y)] = I_GRASS;
+      else if (r<0.42) items[idx(x,y)] = I_GRASS;
+      else if (r<0.66) items[idx(x,y)] = I_FLOWER;
     } else if (t===T_FIELD){
-      if (r<0.04) items[idx(x,y)] = I_FLOWER;
+      if (r<0.55) items[idx(x,y)] = I_FLOWER;
     }
   }
 }
