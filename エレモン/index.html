@@ -183,23 +183,23 @@ var DB=(function(){
   // orn: leaf/flower/mush/thorn/tuft/crest/spark/smoke/drop/fin/cheek/coral/bolt/zig/ball/rock/boulder/crystal
   var LOOK={
     sprig:{col:'#62c24a',col2:'#dff0b0',eye:'round',mouth:'smile',orn:'leaf',shape:'round'},
-    florvine:{col:'#2f9b3e',col2:'#9be07a',eye:'sharp',mouth:'smile',orn:'flower',shape:'tall'},
+    florvine:{col:'#2f9b3e',col2:'#9be07a',eye:'sharp',mouth:'cat',orn:'flower',shape:'tall'},
     mosska:{col:'#7f9a3c',col2:'#cdd98f',eye:'sleepy',mouth:'line',orn:'mush',shape:'wide'},
     thornel:{col:'#3fae7a',col2:'#bdeacb',eye:'sharp',mouth:'fang',orn:'thorn',shape:'round'},
-    embo:{col:'#ff7a3c',col2:'#ffd6a8',eye:'big',mouth:'smile',orn:'tuft',shape:'round'},
+    embo:{col:'#ff7a3c',col2:'#ffd6a8',eye:'big',mouth:'cat',orn:'tuft',shape:'round'},
     pyrogon:{col:'#e23b22',col2:'#ffb070',eye:'sharp',mouth:'fang',orn:'crest',shape:'tall'},
     cindle:{col:'#ff5530',col2:'#ffce8a',eye:'round',mouth:'open',orn:'spark',shape:'round'},
-    ashca:{col:'#c8662e',col2:'#e7b58a',eye:'sleepy',mouth:'frown',orn:'smoke',shape:'wide'},
+    ashca:{col:'#c8662e',col2:'#e7b58a',eye:'sleepy',mouth:'line',orn:'smoke',shape:'wide'},
     aqualet:{col:'#3aa0ff',col2:'#cfeaff',eye:'round',mouth:'smile',orn:'drop',shape:'round'},
     tidalon:{col:'#1f6fd6',col2:'#86c4ff',eye:'sharp',mouth:'fang',orn:'fin',shape:'tall'},
     rivu:{col:'#35c2d8',col2:'#c6f3fa',eye:'big',mouth:'open',orn:'cheek',shape:'round'},
-    coralu:{col:'#2f8fb0',col2:'#bfe6ef',eye:'sleepy',mouth:'line',orn:'coral',shape:'wide'},
-    voltik:{col:'#ffd43b',col2:'#fff3b0',eye:'big',mouth:'open',orn:'bolt',shape:'round'},
-    zaplit:{col:'#ffb02e',col2:'#ffe09a',eye:'sharp',mouth:'fang',orn:'zig',shape:'tall'},
+    coralu:{col:'#2f8fb0',col2:'#bfe6ef',eye:'sleepy',mouth:'cat',orn:'coral',shape:'wide'},
+    voltik:{col:'#ffd43b',col2:'#fff3b0',eye:'big',mouth:'beak',orn:'bolt',shape:'round'},
+    zaplit:{col:'#ffb02e',col2:'#ffe09a',eye:'sharp',mouth:'beak',orn:'zig',shape:'tall'},
     ohmly:{col:'#eadf5a',col2:'#f7f0b6',eye:'round',mouth:'smile',orn:'ball',shape:'wide'},
     glemo:{col:'#b07a3a',col2:'#e0c08a',eye:'sleepy',mouth:'line',orn:'rock',shape:'round'},
-    terran:{col:'#8a5a2a',col2:'#c79a5e',eye:'sharp',mouth:'frown',orn:'boulder',shape:'wide'},
-    gravok:{col:'#c08850',col2:'#e8c79a',eye:'round',mouth:'fang',orn:'crystal',shape:'tall'}
+    terran:{col:'#8a5a2a',col2:'#c79a5e',eye:'sharp',mouth:'fang',orn:'boulder',shape:'wide'},
+    gravok:{col:'#c08850',col2:'#e8c79a',eye:'round',mouth:'cat',orn:'crystal',shape:'tall'}
   };
   return {TYPES,TYPEJP,TYPESYM,TYPECOL,MOVES,SPECIES,ITEMS,AREAS,TRAINERS,LOOK,eff};
 })();
@@ -1671,39 +1671,96 @@ var Game=(function(){
       tri(cx-r*0.1,topY+r*0.05, cx+r*0.02,topY-r*0.45, cx+r*0.12,topY+r*0.05,'#7fb8e6'); }
 
     if(!back){
-      // ===== 目（種族固有） =====
-      var ex=rx*0.4, ey=cy-ry*0.12, es=r*0.24;
-      function eyeWhite(x){ g.fillStyle='#fff'; g.beginPath(); g.arc(x,ey,es,0,7); g.fill(); }
-      function pupil(x,d){ g.fillStyle='#101216'; g.beginPath(); g.arc(x+d,ey+es*0.15,es*0.5,0,7); g.fill();
-        g.fillStyle='#fff'; g.beginPath(); g.arc(x+d-es*0.18,ey-es*0.05,es*0.18,0,7); g.fill(); }
-      if(L.eye==='sleepy'){
-        g.strokeStyle='#101216'; g.lineWidth=Math.max(2,r*0.07);
-        g.beginPath(); g.arc(cx-ex,ey,es,0.15*Math.PI,0.95*Math.PI);
-        g.arc(cx+ex,ey,es,0.05*Math.PI,0.85*Math.PI); g.stroke(); g.lineWidth=1;
-      } else if(L.eye==='sharp'){
-        eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,es*0.2); pupil(cx+ex,-es*0.2);
-        g.fillStyle=L.col; // 怒り眉
-        tri(cx-ex-es,ey-es*0.9, cx-ex+es,ey-es*0.2, cx-ex+es,ey-es,L.col);
-        tri(cx+ex+es,ey-es*0.9, cx+ex-es,ey-es*0.2, cx+ex-es,ey-es,L.col);
-      } else if(L.eye==='big'){
-        es=r*0.3; eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,0); pupil(cx+ex,0);
-      } else if(L.eye==='dot'){
-        g.fillStyle='#101216'; g.beginPath(); g.arc(cx-ex,ey,es*0.45,0,7); g.arc(cx+ex,ey,es*0.45,0,7); g.fill();
-      } else { // round
-        eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,0); pupil(cx+ex,0);
+      // ===== ほっぺ（血色） =====
+      var chy=cy+ry*0.18, chx=rx*0.66;
+      g.save(); g.globalAlpha=0.5; g.fillStyle='#ff93ad';
+      g.beginPath(); g.ellipse(cx-chx,chy,rx*0.22,ry*0.15,0,0,7);
+      g.ellipse(cx+chx,chy,rx*0.22,ry*0.15,0,0,7); g.fill();
+      g.globalAlpha=0.85; g.fillStyle='rgba(255,255,255,.5)';
+      g.beginPath(); g.ellipse(cx-chx-rx*0.05,chy-ry*0.03,rx*0.05,ry*0.04,0,0,7);
+      g.ellipse(cx+chx-rx*0.05,chy-ry*0.03,rx*0.05,ry*0.04,0,0,7); g.fill();
+      g.restore();
+
+      // ===== アニメ目（大きめ・光沢） =====
+      var ex=rx*0.42, ey=cy-ry*0.10, es=r*0.30;
+      if(L.eye==='big') es=r*0.36; if(L.eye==='sharp') es=r*0.27;
+      var iris = L.iris || L.col;
+      function animeEye(x,narrow,angry){
+        g.save();
+        // 目の外枠（白目）
+        g.fillStyle='#fff'; g.beginPath();
+        g.ellipse(x,ey,es*0.92,es*(narrow?0.7:1.06),0,0,7); g.fill();
+        // 虹彩
+        var grd=g.createRadialGradient(x-es*0.2,ey-es*0.25,es*0.1,x,ey,es*0.95);
+        grd.addColorStop(0, iris); grd.addColorStop(0.55, iris);
+        grd.addColorStop(1, '#15324d');
+        g.fillStyle=grd; g.beginPath();
+        g.ellipse(x,ey+es*0.05,es*0.74,es*(narrow?0.6:0.92),0,0,7); g.fill();
+        // 瞳孔
+        g.fillStyle='rgba(10,14,22,.92)'; g.beginPath();
+        g.ellipse(x,ey+es*0.12,es*0.42,es*(narrow?0.42:0.6),0,0,7); g.fill();
+        // 大ハイライト＋小グリント
+        g.fillStyle='rgba(255,255,255,.95)';
+        g.beginPath(); g.ellipse(x-es*0.26,ey-es*0.30,es*0.26,es*0.32,0.4,0,7); g.fill();
+        g.beginPath(); g.arc(x+es*0.24,ey+es*0.22,es*0.13,0,7); g.fill();
+        g.globalAlpha=0.6; g.beginPath(); g.arc(x-es*0.05,ey+es*0.34,es*0.08,0,7); g.fill();
+        g.globalAlpha=1;
+        // 上まぶた（アニメまつ毛）
+        g.strokeStyle='#1a1c24'; g.lineWidth=Math.max(2,es*0.22); g.lineCap='round';
+        g.beginPath();
+        if(angry){ g.moveTo(x-es*0.95, ey-es*(narrow?0.3:0.55)); g.lineTo(x+es*0.95, ey-es*0.95); }
+        else { g.arc(x,ey,es*0.95, Math.PI*1.05, Math.PI*1.95); }
+        g.stroke();
+        // 目尻まつ毛
+        g.beginPath(); g.moveTo(x+es*0.78,ey-es*0.55); g.lineTo(x+es*1.15,ey-es*0.8); g.stroke();
+        g.lineWidth=1; g.restore();
       }
-      // ===== 口（種族固有） =====
-      var my=cy+ry*0.34;
-      g.strokeStyle='#101216'; g.fillStyle='#101216'; g.lineWidth=Math.max(2,r*0.06);
-      if(L.mouth==='smile'){ g.beginPath(); g.arc(cx,my-r*0.05,r*0.26,0.15*Math.PI,0.85*Math.PI); g.stroke(); }
-      else if(L.mouth==='frown'){ g.beginPath(); g.arc(cx,my+r*0.22,r*0.24,1.18*Math.PI,1.82*Math.PI); g.stroke(); }
-      else if(L.mouth==='line'){ g.beginPath(); g.moveTo(cx-r*0.2,my); g.lineTo(cx+r*0.2,my); g.stroke(); }
-      else if(L.mouth==='open'){ g.beginPath(); g.ellipse(cx,my,r*0.18,r*0.16,0,0,7); g.fill();
-        g.fillStyle='#ff8a8a'; g.beginPath(); g.ellipse(cx,my+r*0.05,r*0.1,r*0.08,0,0,7); g.fill(); }
-      else if(L.mouth==='fang'){ g.beginPath(); g.moveTo(cx-r*0.22,my-r*0.04); g.lineTo(cx+r*0.22,my-r*0.04); g.stroke();
-        g.fillStyle='#fff'; tri(cx-r*0.16,my-r*0.04, cx-r*0.06,my-r*0.04, cx-r*0.11,my+r*0.12,'#fff');
-        tri(cx+r*0.16,my-r*0.04, cx+r*0.06,my-r*0.04, cx+r*0.11,my+r*0.12,'#fff'); }
-      g.lineWidth=1;
+      if(L.eye==='sleepy'){
+        g.strokeStyle='#1a1c24'; g.lineWidth=Math.max(2,r*0.085); g.lineCap='round';
+        g.beginPath(); g.arc(cx-ex,ey+es*0.1,es*0.85,Math.PI*0.12,Math.PI*0.88);
+        g.arc(cx+ex,ey+es*0.1,es*0.85,Math.PI*0.12,Math.PI*0.88); g.stroke();
+        // 下に小さな光る瞳
+        g.fillStyle=iris; g.beginPath();
+        g.arc(cx-ex,ey+es*0.34,es*0.2,0,7); g.arc(cx+ex,ey+es*0.34,es*0.2,0,7); g.fill();
+        g.fillStyle='rgba(255,255,255,.9)'; g.beginPath();
+        g.arc(cx-ex-es*0.07,ey+es*0.28,es*0.07,0,7); g.arc(cx+ex-es*0.07,ey+es*0.28,es*0.07,0,7); g.fill();
+        g.lineWidth=1; g.lineCap='butt';
+      } else if(L.eye==='sharp'){
+        animeEye(cx-ex,true,true); animeEye(cx+ex,true,true);
+      } else if(L.eye==='big'){
+        animeEye(cx-ex,false,false); animeEye(cx+ex,false,false);
+      } else {
+        animeEye(cx-ex,false,false); animeEye(cx+ex,false,false);
+      }
+
+      // ===== 口（種族で形を分ける） =====
+      var my=cy+ry*0.40;
+      g.lineCap='round';
+      if(L.mouth==='smile'){
+        g.strokeStyle='#3a2630'; g.lineWidth=Math.max(2,r*0.055);
+        g.beginPath(); g.arc(cx,my-r*0.08,r*0.16,0.2*Math.PI,0.8*Math.PI); g.stroke();
+      } else if(L.mouth==='cat'){ // ω 動物口
+        g.strokeStyle='#3a2630'; g.lineWidth=Math.max(2,r*0.055);
+        g.beginPath();
+        g.arc(cx-r*0.08,my-r*0.02,r*0.1,0.1*Math.PI,0.95*Math.PI);
+        g.arc(cx+r*0.08,my-r*0.02,r*0.1,0.05*Math.PI,0.9*Math.PI); g.stroke();
+      } else if(L.mouth==='beak'){ // くちばし
+        tri(cx-r*0.2,my-r*0.06, cx+r*0.2,my-r*0.06, cx,my+r*0.2,'#ffb13c');
+        g.strokeStyle='#c8801f'; g.lineWidth=Math.max(1.5,r*0.04);
+        g.beginPath(); g.moveTo(cx-r*0.2,my-r*0.06); g.lineTo(cx+r*0.2,my-r*0.06); g.stroke();
+      } else if(L.mouth==='fang'){ // にこ＋小キバ
+        g.strokeStyle='#3a2630'; g.lineWidth=Math.max(2,r*0.05);
+        g.beginPath(); g.arc(cx,my-r*0.06,r*0.16,0.12*Math.PI,0.88*Math.PI); g.stroke();
+        g.fillStyle='#fff'; tri(cx-r*0.13,my+r*0.02, cx-r*0.05,my+r*0.02, cx-r*0.09,my+r*0.13,'#fff');
+      } else if(L.mouth==='open'){ // ぱくっと
+        g.fillStyle='#5a2230'; g.beginPath(); g.ellipse(cx,my,r*0.15,r*0.14,0,0,7); g.fill();
+        g.fillStyle='#ff7f9a'; g.beginPath(); g.ellipse(cx,my+r*0.05,r*0.085,r*0.06,0,0,7); g.fill();
+        g.fillStyle='#fff'; g.fillRect(cx-r*0.13,my-r*0.13,r*0.26,r*0.04);
+      } else { // line：ちょこんと
+        g.strokeStyle='#3a2630'; g.lineWidth=Math.max(2,r*0.05);
+        g.beginPath(); g.moveTo(cx-r*0.08,my); g.lineTo(cx+r*0.08,my); g.stroke();
+      }
+      g.lineWidth=1; g.lineCap='butt';
     } else {
       g.fillStyle='rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(cx,cy+ry*0.2,rx*0.55,ry*0.5,0,0,7); g.fill();
     }
