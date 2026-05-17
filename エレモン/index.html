@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ELEMON ― モンスター育成RPG</title>
+<style>
+  :root{ --c-grass:#4caf50; --c-fire:#ff5a3c; --c-water:#3aa0ff; --c-elec:#ffd43b; --c-earth:#b07a3a; --c-none:#9aa0a8; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;background:#0c0e14;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;background:#000;box-shadow:0 0 40px rgba(0,0,0,.8);image-rendering:pixelated}
+  canvas{display:block;width:100%;height:100%}
+  #pad{position:absolute;left:0;bottom:0;width:100%;display:flex;justify-content:space-between;
+       padding:10px;pointer-events:none;opacity:.85}
+  .pgroup{display:grid;gap:6px;pointer-events:auto}
+  .dpad{grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px)}
+  .btns{grid-template-columns:repeat(2,56px);align-content:end}
+  .vb{background:rgba(20,24,34,.78);border:1px solid #4a5168;border-radius:8px;color:#fff;
+      font-size:15px;height:46px;display:flex;align-items:center;justify-content:center;
+      user-select:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .vb:active{background:#3a64ff}
+  .vb.k{height:46px}
+  #u{grid-area:2/2}#d{grid-area:3/2}#l{grid-area:2/1}#r{grid-area:2/3}.sp{visibility:hidden}
+  #ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      background:#0c0e14;color:#9fb1ff;font-size:18px;z-index:50}
+  #err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+       background:#1a0c0c;color:#ff9a9a;font-size:15px;padding:30px;text-align:center;z-index:60}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv" width="960" height="640"></canvas>
+    <div id="pad">
+      <div class="pgroup dpad">
+        <div class="vb sp"></div><div class="vb" id="u">▲</div><div class="vb sp"></div>
+        <div class="vb" id="l">◀</div><div class="vb sp"></div><div class="vb" id="r">▶</div>
+        <div class="vb sp"></div><div class="vb" id="d">▼</div><div class="vb sp"></div>
+      </div>
+      <div class="pgroup btns">
+        <div class="vb k" id="bM">M</div><div class="vb k" id="bX">X</div>
+        <div class="vb k" id="bZ" style="grid-column:1/3;background:rgba(58,100,255,.55)">Z 決定</div>
+      </div>
+    </div>
+    <div id="ld">ELEMON を起動中…</div>
+    <div id="err"></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ===================================================================
+   ELEMON — 単一ファイル・モンスター育成RPG
+   設計書 §14 に従い IIFE 名前空間で責務分離。外部依存ゼロ。
+   =================================================================== */
+(function(){
+
+/* ---------- 0. 安全な起動・致命エラーフォールバック (§15/§17) ---------- */
+function fatal(msg){
+  var e=document.getElementById('err');
+  e.style.display='flex';
+  e.textContent='起動に失敗しました: '+msg+'\nページを再読み込みしてください。';
+}
+window.addEventListener('error',function(ev){ /* 進行中は握りつぶしログ */ console.warn(ev.message); });
+
+/* ---------- 1. データベース (§6/§13) ---------- */
+var DB=(function(){
+  var TYPES=['grass','fire','water','elec','earth','none'];
+  var TYPEJP={grass:'草',fire:'火',water:'水',elec:'電',earth:'地',none:'無'};
+  var TYPESYM={grass:'◆',fire:'▲',water:'●',elec:'✦',earth:'■',none:'◇'};
+  var TYPECOL={grass:'#4caf50',fire:'#ff5a3c',water:'#3aa0ff',elec:'#ffd43b',earth:'#b07a3a',none:'#9aa0a8'};
+  // 相性表 §6 (atk -> {def:mul})
+  var CHART={
+    grass:{water:2,fire:.5,grass:.5},
+    fire:{grass:2,water:.5,fire:.5},
+    water:{fire:2,grass:.5,water:.5},
+    elec:{water:2,earth:.5},
+    earth:{elec:2,grass:.5},
+    none:{}
+  };
+  function eff(a,d){ var r=CHART[a]; return (r&&r[d]!=null)?r[d]:1; }
+
+  var MOVES={
+    tackle:{name:'たいあたり',type:'none',power:35,acc:100,kind:'atk'},
+    scratch:{name:'ひっかく',type:'none',power:38,acc:100,kind:'atk'},
+    vine:{name:'つるむち',type:'grass',power:45,acc:100,kind:'atk'},
+    absorb:{name:'すいとる',type:'grass',power:35,acc:100,kind:'drain'},
+    leafblade:{name:'リーフブレード',type:'grass',power:70,acc:95,kind:'atk'},
+    ember:{name:'ひのこ',type:'fire',power:42,acc:100,kind:'atk'},
+    flame:{name:'かえんほうしゃ',type:'fire',power:72,acc:95,kind:'atk'},
+    bubble:{name:'あわ',type:'water',power:42,acc:100,kind:'atk'},
+    aqua:{name:'みずでっぽう',type:'water',power:50,acc:100,kind:'atk'},
+    hydro:{name:'ハイドロブラスト',type:'water',power:75,acc:90,kind:'atk'},
+    spark:{name:'でんげき',type:'elec',power:45,acc:100,kind:'atk'},
+    bolt:{name:'サンダーボルト',type:'elec',power:72,acc:95,kind:'atk'},
+    quake:{name:'じしん',type:'earth',power:70,acc:95,kind:'atk'},
+    rock:{name:'いわおとし',type:'earth',power:48,acc:95,kind:'atk'},
+    bite:{name:'かみつく',type:'none',power:48,acc:100,kind:'atk'},
+    gust:{name:'かぜおこし',type:'none',power:44,acc:100,kind:'atk'},
+    heal:{name:'いやしのは',type:'grass',power:0,acc:100,kind:'heal'},
+    guard:{name:'まもりがため',type:'none',power:0,acc:100,kind:'buff'}
+  };
+
+  // 18種 (§6) base:hp,atk,def,spd
+  var SPECIES={
+    // grass
+    sprig:{name:'スプリグ',type:'grass',base:{hp:45,atk:49,def:49,spd:45},cap:190,exp:64,evolveLv:16,evolveTo:'florvine',
+      learn:[[1,'tackle'],[4,'vine'],[9,'absorb'],[14,'leafblade'],[20,'heal']]},
+    florvine:{name:'フロルバイン',type:'grass',base:{hp:65,atk:68,def:68,spd:60},cap:80,exp:142,
+      learn:[[1,'vine'],[1,'leafblade'],[24,'heal'],[30,'guard']]},
+    mosska:{name:'モスカ',type:'grass',base:{hp:55,atk:46,def:60,spd:35},cap:160,exp:60,
+      learn:[[1,'tackle'],[6,'absorb'],[12,'vine'],[22,'leafblade']]},
+    thornel:{name:'ソーネル',type:'grass',base:{hp:50,atk:62,def:48,spd:55},cap:120,exp:90,
+      learn:[[1,'scratch'],[7,'vine'],[15,'leafblade'],[25,'guard']]},
+    // fire
+    embo:{name:'エンボ',type:'fire',base:{hp:44,atk:52,def:43,spd:55},cap:190,exp:65,evolveLv:16,evolveTo:'pyrogon',
+      learn:[[1,'scratch'],[4,'ember'],[10,'bite'],[16,'flame'],[22,'guard']]},
+    pyrogon:{name:'パイロゴン',type:'fire',base:{hp:62,atk:74,def:58,spd:68},cap:78,exp:144,
+      learn:[[1,'ember'],[1,'flame'],[26,'bite'],[32,'guard']]},
+    cindle:{name:'シンドル',type:'fire',base:{hp:50,atk:58,def:45,spd:60},cap:130,exp:88,
+      learn:[[1,'scratch'],[8,'ember'],[16,'flame'],[26,'bite']]},
+    ashca:{name:'アシュカ',type:'fire',base:{hp:58,atk:54,def:56,spd:42},cap:150,exp:70,
+      learn:[[1,'tackle'],[6,'ember'],[14,'rock'],[24,'flame']]},
+    // water
+    aqualet:{name:'アクアレット',type:'water',base:{hp:46,atk:48,def:50,spd:50},cap:190,exp:64,evolveLv:16,evolveTo:'tidalon',
+      learn:[[1,'tackle'],[4,'bubble'],[9,'aqua'],[16,'hydro'],[22,'guard']]},
+    tidalon:{name:'タイダロン',type:'water',base:{hp:66,atk:66,def:70,spd:62},cap:78,exp:143,
+      learn:[[1,'aqua'],[1,'hydro'],[26,'guard'],[30,'bite']]},
+    rivu:{name:'リヴゥ',type:'water',base:{hp:52,atk:50,def:52,spd:58},cap:140,exp:84,
+      learn:[[1,'bubble'],[7,'aqua'],[15,'hydro'],[25,'bite']]},
+    coralu:{name:'コラル',type:'water',base:{hp:60,atk:46,def:64,spd:38},cap:155,exp:66,
+      learn:[[1,'tackle'],[6,'bubble'],[14,'aqua'],[24,'hydro']]},
+    // elec
+    voltik:{name:'ボルティク',type:'elec',base:{hp:42,atk:55,def:42,spd:70},cap:160,exp:82,
+      learn:[[1,'tackle'],[5,'spark'],[13,'bolt'],[23,'guard']]},
+    zaplit:{name:'ザプリト',type:'elec',base:{hp:48,atk:60,def:45,spd:75},cap:110,exp:96,
+      learn:[[1,'scratch'],[7,'spark'],[16,'bolt'],[26,'bite']]},
+    ohmly:{name:'オームリィ',type:'elec',base:{hp:55,atk:52,def:55,spd:58},cap:130,exp:88,
+      learn:[[1,'tackle'],[8,'spark'],[18,'bolt'],[28,'guard']]},
+    // earth
+    glemo:{name:'グレモ',type:'earth',base:{hp:58,atk:56,def:62,spd:38},cap:150,exp:80,
+      learn:[[1,'tackle'],[6,'rock'],[15,'quake'],[25,'guard']]},
+    terran:{name:'テラン',type:'earth',base:{hp:66,atk:62,def:70,spd:34},cap:110,exp:100,
+      learn:[[1,'rock'],[9,'quake'],[20,'bite'],[30,'guard']]},
+    gravok:{name:'グラヴォク',type:'earth',base:{hp:52,atk:64,def:54,spd:48},cap:130,exp:90,
+      learn:[[1,'scratch'],[7,'rock'],[16,'quake'],[26,'bite']]}
+  };
+
+  var ITEMS={
+    potion:{name:'キズぐすり',kind:'heal',value:50,price:50},
+    spotion:{name:'いいキズぐすり',kind:'heal',value:120,price:120},
+    hpotion:{name:'すごいキズぐすり',kind:'heal',value:300,price:300},
+    ball:{name:'モンスターボール',kind:'ball',mul:1,price:80},
+    sball:{name:'ハイパーボール',kind:'ball',mul:2,price:200},
+    mball:{name:'マスターボール',kind:'ball',mul:255,price:450}
+  };
+
+  // エリア (§5) — マップは generate で生成
+  var AREAS={
+    A1:{name:'始まりの草原',pal:'#1f3b22',wildLv:[2,5],pool:['sprig','embo','aqualet','mosska','glemo'],need:0,next:'A2'},
+    A2:{name:'木霊の森',pal:'#16321c',wildLv:[6,10],pool:['mosska','sprig','thornel','voltik','rivu'],need:1,next:'A3'},
+    A3:{name:'灼熱の渓谷',pal:'#3a1e14',wildLv:[12,16],pool:['cindle','ashca','embo','gravok','glemo'],need:2,next:'A4'},
+    A4:{name:'凍てつく岬',pal:'#142a3a',wildLv:[18,22],pool:['rivu','coralu','aqualet','ohmly','terran'],need:3,next:'T'},
+    T:{name:'天空塔',pal:'#241634',wildLv:[24,28],pool:['zaplit','pyrogon','tidalon','florvine','terran'],need:3,next:null}
+  };
+
+  // トレーナー配置 (§6/§10)：各エリアに関門1
+  var TRAINERS={
+    A1:[{id:'t_a1',x:24,y:9,name:'研修生レナ',party:[['embo',5],['aqualet',5]],reward:120,badge:1}],
+    A2:[{id:'t_a2',x:25,y:9,name:'森番カイ',party:[['mosska',9],['voltik',9],['thornel',10]],reward:260,badge:2}],
+    A3:[{id:'t_a3',x:25,y:9,name:'炎術士ジン',party:[['cindle',15],['ashca',15],['pyrogon',17]],reward:420,badge:3}],
+    A4:[{id:'t_a4',x:25,y:9,name:'氷将アヤ',party:[['coralu',21],['ohmly',21],['tidalon',23]],reward:620,badge:4}],
+    T:[{id:'t_boss',x:24,y:6,name:'監督者ヴァロン',party:[['terran',26],['pyrogon',27],['tidalon',28]],reward:1500,badge:5,boss:true}]
+  };
+
+  return {TYPES,TYPEJP,TYPESYM,TYPECOL,MOVES,SPECIES,ITEMS,AREAS,TRAINERS,eff};
+})();
+
+/* ---------- 2. オーディオ (§11) WebAudio 合成 ---------- */
+var Audio=(function(){
+  var ctx=null, bgmTimer=null, bgmGain=null, settings={bgm:.3,se:.6,shake:true};
+  var melodies={
+    field:[ [330,0.18],[392,0.18],[440,0.18],[392,0.18],[330,0.18],[294,0.18],[330,0.36] ],
+    battle:[ [262,0.14],[330,0.14],[392,0.14],[523,0.14],[392,0.14],[330,0.14] ],
+    boss:[ [220,0.14],[262,0.14],[208,0.14],[247,0.14],[196,0.2] ],
+    win:[ [523,0.16],[659,0.16],[784,0.16],[1047,0.4] ]
+  };
+  function ensure(){
+    if(ctx) return true;
+    try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); return true; }
+    catch(e){ return false; }
+  }
+  function resume(){ if(ctx&&ctx.state==='suspended') ctx.resume(); }
+  function tone(freq,dur,type,vol){
+    if(!ensure()||vol<=0) return;
+    try{
+      var o=ctx.createOscillator(), g=ctx.createGain(), t=ctx.currentTime;
+      o.type=type||'square'; o.frequency.value=freq;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(vol,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  function se(name){
+    var v=settings.se*0.5;
+    if(name==='ok') tone(660,0.08,'square',v);
+    else if(name==='cancel') tone(280,0.09,'square',v);
+    else if(name==='hit') tone(150,0.12,'sawtooth',v);
+    else if(name==='crit'){ tone(180,0.1,'sawtooth',v); tone(360,0.12,'square',v);}
+    else if(name==='catch'){ tone(523,0.1,'square',v); setTimeout(function(){tone(784,0.18,'square',v)},120);}
+    else if(name==='heal') tone(880,0.16,'sine',v);
+    else if(name==='lvup'){ tone(523,0.09,'square',v); setTimeout(function(){tone(784,0.16,'square',v)},90);}
+    else if(name==='faint') tone(120,0.4,'sawtooth',v);
+  }
+  function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
+  function playBgm(name){
+    stopBgm();
+    if(settings.bgm<=0||!ensure()) return;
+    var mel=melodies[name]||melodies.field, i=0;
+    function step(){
+      if(settings.bgm<=0){ return; }
+      var n=mel[i%mel.length];
+      tone(n[0], n[1]*0.95, 'square', settings.bgm*0.22);
+      tone(n[0]/2, n[1]*0.95, 'triangle', settings.bgm*0.16);
+      i++;
+    }
+    step(); bgmTimer=setInterval(step, 220);
+  }
+  function setVol(b,s){ settings.bgm=b; settings.se=s; }
+  return {se,playBgm,stopBgm,resume,ensure,setVol,settings};
+})();
+
+/* ---------- 3. セーブ (§15) ---------- */
+var Save=(function(){
+  var KEY='elemon.save.v3', BAK='elemon.save.bak', SKEY='elemon.settings', VER=3;
+  function defSettings(){ return {bgm:.3,se:.6,textSpeed:2,shake:true,colorAssist:true,tutorial:true}; }
+  function loadSettings(){
+    try{ var s=JSON.parse(localStorage.getItem(SKEY)); if(s&&typeof s==='object'){ var d=defSettings(); for(var k in d) if(s[k]==null)s[k]=d[k]; return s; } }
+    catch(e){}
+    return defSettings();
+  }
+  function saveSettings(s){ try{ localStorage.setItem(SKEY,JSON.stringify(s)); }catch(e){} }
+  function exists(){ try{ return !!localStorage.getItem(KEY); }catch(e){ return false; } }
+  function save(state){
+    try{
+      var data={ver:VER,player:state.player,party:state.party,box:state.box,
+        bag:state.bag,dex:state.dex,flags:state.flags,stats:state.stats};
+      var str=JSON.stringify(data);
+      var prev=localStorage.getItem(KEY);
+      if(prev) localStorage.setItem(BAK,prev);
+      localStorage.setItem(KEY,str);
+      return true;
+    }catch(e){ return false; }
+  }
+  function migrate(d){
+    // 欠損補完 §15
+    d.player=d.player||{}; var p=d.player;
+    if(p.x==null)p.x=5; if(p.y==null)p.y=10; if(!p.area)p.area='A1';
+    if(p.gem==null)p.gem=0; if(p.badges==null)p.badges=0;
+    d.party=Array.isArray(d.party)?d.party:[];
+    d.box=Array.isArray(d.box)?d.box:[];
+    d.bag=d.bag||{potion:3,ball:5};
+    d.dex=d.dex||{}; d.flags=d.flags||{};
+    d.stats=d.stats||{playTime:0,caught:0,start:Date.now()};
+    return d;
+  }
+  function tryParse(str){ try{ var d=JSON.parse(str); if(d&&typeof d==='object') return migrate(d); }catch(e){} return null; }
+  function load(){
+    var d=null;
+    try{ d=tryParse(localStorage.getItem(KEY)); }catch(e){}
+    if(!d){ try{ d=tryParse(localStorage.getItem(BAK)); }catch(e){} }
+    return d; // null なら新規
+  }
+  function wipe(){ try{ localStorage.removeItem(KEY); localStorage.removeItem(BAK); }catch(e){} }
+  return {save,load,exists,loadSettings,saveSettings,wipe,VER};
+})();
+
+/* ---------- 4. モンスター生成・成長計算 (§4/§6/§7) ---------- */
+var Mon=(function(){
+  function need(lv){ return Math.floor(Math.pow(lv,3)*0.8); }
+  function statHP(base,lv){ return Math.floor(base*lv/50)+lv*2+10; }
+  function stat(base,lv){ return Math.floor(base*lv/50)+lv+5; }
+  function moveSetFor(sid,lv){
+    var sp=DB.SPECIES[sid], ms=[];
+    for(var i=0;i<sp.learn.length;i++){ if(sp.learn[i][0]<=lv) ms.push(sp.learn[i][1]); }
+    if(ms.length===0) ms.push(sp.learn[0][1]);
+    return ms.slice(-4);
+  }
+  function create(sid,lv){
+    sid=DB.SPECIES[sid]?sid:'sprig';
+    lv=Math.max(1,Math.min(50,lv|0));
+    var sp=DB.SPECIES[sid];
+    var m={sid:sid,lv:lv,exp:need(lv),moves:moveSetFor(sid,lv),nick:null};
+    m.maxhp=statHP(sp.base.hp,lv); m.hp=m.maxhp;
+    recalc(m); m.hp=m.maxhp;
+    return m;
+  }
+  function recalc(m){
+    var sp=DB.SPECIES[m.sid];
+    var oldMax=m.maxhp||0;
+    m.maxhp=statHP(sp.base.hp,m.lv);
+    m.atk=stat(sp.base.atk,m.lv);
+    m.def=stat(sp.base.def,m.lv);
+    m.spd=stat(sp.base.spd,m.lv);
+    if(oldMax>0){ m.hp=Math.min(m.maxhp, m.hp + (m.maxhp-oldMax)); }
+  }
+  function name(m){ return m.nick || DB.SPECIES[m.sid].name; }
+  function type(m){ return DB.SPECIES[m.sid].type; }
+  // 経験値付与 → レベルアップ/技習得/進化 (戻り: イベント配列)
+  function gainExp(m,amount){
+    var ev=[];
+    if(m.lv>=50){ return ev; }
+    m.exp+=amount;
+    while(m.lv<50 && m.exp>=need(m.lv+1)){
+      m.lv++;
+      recalc(m);
+      ev.push({t:'lvup',lv:m.lv});
+      var sp=DB.SPECIES[m.sid];
+      for(var i=0;i<sp.learn.length;i++){
+        if(sp.learn[i][0]===m.lv){
+          var mv=sp.learn[i][1];
+          if(m.moves.indexOf(mv)<0){
+            if(m.moves.length<4){ m.moves.push(mv); ev.push({t:'learn',mv:mv}); }
+            else { var old=m.moves.shift(); m.moves.push(mv); ev.push({t:'learn',mv:mv,replaced:old}); }
+          }
+        }
+      }
+      if(sp.evolveLv && m.lv>=sp.evolveLv && DB.SPECIES[sp.evolveTo]){
+        var from=sp.name; m.sid=sp.evolveTo; recalc(m);
+        var ns=DB.SPECIES[m.sid];
+        for(var j=0;j<ns.learn.length;j++){ if(ns.learn[j][0]<=m.lv && m.moves.indexOf(ns.learn[j][1])<0 && m.moves.length<4) m.moves.push(ns.learn[j][1]); }
+        ev.push({t:'evolve',from:from,to:ns.name});
+        sp=ns;
+      }
+    }
+    if(m.lv>=50) m.exp=need(50);
+    return ev;
+  }
+  function expRatio(m){
+    if(m.lv>=50) return 1;
+    var lo=need(m.lv), hi=need(m.lv+1);
+    return Math.max(0,Math.min(1,(m.exp-lo)/(hi-lo||1)));
+  }
+  return {create,recalc,name,type,gainExp,need,expRatio,moveSetFor};
+})();
+
+/* ---------- 5. ワールド/マップ生成 (§5) ---------- */
+var World=(function(){
+  var W=30,H=20,TS=32;
+  var cache={};
+  // 各エリア手続き生成。0床1壁2草4ゲート5回復
+  function gen(area){
+    if(cache[area]) return cache[area];
+    var def=DB.AREAS[area];
+    var g=new Array(W*H);
+    for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+      var v=0;
+      if(x===0||y===0||x===W-1||y===H-1) v=1;
+      g[y*W+x]=v;
+    }
+    function set(x,y,v){ if(x>0&&y>0&&x<W-1&&y<H-1) g[y*W+x]=v; }
+    // 草パッチ
+    var patches=[[4,4,9,7],[14,3,20,6],[6,12,12,16],[16,12,22,16]];
+    for(var p=0;p<patches.length;p++){ var a=patches[p];
+      for(var yy=a[1];yy<=a[3];yy++)for(var xx=a[0];xx<=a[2];xx++) set(xx,yy,2); }
+    // 内部の壁(障害)
+    var walls=[[10,8,10,11],[19,8,19,13],[8,9,9,9]];
+    for(var w=0;w<walls.length;w++){ var b=walls[w];
+      for(var wy=b[1];wy<=b[3];wy++)for(var wx=b[0];wx<=b[2];wx++) set(wx,wy,1); }
+    // 回復拠点
+    set(4,10,5);
+    // 次エリアへのゲート
+    set(W-2,10,4);
+    cache[area]={w:W,h:H,grid:g,start:{x:5,y:10},pal:def.pal,
+      shop:{x:6,y:10}, healAt:{x:4,y:10}, gate:{x:W-2,y:10}};
+    return cache[area];
+  }
+  function tile(map,x,y){ if(x<0||y<0||x>=map.w||y>=map.h) return 1; return map.grid[y*map.w+x]; }
+  return {gen,tile,W,H,TS};
+})();
+
+/* ---------- 6. ゲーム本体：状態・シーン・ループ (§14) ---------- */
+var Game=(function(){
+  var cv=document.getElementById('cv'), g=cv.getContext('2d');
+  var SC={TITLE:'TITLE',FIELD:'FIELD',BATTLE:'BATTLE',MENU:'MENU',DIALOG:'DIALOG',END:'END',SHOP:'SHOP'};
+  var state, settings, scene='TITLE', shake=0, fade=0, fadeDir=0, fadeCb=null;
+  var toasts=[];
+  var input={up:0,down:0,left:0,right:0,ok:0,cancel:0,menu:0};
+  var edge={ok:false,cancel:false,menu:false,up:false,down:false,left:false,right:false};
+  var keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
+    KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right',
+    KeyZ:'ok',Enter:'ok',Space:'ok',KeyX:'cancel',Escape:'cancel',KeyM:'menu'};
+
+  /* ---- 入力 ---- */
+  window.addEventListener('keydown',function(e){
+    var k=keyMap[e.code];
+    if(k){ if(!input[k]) edge[k]=true; input[k]=1; e.preventDefault(); Audio.resume(); }
+  });
+  window.addEventListener('keyup',function(e){ var k=keyMap[e.code]; if(k) input[k]=0; });
+  function bindPad(id,key){
+    var el=document.getElementById(id);
+    function dn(ev){ ev.preventDefault(); if(!input[key])edge[key]=true; input[key]=1; Audio.resume(); }
+    function up(ev){ ev.preventDefault(); input[key]=0; }
+    el.addEventListener('touchstart',dn,{passive:false}); el.addEventListener('touchend',up);
+    el.addEventListener('mousedown',dn); el.addEventListener('mouseup',up); el.addEventListener('mouseleave',up);
+  }
+  bindPad('u','up');bindPad('d','down');bindPad('l','left');bindPad('r','right');
+  bindPad('bZ','ok');bindPad('bX','cancel');bindPad('bM','menu');
+
+  /* ---- 画面フィット ---- */
+  function resize(){
+    var stg=document.getElementById('stage');
+    var aw=window.innerWidth, ah=window.innerHeight, ar=960/640;
+    var w=aw, h=aw/ar; if(h>ah){ h=ah; w=ah*ar; }
+    stg.style.width=Math.floor(w)+'px'; stg.style.height=Math.floor(h)+'px';
+  }
+  window.addEventListener('resize',resize);
+
+  /* ---- トースト (§9/§11) ---- */
+  function toast(msg){ toasts.push({msg:msg,t:2500}); if(toasts.length>4) toasts.shift(); }
+
+  /* ---- フェード遷移 (§11) ---- */
+  function transition(cb){ fadeDir=1; fadeCb=cb; }
+
+  /* ---- 新規/継続 ---- */
+  function newGame(starterSid){
+    state={
+      player:{x:5,y:10,area:'A1',gem:0,badges:0,facing:'down',px:5*32,py:10*32,moving:false},
+      party:[Mon.create(starterSid,5)],
+      box:[], bag:{potion:3,spotion:0,hpotion:0,ball:5,sball:0,mball:0},
+      dex:{}, flags:{}, stats:{playTime:0,caught:1,start:Date.now()},
+      steps:0
+    };
+    state.dex[starterSid]=true;
+    Save.save(state);
+  }
+  function continueGame(){
+    var d=Save.load();
+    if(!d){ return false; }
+    state={ player:d.player, party:d.party, box:d.box, bag:d.bag,
+      dex:d.dex, flags:d.flags, stats:d.stats, steps:0 };
+    // 防御的補完
+    if(!state.party.length) state.party=[Mon.create('sprig',5)];
+    state.party.forEach(function(m){ if(m.maxhp==null) Mon.recalc(m); if(m.hp==null)m.hp=m.maxhp; });
+    return true;
+  }
+
+  /* ===================== TITLE ===================== */
+  var titleSel=0, starterSel=0, titleStage='menu';
+  function updateTitle(){
+    var hasSave=Save.exists();
+    if(titleStage==='menu'){
+      var n=hasSave?3:2;
+      if(edge.down){ titleSel=(titleSel+1)%n; Audio.se('ok'); }
+      if(edge.up){ titleSel=(titleSel-1+n)%n; Audio.se('ok'); }
+      if(edge.ok){
+        Audio.se('ok');
+        if(hasSave){
+          if(titleSel===0){ if(continueGame()){ enterField(true);} else { titleStage='starter'; } }
+          else if(titleSel===1){ titleStage='starter'; }
+          else { Save.wipe(); toast('セーブを消去しました'); }
+        } else {
+          if(titleSel===0){ titleStage='starter'; }
+          else { titleStage='help'; }
+        }
+      }
+    } else if(titleStage==='starter'){
+      if(edge.right){ starterSel=(starterSel+1)%3; Audio.se('ok'); }
+      if(edge.left){ starterSel=(starterSel+2)%3; Audio.se('ok'); }
+      if(edge.cancel){ titleStage='menu'; Audio.se('cancel'); }
+      if(edge.ok){
+        Audio.se('ok');
+        var st=['sprig','embo','aqualet'][starterSel];
+        newGame(st);
+        if(settings.tutorial){ titleStage='menu'; openTutorial(function(){ enterField(true); }); }
+        else enterField(true);
+      }
+    } else if(titleStage==='help'){
+      if(edge.ok||edge.cancel){ titleStage='menu'; Audio.se('cancel'); }
+    }
+  }
+  function drawTitle(){
+    g.fillStyle='#0c0e14'; g.fillRect(0,0,960,640);
+    // 装飾
+    for(var i=0;i<40;i++){ g.fillStyle='rgba(120,160,255,'+(0.04+ (i%5)*0.01)+')';
+      g.fillRect((i*53)%960,(i*97)%640, 60,60); }
+    g.textAlign='center';
+    g.fillStyle='#7fc8ff'; g.font='bold 72px Segoe UI'; g.fillText('E L E M O N',480,180);
+    g.fillStyle='#aab4d4'; g.font='16px Segoe UI'; g.fillText('オリジナル・モンスター育成RPG',480,215);
+    if(titleStage==='menu'){
+      var hasSave=Save.exists();
+      var items=hasSave?['つづきから','はじめから','セーブ消去']:['はじめる','あそびかた'];
+      for(var k=0;k<items.length;k++){
+        g.fillStyle=k===titleSel?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(360,300+k*64,240,48);
+        g.strokeStyle='#5a6488'; g.strokeRect(360,300+k*64,240,48);
+        g.fillStyle='#fff'; g.font='20px Segoe UI'; g.fillText(items[k],480,330+k*64);
+      }
+      g.fillStyle='#7f88a8'; g.font='13px Segoe UI';
+      g.fillText('↑↓ 選択 / Z 決定 / X 戻る ・ 移動:矢印 メニュー:M',480,610);
+    } else if(titleStage==='starter'){
+      g.fillStyle='#fff'; g.font='22px Segoe UI'; g.fillText('最初の相棒を選ぼう',480,290);
+      var sts=['sprig','embo','aqualet'];
+      for(var s=0;s<3;s++){
+        var sx=260+s*220, sid=sts[s], sp=DB.SPECIES[sid];
+        g.fillStyle=s===starterSel?'#26304a':'rgba(20,24,34,.8)';
+        g.fillRect(sx-90,330,180,200);
+        g.strokeStyle=s===starterSel?'#7fc8ff':'#444c66'; g.lineWidth=s===starterSel?3:1;
+        g.strokeRect(sx-90,330,180,200); g.lineWidth=1;
+        drawCreature(sx,420,sp.type,40,0,false);
+        g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(sp.name,sx,500);
+        g.fillStyle=DB.TYPECOL[sp.type]; g.font='13px Segoe UI';
+        g.fillText(DB.TYPEJP[sp.type]+'タイプ '+DB.TYPESYM[sp.type],sx,520);
+      }
+      g.fillStyle='#7f88a8'; g.font='13px Segoe UI'; g.fillText('← → 選択 / Z 決定 / X 戻る',480,580);
+    } else if(titleStage==='help'){
+      g.fillStyle='rgba(15,18,28,.95)'; g.fillRect(140,250,680,330);
+      g.strokeStyle='#5a6488'; g.strokeRect(140,250,680,330);
+      g.fillStyle='#fff'; g.font='18px Segoe UI'; g.textAlign='left';
+      var lines=['◆ 矢印/WASDで移動。草むらで野生エレモンと遭遇。',
+        '◆ 戦闘は「たたかう/エレモン/どうぐ/つかまえる/にげる」。',
+        '◆ 相性: 草→水→火→草、電→水、地→電 が有利(×2)。',
+        '◆ HPを削ってからボールで捕獲。図鑑を埋めよう。',
+        '◆ バッジを集めてゲートを開き、天空塔の監督者を倒す。',
+        '◆ 拠点(青い床)で全回復＆オートセーブ。Mでメニュー。'];
+      for(var L=0;L<lines.length;L++) g.fillText(lines[L],170,300+L*42);
+      g.textAlign='center'; g.fillStyle='#7f88a8'; g.font='13px Segoe UI';
+      g.fillText('Z / X で戻る',480,560);
+      g.textAlign='left';
+    }
+  }
+
+  /* ===================== チュートリアル (§9) ===================== */
+  var tut={on:false,page:0,cb:null};
+  function openTutorial(cb){
+    tut.on=true; tut.page=0; tut.cb=cb||null;
+  }
+  var tutPages=[
+    ['ようこそ','矢印キー(またはWASD)で歩く。画面下の仮想ボタンでも操作できる。'],
+    ['草むら','緑の草むらを歩くと野生エレモンに遭遇する。連続歩行で遭遇率上昇。'],
+    ['たたかう','戦闘はターン制。属性相性(草>水>火>草, 電>水, 地>電)を読もう。'],
+    ['つかまえる','敵HPを削ってから「つかまえる」。捕まえた仲間は控えに加わる。'],
+    ['拠点とセーブ','青い床に乗ると全回復＆オートセーブ。Mキーでメニュー/手動セーブ。']
+  ];
+  function updateTutorial(){
+    if(edge.ok||edge.menu){ Audio.se('ok'); tut.page++;
+      if(tut.page>=tutPages.length){ tut.on=false; var c=tut.cb; tut.cb=null; if(c)c(); } }
+    if(edge.cancel){ Audio.se('cancel'); tut.on=false; var c2=tut.cb; tut.cb=null; if(c2)c2(); }
+  }
+  function drawTutorial(){
+    g.fillStyle='rgba(0,0,0,.72)'; g.fillRect(0,0,960,640);
+    g.fillStyle='rgba(18,22,34,.98)'; g.fillRect(220,210,520,220);
+    g.strokeStyle='#7fc8ff'; g.lineWidth=2; g.strokeRect(220,210,520,220); g.lineWidth=1;
+    var pg=tutPages[Math.min(tut.page,tutPages.length-1)];
+    g.textAlign='center';
+    g.fillStyle='#7fc8ff'; g.font='bold 24px Segoe UI'; g.fillText(pg[0],480,265);
+    g.fillStyle='#fff'; g.font='17px Segoe UI';
+    wrapText(pg[1],480,310,460,26);
+    g.fillStyle='#9aa4c4'; g.font='13px Segoe UI';
+    g.fillText((tut.page+1)+' / '+tutPages.length+'   Z:次へ  X:スキップ',480,405);
+    g.textAlign='left';
+  }
+  function wrapText(t,cx,cy,maxw,lh){
+    var words=t.split(''), line='', lines=[];
+    for(var i=0;i<words.length;i++){ var test=line+words[i];
+      if(g.measureText(test).width>maxw){ lines.push(line); line=words[i]; } else line=test; }
+    lines.push(line);
+    for(var j=0;j<lines.length;j++) g.fillText(lines[j],cx,cy+j*lh);
+  }
+
+  /* ===================== FIELD (§5) ===================== */
+  var moveCool=0;
+  function enterField(playBgm){
+    transition(function(){
+      scene=SC.FIELD;
+      if(playBgm) Audio.playBgm('field');
+    });
+  }
+  function curMap(){ return World.gen(state.player.area); }
+  function canWalk(map,x,y){
+    var t=World.tile(map,x,y);
+    if(t===1) return false;
+    if(t===4){ // ゲート
+      var def=DB.AREAS[state.player.area];
+      if(state.player.badges < def.need + (state.player.area==='A1'?1:1)) {
+        // ゲート開放条件: 当該エリアの関門バッジ取得 (A1->需要1 ... )
+      }
+      return true; // 通過判定は踏んだ後に処理
+    }
+    return true;
+  }
+  function gateOpen(){
+    var area=state.player.area, def=DB.AREAS[area];
+    // 各エリアの関門トレーナーバッジを取得していれば開く
+    var tr=DB.TRAINERS[area][0];
+    return state.flags['beat_'+tr.id];
+  }
+  function updateField(dt){
+    var p=state.player, map=curMap();
+    if(edge.menu){ Audio.se('ok'); scene=SC.MENU; menuInit(); return; }
+    if(p.moving){
+      var tx=p.x*32, ty=p.y*32, sp=8;
+      if(p.px<tx)p.px=Math.min(tx,p.px+sp); else if(p.px>tx)p.px=Math.max(tx,p.px-sp);
+      if(p.py<ty)p.py=Math.min(ty,p.py+sp); else if(p.py>ty)p.py=Math.max(ty,p.py-sp);
+      if(p.px===tx&&p.py===ty){ p.moving=false; onStep(); }
+      return;
+    }
+    if(edge.ok && World.tile(map,p.x,p.y)===5){ Audio.se('ok'); scene=SC.SHOP; shopInit(); return; }
+    var dx=0,dy=0,f=p.facing;
+    if(input.up){dy=-1;f='up';} else if(input.down){dy=1;f='down';}
+    else if(input.left){dx=-1;f='left';} else if(input.right){dx=1;f='right';}
+    if(dx||dy){
+      p.facing=f;
+      var nx=p.x+dx, ny=p.y+dy;
+      // トレーナー接触判定
+      var tr=trainerAt(nx,ny);
+      if(tr){ startTrainerBattle(tr); return; }
+      if(canWalk(map,nx,ny)){
+        var t=World.tile(map,nx,ny);
+        if(t===4 && !gateOpen()){
+          toast('このゲートは関門を突破すると開く');
+        } else {
+          p.x=nx; p.y=ny; p.moving=true;
+        }
+      }
+    }
+  }
+  function trainerAt(x,y){
+    var list=DB.TRAINERS[state.player.area]||[];
+    for(var i=0;i<list.length;i++){ var tr=list[i];
+      if(tr.x===x&&tr.y===y && !state.flags['beat_'+tr.id]) return tr; }
+    return null;
+  }
+  function onStep(){
+    var p=state.player, map=curMap(), t=World.tile(map,p.x,p.y);
+    state.stats.playTime=(Date.now()-(state.stats.start||Date.now()))/1000;
+    if(t===5){ // 拠点：全回復＆オートセーブ
+      var healed=false;
+      state.party.forEach(function(m){ if(m.hp<m.maxhp){m.hp=m.maxhp;healed=true;} });
+      if(healed){ Audio.se('heal'); toast('パーティを回復した'); }
+      if(Save.save(state)) toast('オートセーブ完了');
+      state.steps=0;
+      return;
+    }
+    if(t===4){ // ゲート → 次エリア
+      var def=DB.AREAS[p.area];
+      if(def.next && gateOpen()){
+        transition(function(){
+          if(def.next==='T'){
+            // 塔へ
+          }
+          p.area=def.next; var nm=World.gen(p.area);
+          p.x=nm.start.x; p.y=nm.start.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+          toast(DB.AREAS[p.area].name+' に到着');
+          Save.save(state);
+        });
+      }
+      return;
+    }
+    if(t===2){ // 草：エンカウント抽選 §4
+      state.steps++;
+      var prob=Math.min(0.28, 0.10 + 0.01*state.steps);
+      if(Math.random()<prob){ state.steps=0; startWildBattle(); }
+    } else state.steps=0;
+  }
+  function drawField(){
+    var p=state.player, map=curMap(), def=DB.AREAS[p.area];
+    // カメラ
+    var camx=Math.floor(p.px - 480 + 16), camy=Math.floor(p.py - 320 + 16);
+    camx=Math.max(0,Math.min(camx, map.w*32-960));
+    camy=Math.max(0,Math.min(camy, map.h*32-640));
+    g.fillStyle=def.pal; g.fillRect(0,0,960,640);
+    var c0=Math.floor(camx/32), r0=Math.floor(camy/32);
+    for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
+      for(var rx=c0; rx<c0+31 && rx<map.w; rx++){
+        var t=World.tile(map,rx,ry), sx=rx*32-camx, sy=ry*32-camy;
+        if(t===1){ g.fillStyle='#2a2f3e'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#363c4e'; g.fillRect(sx+2,sy+2,28,6); }
+        else if(t===2){ g.fillStyle='#2f5d33'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#3f7a44'; for(var b=0;b<4;b++) g.fillRect(sx+4+b*7,sy+18-(b%2)*4,4,12); }
+        else if(t===4){ g.fillStyle=gateOpen()?'#5a8f5a':'#7a5a3a'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#cdd6ee'; g.font='18px Segoe UI'; g.textAlign='center';
+          g.fillText(gateOpen()?'＞':'鍵',sx+16,sy+22); g.textAlign='left'; }
+        else if(t===5){ g.fillStyle='#2d63b0'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#7fd0ff'; g.fillRect(sx+6,sy+6,20,20);
+          g.fillStyle='#fff'; g.font='16px Segoe UI'; g.textAlign='center'; g.fillText('+',sx+16,sy+22); g.textAlign='left'; }
+        else { g.fillStyle = (rx+ry)%2? 'rgba(255,255,255,.02)':'rgba(0,0,0,.05)'; g.fillRect(sx,sy,32,32); }
+      }
+    }
+    // トレーナー
+    var trs=DB.TRAINERS[p.area]||[];
+    for(var i=0;i<trs.length;i++){ var tr=trs[i]; if(state.flags['beat_'+tr.id]) continue;
+      var tsx=tr.x*32-camx, tsy=tr.y*32-camy;
+      g.fillStyle=tr.boss?'#d04bff':'#ff7a3c'; g.beginPath();
+      g.arc(tsx+16,tsy+16,12,0,7); g.fill();
+      g.fillStyle='#fff'; g.font='11px Segoe UI'; g.textAlign='center';
+      g.fillText(tr.boss?'BOSS':'戦',tsx+16,tsy+20);
+      g.fillStyle='#ffdca0'; g.font='11px Segoe UI'; g.fillText(tr.name,tsx+16,tsy-6); g.textAlign='left'; }
+    // プレイヤー
+    var psx=p.px-camx, psy=p.py-camy;
+    g.fillStyle='#1a1d28'; g.beginPath(); g.ellipse(psx+16,psy+30,12,5,0,0,7); g.fill();
+    g.fillStyle='#5a8cff'; g.beginPath(); g.arc(psx+16,psy+14,11,0,7); g.fill();
+    g.fillStyle='#fff'; // 向きの目印
+    var eo={down:[0,4],up:[0,-4],left:[-4,0],right:[4,0]}[p.facing]||[0,4];
+    g.beginPath(); g.arc(psx+16+eo[0],psy+14+eo[1],4,0,7); g.fill();
+    g.fillStyle='#3a64c8'; g.fillRect(psx+8,psy+22,16,10);
+    // HUD §9
+    g.fillStyle='rgba(8,10,18,.7)'; g.fillRect(0,0,300,58);
+    g.fillStyle='#ffd86b'; g.font='16px Segoe UI'; g.textAlign='left';
+    g.fillText('◇ '+state.player.gem+' ジェム',12,24);
+    g.fillStyle='#9fe0ff'; g.fillText('★ バッジ '+state.player.badges+'/4',12,46);
+    g.fillStyle='rgba(8,10,18,.7)'; g.fillRect(660,0,300,28);
+    g.fillStyle='#cdd6ee'; g.font='14px Segoe UI'; g.textAlign='right';
+    g.fillText(def.name,948,19); g.textAlign='left';
+    if(World.tile(map,p.x,p.y)===5){
+      g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(330,596,300,32);
+      g.fillStyle='#9fe0ff'; g.font='15px Segoe UI'; g.textAlign='center';
+      g.fillText('Z: ショップ ／ ここは回復＆セーブ拠点',480,617); g.textAlign='left';
+    }
+  }
+
+  /* ===================== BATTLE (§4) ===================== */
+  var B=null;
+  function freshBattler(m){ return m; }
+  function startWildBattle(){
+    var def=DB.AREAS[state.player.area];
+    var lv=def.wildLv[0]+Math.floor(Math.random()*(def.wildLv[1]-def.wildLv[0]+1));
+    var sid=def.pool[Math.floor(Math.random()*def.pool.length)];
+    setupBattle({wild:true, foe:[Mon.create(sid,lv)]});
+  }
+  function startTrainerBattle(tr){
+    var party=tr.party.map(function(p){ return Mon.create(p[0],p[1]); });
+    setupBattle({wild:false, foe:party, trainer:tr});
+  }
+  function firstAlive(party){ for(var i=0;i<party.length;i++) if(party[i].hp>0) return i; return -1; }
+  function setupBattle(opt){
+    var pi=firstAlive(state.party);
+    if(pi<0){ blackout(); return; }
+    B={ wild:opt.wild, trainer:opt.trainer||null, foeParty:opt.foe, foeIdx:0,
+        pIdx:pi, msgQ:[], phase:'intro', sel:0, sub:0, anim:0,
+        pHpShown:state.party[pi].hp, fHpShown:opt.foe[0].hp,
+        catchShake:0, busy:0, popups:[], runTries:0, ended:false, expGiven:false };
+    Audio.playBgm(opt.trainer&&opt.trainer.boss?'boss':'battle');
+    pushMsg(opt.wild? ('野生の '+Mon.name(opt.foe[0])+' があらわれた！')
+      : (B.trainer.name+' が しょうぶを しかけてきた！'));
+    transition(function(){ scene=SC.BATTLE; });
+  }
+  function pMon(){ return state.party[B.pIdx]; }
+  function fMon(){ return B.foeParty[B.foeIdx]; }
+  function pushMsg(t,cb){ B.msgQ.push({t:t,cb:cb||null}); }
+  function popPopup(x,y,txt,col){ B.popups.push({x:x,y:y,t:txt,col:col||'#fff',life:60}); }
+
+  // ダメージ計算 §4
+  function calcDamage(att,dfn,move){
+    var mv=DB.MOVES[move];
+    if(mv.kind==='heal'||mv.kind==='buff') return {dmg:0,eff:1,crit:false,miss:false,mv:mv};
+    if(Math.random()*100 > mv.acc) return {dmg:0,eff:1,crit:false,miss:true,mv:mv};
+    var stab = (mv.type===Mon.type(att))?1.5:1;
+    var te = DB.eff(mv.type, Mon.type(dfn));
+    var crit = Math.random()<0.0625;
+    var base = Math.floor(((2*att.lv/5+2)*mv.power*att.atk/Math.max(1,dfn.def))/50)+2;
+    var dmg = Math.floor(base*stab*te*(0.90+Math.random()*0.10)*(crit?1.5:1));
+    dmg=Math.max(1,dmg);
+    return {dmg:dmg,eff:te,crit:crit,miss:false,mv:mv};
+  }
+  function aiChoose(){
+    var f=fMon(), p=pMon();
+    // HP低下＆回復技 §6
+    if(f.hp < f.maxhp*0.25){
+      for(var h=0;h<f.moves.length;h++) if(DB.MOVES[f.moves[h]].kind==='heal' && Math.random()<0.5) return f.moves[h];
+    }
+    if(Math.random()<0.8){
+      var best=f.moves[0], bv=-1;
+      for(var i=0;i<f.moves.length;i++){ var mv=DB.MOVES[f.moves[i]];
+        if(mv.kind!=='atk'&&mv.kind!=='drain') continue;
+        var v=mv.power * (mv.type===Mon.type(f)?1.5:1) * DB.eff(mv.type,Mon.type(p));
+        if(v>bv){ bv=v; best=f.moves[i]; } }
+      return best;
+    }
+    return f.moves[Math.floor(Math.random()*f.moves.length)];
+  }
+  function tryCatch(ballMul){
+    var f=fMon(), sp=DB.SPECIES[f.sid];
+    var a=Math.floor((3*f.maxhp-2*f.hp)*sp.cap*ballMul/(3*f.maxhp));
+    a=Math.max(1,Math.min(255,a));
+    if(ballMul>=255) return 4; // master
+    var shakes=0;
+    for(var s=0;s<4;s++){ if(Math.random() < a/255) shakes++; else break; }
+    return shakes;
+  }
+  function expFor(foe){ return Math.floor(DB.SPECIES[foe.sid].exp * foe.lv / 7); }
+
+  function battleVictory(){
+    if(B.ended) return; B.ended=true;
+    // EXP付与（生存メンバー全員に均等寄与：簡略=戦闘参加者）
+    var foe=B.lastFoe||fMon();
+    var gain=expFor(foe);
+    var alive=state.party.filter(function(m){return m.hp>0;});
+    var per=Math.max(1,Math.floor(gain/Math.max(1,alive.length)));
+    var msgs=[];
+    alive.forEach(function(m){
+      var ev=Mon.gainExp(m,per);
+      ev.forEach(function(e){
+        if(e.t==='lvup') msgs.push(Mon.name(m)+' は レベル '+e.lv+' に あがった！');
+        else if(e.t==='learn') msgs.push(Mon.name(m)+' は '+DB.MOVES[e.mv].name+' を おぼえた！'+(e.replaced?'('+DB.MOVES[e.replaced].name+'を忘れた)':''));
+        else if(e.t==='evolve'){ msgs.push(e.from+' は '+e.to+' に しんかした！'); state.dex[m.sid]=true; }
+      });
+    });
+    var gem = foe.lv*6 + Math.floor(Math.random()*11);
+    if(B.trainer){ gem = B.trainer.reward; }
+    state.player.gem += gem;
+    pushMsg((B.trainer?B.trainer.name+' に かった！':'戦闘に かった！'));
+    pushMsg(Mon.name(alive[0]||state.party[0])+' たちは '+per+' の けいけんちを えた！');
+    for(var i=0;i<msgs.length;i++) pushMsg(msgs[i]);
+    pushMsg(gem+' ジェムを てにいれた！',function(){ Audio.se('lvup'); });
+    if(B.trainer){
+      state.flags['beat_'+B.trainer.id]=true;
+      if(B.trainer.badge && B.trainer.badge<=4){
+        state.player.badges=Math.max(state.player.badges,B.trainer.badge);
+        pushMsg('バッジ '+B.trainer.badge+' を かくとく！ あたらしいエリアへの ゲートが ひらいた！');
+      }
+      if(B.trainer.boss){
+        pushMsg('監督者ヴァロンを とめた！ せかいに へいわが もどった…',function(){ endingTrigger(); });
+      }
+      Save.save(state);
+    }
+    B.phase='msg'; B.afterMsg='end';
+  }
+  function battleDefeatNext(){
+    // 自分の手持ち交代 or 全滅
+    var ni=firstAlive(state.party);
+    if(ni<0){ pushMsg('めの まえが まっくらに なった…',function(){ blackout(); }); B.phase='msg'; B.afterMsg='lose'; }
+    else { B.pIdx=ni; B.pHpShown=pMon().hp; pushMsg('がんばれ！ '+Mon.name(pMon())+'！'); B.phase='msg'; B.afterMsg='menu'; }
+  }
+  function foeDefeated(){
+    B.lastFoe=fMon();
+    Audio.se('faint');
+    pushMsg(Mon.name(fMon())+' は たおれた！');
+    if(B.wild){ B.phase='msg'; B.afterMsg='victory'; return; }
+    // トレーナー：次のエレモン
+    var next=-1;
+    for(var i=B.foeIdx+1;i<B.foeParty.length;i++){ if(B.foeParty[i].hp>0){ next=i; break; } }
+    if(next<0){ B.phase='msg'; B.afterMsg='victory'; }
+    else { B.foeIdx=next; B.fHpShown=fMon().hp;
+      pushMsg(B.trainer.name+' は '+Mon.name(fMon())+' を くりだした！'); B.phase='msg'; B.afterMsg='menu'; }
+  }
+  function blackout(){
+    Audio.stopBgm();
+    // 全滅救済 §5/§8
+    state.party.forEach(function(m){ m.hp=m.maxhp; });
+    var lost=Math.floor(state.player.gem*0.10);
+    state.player.gem-=lost;
+    state.player.area = state.player.area; // 現エリアの開始地点へ
+    var mp=World.gen(state.player.area);
+    state.player.x=mp.start.x; state.player.y=mp.start.y;
+    state.player.px=state.player.x*32; state.player.py=state.player.y*32; state.player.moving=false;
+    // 救済薬 §8
+    var totalHeal=(state.bag.potion||0)+(state.bag.spotion||0)+(state.bag.hpotion||0);
+    if(state.player.gem<30 && totalHeal===0){ state.bag.potion=(state.bag.potion||0)+1; toast('支援薬を うけとった'); }
+    Save.save(state);
+    B=null;
+    transition(function(){ scene=SC.FIELD; Audio.playBgm('field');
+      toast('拠点で めをさました（'+lost+'ジェム ロスト）'); });
+  }
+
+  // 戦闘アクション解決
+  function resolveTurn(playerMove){
+    var p=pMon(), f=fMon();
+    var foeMove=aiChoose();
+    var pFirst = p.spd>=f.spd;
+    var order = pFirst ? [['p',playerMove],['f',foeMove]] : [['f',foeMove],['p',playerMove]];
+    B.turnQ=[];
+    order.forEach(function(o){
+      B.turnQ.push(o);
+    });
+    B.execI=0;
+    execStep(); // ターン解決を開始（exec→msg→exec ループ）
+  }
+  function doAction(side,move){
+    var att = side==='p'?pMon():fMon();
+    var dfn = side==='p'?fMon():pMon();
+    if(att.hp<=0) return; // 既に倒れている
+    var mv=DB.MOVES[move];
+    if(mv.kind==='heal'){
+      var h=Math.floor(att.maxhp*0.5); att.hp=Math.min(att.maxhp,att.hp+h);
+      Audio.se('heal'); pushMsg(Mon.name(att)+' は たいりょくを かいふくした！');
+      return;
+    }
+    if(mv.kind==='buff'){ pushMsg(Mon.name(att)+' は みを かためた！'); return; }
+    var r=calcDamage(att,dfn,move);
+    if(r.miss){ pushMsg(Mon.name(att)+' の '+mv.name+'！ しかし はずれた！'); return; }
+    dfn.hp=Math.max(0,dfn.hp-r.dmg);
+    Audio.se(r.crit?'crit':'hit');
+    if(settings.shake) shake=10;
+    var px = side==='p'? 720:240, py = side==='p'? 170:380;
+    popPopup(px,py,'-'+r.dmg, r.eff>1?'#ffd86b':(r.eff<1?'#9aa4c4':'#fff'));
+    var line=Mon.name(att)+' の '+mv.name+'！';
+    if(r.crit) line+=' きゅうしょに あたった！';
+    if(r.eff>1) line+=' こうかは ばつぐんだ！';
+    else if(r.eff<1) line+=' こうかは いまひとつ…';
+    pushMsg(line);
+    if(mv.kind==='drain'){ var heal=Math.floor(r.dmg*0.5); att.hp=Math.min(att.maxhp,att.hp+heal);
+      pushMsg(Mon.name(att)+' は たいりょくを すいとった！'); }
+  }
+  function execStep(){
+    if(B.execI>=B.turnQ.length){
+      // ターン終了：倒れ判定
+      if(fMon().hp<=0){ foeDefeated(); return; }
+      if(pMon().hp<=0){ Audio.se('faint'); pushMsg(Mon.name(pMon())+' は たおれた！'); B.phase='msg'; B.afterMsg='defeat'; return; }
+      B.phase='menu'; B.sel=0; return;
+    }
+    var o=B.turnQ[B.execI++];
+    var moverMon = o[0]==='p'?pMon():fMon();
+    if(moverMon.hp<=0){ execStep(); return; }
+    doAction(o[0],o[1]);
+    // メッセージ送り後に次stepへ
+    B.phase='msg'; B.afterMsg='exec';
+  }
+
+  function updateBattle(){
+    if(!B){ scene=SC.FIELD; return; }
+    // HPバー補間
+    B.pHpShown += (pMon().hp - B.pHpShown)*0.25;
+    B.fHpShown += (fMon().hp - B.fHpShown)*0.25;
+    if(Math.abs(B.pHpShown-pMon().hp)<0.5) B.pHpShown=pMon().hp;
+    if(Math.abs(B.fHpShown-fMon().hp)<0.5) B.fHpShown=fMon().hp;
+    for(var i=B.popups.length-1;i>=0;i--){ B.popups[i].y-=0.7; if(--B.popups[i].life<=0) B.popups.splice(i,1); }
+
+    if(B.phase==='intro'){
+      if(B.msgQ.length){ if(edge.ok||edge.cancel){ Audio.se('ok'); B.msgQ.shift(); } }
+      else { B.phase='menu'; B.sel=0; }
+      return;
+    }
+    if(B.phase==='msg'){
+      if(B.msgQ.length){
+        if(edge.ok||edge.cancel){ var m=B.msgQ.shift(); Audio.se('ok'); if(m.cb)m.cb(); }
+        return;
+      }
+      // メッセージ枯渇 → afterMsg遷移
+      var a=B.afterMsg; B.afterMsg=null;
+      if(a==='exec') execStep();
+      else if(a==='menu'){ B.phase='menu'; B.sel=0; }
+      else if(a==='victory') battleVictory();
+      else if(a==='defeat') battleDefeatNext();
+      else if(a==='end'){ endBattle(); }
+      else if(a==='lose'){ /* blackout cb 済 */ }
+      else if(a==='catchok'){ finishCatch(); }
+      else { B.phase='menu'; B.sel=0; }
+      return;
+    }
+    if(B.phase==='menu'){
+      var labels=['たたかう','エレモン','どうぐ','つかまえる','にげる'];
+      if(edge.up)  { B.sel=(B.sel+3)%5; Audio.se('ok'); }
+      if(edge.down){ B.sel=(B.sel+1)%5; Audio.se('ok'); }
+      if(edge.left&&B.sel>0){ B.sel--; Audio.se('ok'); }
+      if(edge.right&&B.sel<4){ B.sel++; Audio.se('ok'); }
+      if(edge.ok){
+        Audio.se('ok');
+        if(B.sel===0){ B.phase='move'; B.sub=0; }
+        else if(B.sel===1){ B.phase='switch'; B.sub=0; }
+        else if(B.sel===2){ B.phase='item'; B.sub=0; }
+        else if(B.sel===3){ attemptCatch(); }
+        else if(B.sel===4){ attemptRun(); }
+      }
+      return;
+    }
+    if(B.phase==='move'){
+      var mv=pMon().moves;
+      if(edge.up)  { B.sub=(B.sub+mv.length-1)%mv.length; Audio.se('ok'); }
+      if(edge.down){ B.sub=(B.sub+1)%mv.length; Audio.se('ok'); }
+      if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
+      if(edge.ok){ Audio.se('ok'); var chosen=mv[B.sub]; resolveTurn(chosen); }
+      return;
+    }
+    if(B.phase==='switch'){
+      var pr=state.party;
+      if(edge.up)  { B.sub=(B.sub+pr.length-1)%pr.length; Audio.se('ok'); }
+      if(edge.down){ B.sub=(B.sub+1)%pr.length; Audio.se('ok'); }
+      if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
+      if(edge.ok){
+        if(B.sub===B.pIdx){ toast('すでに せんとうちゅう'); }
+        else if(pr[B.sub].hp<=0){ toast('そのエレモンは たたかえない'); }
+        else { Audio.se('ok'); B.pIdx=B.sub; B.pHpShown=pMon().hp;
+          pushMsg('いけ！ '+Mon.name(pMon())+'！');
+          // 交代は1ターン消費 → 敵行動
+          var fm=aiChoose(); B.turnQ=[['f',fm]]; B.phase='msg'; B.afterMsg='execAfterSwitch';
+          B.execI=0; B.afterMsg='exec';
+        }
+      }
+      return;
+    }
+    if(B.phase==='item'){
+      var keys=Object.keys(state.bag).filter(function(k){ return state.bag[k]>0; });
+      if(keys.length===0){ if(edge.ok||edge.cancel){ Audio.se('cancel'); B.phase='menu'; } B._itemKeys=[]; return; }
+      B._itemKeys=keys;
+      if(edge.up)  { B.sub=(B.sub+keys.length-1)%keys.length; Audio.se('ok'); }
+      if(edge.down){ B.sub=(B.sub+1)%keys.length; Audio.se('ok'); }
+      if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
+      if(edge.ok){
+        var key=keys[B.sub], it=DB.ITEMS[key];
+        Audio.se('ok');
+        if(it.kind==='heal'){
+          var t=pMon();
+          if(t.hp>=t.maxhp){ toast('HPは まんたん'); return; }
+          t.hp=Math.min(t.maxhp,t.hp+it.value); state.bag[key]--;
+          Audio.se('heal'); pushMsg(it.name+' で '+Mon.name(t)+' を かいふくした！');
+          var fm2=aiChoose(); B.turnQ=[['f',fm2]]; B.execI=0; B.phase='msg'; B.afterMsg='exec';
+        } else if(it.kind==='ball'){
+          if(!B.wild){ toast('トレーナーの エレモンは つかまえられない'); return; }
+          state.bag[key]--; doCatch(it.mul);
+        }
+      }
+      return;
+    }
+    if(B.phase==='exec'){ execStep(); return; }
+    if(B.phase==='catch'){
+      // シェイク演出
+      B.catchShake++;
+      if(B.catchShake>50){
+        if(B.catchResult>=4){ Audio.se('catch'); finishCatch(); }
+        else { pushMsg(Mon.name(fMon())+' は ボールから でてしまった！（'+B.catchResult+'回 ゆれた）');
+          var fm3=aiChoose(); B.turnQ=[['f',fm3]]; B.execI=0; B.phase='msg'; B.afterMsg='exec'; }
+      }
+      return;
+    }
+  }
+  function attemptCatch(){
+    if(!B.wild){ toast('トレーナーの エレモンは つかまえられない'); B.phase='menu'; return; }
+    var balls=['ball','sball','mball'].filter(function(k){return state.bag[k]>0;});
+    if(balls.length===0){ pushMsg('ボールを もっていない！'); B.phase='msg'; B.afterMsg='menu'; return; }
+    // どうぐ画面のボールへ誘導
+    B.phase='item'; B.sub=0;
+    toast('「どうぐ」から ボールを えらぼう');
+  }
+  function doCatch(mul){
+    B.msgQ=[];
+    B.catchResult=tryCatch(mul);
+    B.catchShake=0; B.phase='catch';
+    Audio.se('ok');
+  }
+  function finishCatch(){
+    var f=fMon();
+    var caught=Mon.create(f.sid,f.lv); caught.hp=f.hp; caught.exp=f.exp; caught.moves=f.moves.slice();
+    var firstTime=!state.dex[f.sid];
+    state.dex[f.sid]=true; state.stats.caught=(state.stats.caught||0)+1;
+    if(state.party.length<6) state.party.push(caught); else state.box.push(caught);
+    pushMsg(Mon.name(f)+' を つかまえた！'+(firstTime?' 図鑑に とうろくした！':''));
+    if(state.party.length>=7 || state.box.length>0) pushMsg('（控えボックスに あずけた）');
+    B.phase='msg'; B.afterMsg='end';
+    Save.save(state);
+  }
+  function attemptRun(){
+    if(!B.wild){ toast('トレーナー戦からは にげられない'); B.phase='menu'; return; }
+    B.runTries++;
+    var p=pMon(), f=fMon();
+    var chance = p.spd>=f.spd ? 1 : 0.5 + 0.15*B.runTries;
+    if(Math.random()<chance){ pushMsg('うまく にげきれた！',function(){ endBattle(); }); B.phase='msg'; B.afterMsg='wait'; }
+    else { pushMsg('にげられなかった！');
+      var fm=aiChoose(); B.turnQ=[['f',fm]]; B.execI=0; B.phase='msg'; B.afterMsg='exec'; }
+  }
+  function endBattle(){
+    B=null;
+    transition(function(){ scene=SC.FIELD; Audio.playBgm('field'); });
+  }
+  function hpColor(r){ return r>0.5?'#4caf50':(r>0.2?'#ffd43b':'#ff5a3c'); }
+  function drawHpBar(x,y,w,cur,max){
+    var r=Math.max(0,Math.min(1,cur/max));
+    g.fillStyle='#1a1d28'; g.fillRect(x-1,y-1,w+2,12);
+    g.fillStyle='#000'; g.fillRect(x,y,w,10);
+    g.fillStyle=hpColor(r); g.fillRect(x,y,w*r,10);
+  }
+  function drawBattle(){
+    // 背景
+    var grd=g.createLinearGradient(0,0,0,640);
+    grd.addColorStop(0,'#2a3a5a'); grd.addColorStop(1,'#1a2030');
+    g.fillStyle=grd; g.fillRect(0,0,960,640);
+    g.fillStyle='rgba(255,255,255,.06)'; g.beginPath(); g.ellipse(720,420,150,40,0,0,7); g.fill();
+    g.beginPath(); g.ellipse(240,470,170,46,0,0,7); g.fill();
+    var f=fMon(), p=pMon();
+    // 敵
+    var fHurt = (B.phase==='exec'||B.anim)?0:0;
+    drawCreature(720,360, Mon.type(f), 44, performance.now()/300, false);
+    // 自分（背面表現＝大きめ）
+    drawCreature(240,420, Mon.type(p), 56, performance.now()/300, true);
+    // 敵情報枠
+    g.fillStyle='rgba(12,16,26,.88)'; g.fillRect(40,40,360,76);
+    g.strokeStyle='#5a6488'; g.strokeRect(40,40,360,76);
+    g.fillStyle='#fff'; g.font='18px Segoe UI'; g.textAlign='left';
+    g.fillText(Mon.name(f)+'  Lv'+f.lv,56,66);
+    g.fillStyle=DB.TYPECOL[Mon.type(f)]; g.font='13px Segoe UI';
+    g.fillText(DB.TYPEJP[Mon.type(f)]+(settings.colorAssist?DB.TYPESYM[Mon.type(f)]:''),320,66);
+    drawHpBar(56,80,300,B.fHpShown,f.maxhp);
+    g.fillStyle='#cdd6ee'; g.font='12px Segoe UI'; g.fillText('HP '+Math.max(0,Math.ceil(B.fHpShown))+'/'+f.maxhp,56,108);
+    // 自情報枠
+    g.fillStyle='rgba(12,16,26,.88)'; g.fillRect(560,300,360,92);
+    g.strokeStyle='#5a6488'; g.strokeRect(560,300,360,92);
+    g.fillStyle='#fff'; g.font='18px Segoe UI';
+    g.fillText(Mon.name(p)+'  Lv'+p.lv,576,326);
+    g.fillStyle=DB.TYPECOL[Mon.type(p)]; g.font='13px Segoe UI';
+    g.fillText(DB.TYPEJP[Mon.type(p)]+(settings.colorAssist?DB.TYPESYM[Mon.type(p)]:''),840,326);
+    drawHpBar(576,340,300,B.pHpShown,p.maxhp);
+    g.fillStyle='#cdd6ee'; g.font='12px Segoe UI'; g.fillText('HP '+Math.max(0,Math.ceil(B.pHpShown))+'/'+p.maxhp,576,368);
+    // EXPバー
+    g.fillStyle='#1a1d28'; g.fillRect(576,376,300,6);
+    g.fillStyle='#4db6ff'; g.fillRect(576,376,300*Mon.expRatio(p),6);
+    // ポップアップ
+    for(var i=0;i<B.popups.length;i++){ var pp=B.popups[i];
+      g.fillStyle=pp.col; g.font='bold 22px Segoe UI'; g.textAlign='center';
+      g.globalAlpha=Math.min(1,pp.life/30); g.fillText(pp.t,pp.x,pp.y); g.globalAlpha=1; }
+    g.textAlign='left';
+    // 下部コマンド/メッセージ枠
+    g.fillStyle='rgba(8,10,18,.94)'; g.fillRect(20,470,920,150);
+    g.strokeStyle='#5a6488'; g.lineWidth=2; g.strokeRect(20,470,920,150); g.lineWidth=1;
+    if((B.phase==='intro'||B.phase==='msg')&&B.msgQ.length){
+      g.fillStyle='#fff'; g.font='20px Segoe UI';
+      wrapL(B.msgQ[0].t,44,510,880,30);
+      g.fillStyle='#9aa4c4'; g.font='13px Segoe UI'; g.textAlign='right';
+      g.fillText('▼ Z/X ですすむ',920,610); g.textAlign='left';
+    } else if(B.phase==='menu'){
+      var labels=['たたかう','エレモン','どうぐ','つかまえる','にげる'];
+      for(var L=0;L<labels.length;L++){
+        var cx=60+(L%3)*300, cy=505+Math.floor(L/3)*55;
+        g.fillStyle=L===B.sel?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(cx,cy,260,42); g.strokeStyle='#5a6488'; g.strokeRect(cx,cy,260,42);
+        g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(labels[L],cx+18,cy+27);
+      }
+    } else if(B.phase==='move'){
+      var mv=pMon().moves;
+      for(var M=0;M<mv.length;M++){ var mo=DB.MOVES[mv[M]];
+        var mx=44+(M%2)*450, my=500+Math.floor(M/2)*52;
+        g.fillStyle=M===B.sub?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(mx,my,430,44); g.strokeStyle='#5a6488'; g.strokeRect(mx,my,430,44);
+        g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(mo.name,mx+14,my+28);
+        g.fillStyle=DB.TYPECOL[mo.type]; g.font='13px Segoe UI';
+        g.fillText(DB.TYPEJP[mo.type]+(settings.colorAssist?DB.TYPESYM[mo.type]:'')+(mo.power?' 威力'+mo.power:' 補助'),mx+300,my+28);
+      }
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+    } else if(B.phase==='switch'){
+      for(var s=0;s<state.party.length;s++){ var sm=state.party[s];
+        var sx=44+(s%3)*300, sy=500+Math.floor(s/3)*56;
+        g.fillStyle=s===B.sub?'#3a64ff':(sm.hp<=0?'rgba(60,30,30,.85)':'rgba(30,36,52,.9)');
+        g.fillRect(sx,sy,280,48); g.strokeStyle='#5a6488'; g.strokeRect(sx,sy,280,48);
+        g.fillStyle='#fff'; g.font='15px Segoe UI';
+        g.fillText(Mon.name(sm)+(s===B.pIdx?'(出)':''),sx+10,sy+20);
+        g.fillStyle='#9fe0ff'; g.font='12px Segoe UI'; g.fillText('Lv'+sm.lv+' HP '+sm.hp+'/'+sm.maxhp,sx+10,sy+38);
+      }
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+    } else if(B.phase==='item'){
+      var keys=B._itemKeys||[];
+      if(keys.length===0){ g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('どうぐを もっていない（Z/Xで戻る）',44,520); }
+      for(var I=0;I<keys.length;I++){ var it=DB.ITEMS[keys[I]];
+        var ix=44+(I%2)*450, iy=498+Math.floor(I/2)*40;
+        g.fillStyle=I===B.sub?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(ix,iy,430,34); g.strokeStyle='#5a6488'; g.strokeRect(ix,iy,430,34);
+        g.fillStyle='#fff'; g.font='15px Segoe UI';
+        g.fillText(it.name+'  ×'+state.bag[keys[I]],ix+12,iy+22);
+      }
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+    } else if(B.phase==='catch'){
+      g.fillStyle='#fff'; g.font='20px Segoe UI';
+      var sh=Math.sin(B.catchShake*0.6)* (B.catchShake<40?6:0);
+      g.fillText('ボールが ゆれている'+'.'.repeat(1+(Math.floor(B.catchShake/12)%3)),44+sh,520);
+    }
+  }
+  function wrapL(t,x,y,maxw,lh){
+    var arr=t.split(''),line='',ly=y;
+    for(var i=0;i<arr.length;i++){ var test=line+arr[i];
+      if(g.measureText(test).width>maxw){ g.fillText(line,x,ly); line=arr[i]; ly+=lh; } else line=test; }
+    g.fillText(line,x,ly);
+  }
+
+  /* ===================== SHOP (§8) ===================== */
+  var shop={sel:0,stock:[]};
+  function shopInit(){
+    // バッジ進行で上位ボール解放 §7/§8
+    var b=state.player.badges;
+    shop.stock=['potion','ball'];
+    if(b>=1){ shop.stock.push('spotion'); shop.stock.push('sball'); }
+    if(b>=2){ shop.stock.push('hpotion'); }
+    if(b>=3){ shop.stock.push('mball'); }
+    shop.sel=0;
+  }
+  function updateShop(){
+    var n=shop.stock.length+1; // 末尾=「でる」
+    if(edge.down){ shop.sel=(shop.sel+1)%n; Audio.se('ok'); }
+    if(edge.up){ shop.sel=(shop.sel+n-1)%n; Audio.se('ok'); }
+    if(edge.cancel||edge.menu){ Audio.se('cancel'); scene=SC.FIELD; return; }
+    if(edge.ok){
+      if(shop.sel===shop.stock.length){ Audio.se('cancel'); scene=SC.FIELD; return; }
+      var key=shop.stock[shop.sel], it=DB.ITEMS[key];
+      if(state.player.gem>=it.price){
+        state.player.gem-=it.price;
+        state.bag[key]=(state.bag[key]||0)+1;
+        Audio.se('lvup'); toast(it.name+' を こうにゅうした');
+        Save.save(state);
+      } else { Audio.se('cancel'); toast('ジェムが たりない'); }
+    }
+  }
+  function drawShop(){
+    drawField();
+    g.fillStyle='rgba(0,0,0,.6)'; g.fillRect(0,0,960,640);
+    g.fillStyle='rgba(14,18,28,.97)'; g.fillRect(180,70,600,500);
+    g.strokeStyle='#5a6488'; g.lineWidth=2; g.strokeRect(180,70,600,500); g.lineWidth=1;
+    g.textAlign='left';
+    g.fillStyle='#7fc8ff'; g.font='bold 24px Segoe UI'; g.fillText('ショップ（拠点）',210,115);
+    g.fillStyle='#ffd86b'; g.font='17px Segoe UI'; g.fillText('所持: '+state.player.gem+' ジェム',560,115);
+    for(var i=0;i<shop.stock.length;i++){ var it=DB.ITEMS[shop.stock[i]];
+      var y=150+i*60;
+      g.fillStyle=i===shop.sel?'#3a64ff':'rgba(30,36,52,.9)';
+      g.fillRect(210,y,540,48); g.strokeStyle='#5a6488'; g.strokeRect(210,y,540,48);
+      g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(it.name,228,y+31);
+      g.fillStyle=state.player.gem>=it.price?'#9fe0ff':'#ff7a7a'; g.font='16px Segoe UI';
+      g.fillText(it.price+' ジェム  （所持 ×'+(state.bag[shop.stock[i]]||0)+'）',460,y+31);
+    }
+    var ey=150+shop.stock.length*60;
+    g.fillStyle=shop.sel===shop.stock.length?'#3a64ff':'rgba(30,36,52,.9)';
+    g.fillRect(210,ey,540,44); g.strokeStyle='#5a6488'; g.strokeRect(210,ey,540,44);
+    g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('でる',228,ey+29);
+    g.fillStyle='#9aa4c4'; g.font='13px Segoe UI';
+    g.fillText('↑↓ 選択 / Z 購入 / X 出る ・ 上位品はバッジで解放',210,548);
+  }
+
+  /* ===================== MENU (§9) ===================== */
+  var menu={page:'root',sel:0,sub:0};
+  function menuInit(){ menu.page='root'; menu.sel=0; menu.sub=0; }
+  function updateMenu(){
+    if(menu.page==='root'){
+      var items=['パーティ','どうぐ','ずかん','せってい','セーブ','とじる'];
+      if(edge.down){menu.sel=(menu.sel+1)%items.length;Audio.se('ok');}
+      if(edge.up){menu.sel=(menu.sel+items.length-1)%items.length;Audio.se('ok');}
+      if(edge.cancel||edge.menu){ Audio.se('cancel'); scene=SC.FIELD; return; }
+      if(edge.ok){ Audio.se('ok');
+        if(menu.sel===0){menu.page='party';menu.sub=0;}
+        else if(menu.sel===1){menu.page='bag';menu.sub=0;}
+        else if(menu.sel===2){menu.page='dex';menu.sub=0;}
+        else if(menu.sel===3){menu.page='set';menu.sub=0;}
+        else if(menu.sel===4){ if(Save.save(state)) toast('セーブしました'); else toast('セーブ失敗'); }
+        else { scene=SC.FIELD; }
+      }
+      return;
+    }
+    if(edge.cancel){ Audio.se('cancel'); menu.page='root'; return; }
+    if(menu.page==='party'){
+      var n=state.party.length;
+      if(edge.down){menu.sub=(menu.sub+1)%n;Audio.se('ok');}
+      if(edge.up){menu.sub=(menu.sub+n-1)%n;Audio.se('ok');}
+      if(edge.ok && n>1){ // 先頭と入替
+        Audio.se('ok'); var t=state.party[0]; state.party[0]=state.party[menu.sub]; state.party[menu.sub]=t; menu.sub=0;
+        toast('せんとうを いれかえた');
+      }
+    } else if(menu.page==='set'){
+      var opts=['BGM','SE','テキスト速度','画面振動','色覚補助','チュートリアル再表示'];
+      if(edge.down){menu.sub=(menu.sub+1)%opts.length;Audio.se('ok');}
+      if(edge.up){menu.sub=(menu.sub+opts.length-1)%opts.length;Audio.se('ok');}
+      if(edge.left||edge.right){
+        var d=edge.right?1:-1;
+        if(menu.sub===0){ settings.bgm=clamp01(settings.bgm+d*0.1); }
+        else if(menu.sub===1){ settings.se=clamp01(settings.se+d*0.1); }
+        else if(menu.sub===2){ settings.textSpeed=Math.max(1,Math.min(3,settings.textSpeed+d)); }
+        else if(menu.sub===3){ settings.shake=!settings.shake; }
+        else if(menu.sub===4){ settings.colorAssist=!settings.colorAssist; }
+        Audio.setVol(settings.bgm,settings.se); Audio.shake=settings.shake;
+        Audio.settings.shake=settings.shake; Save.saveSettings(settings);
+      }
+      if(edge.ok && menu.sub===5){ Audio.se('ok'); scene=SC.FIELD; openTutorial(null); }
+    } else if(menu.page==='dex'){
+      // スクロール
+      var ids=Object.keys(DB.SPECIES);
+      if(edge.down){menu.sub=Math.min(ids.length-1,menu.sub+1);Audio.se('ok');}
+      if(edge.up){menu.sub=Math.max(0,menu.sub-1);Audio.se('ok');}
+    }
+  }
+  function clamp01(v){ return Math.max(0,Math.min(1,Math.round(v*10)/10)); }
+  function drawMenu(){
+    drawField(); // 背景に
+    g.fillStyle='rgba(0,0,0,.55)'; g.fillRect(0,0,960,640);
+    g.fillStyle='rgba(14,18,28,.97)'; g.fillRect(120,60,720,520);
+    g.strokeStyle='#5a6488'; g.lineWidth=2; g.strokeRect(120,60,720,520); g.lineWidth=1;
+    g.textAlign='left';
+    if(menu.page==='root'){
+      g.fillStyle='#7fc8ff'; g.font='bold 24px Segoe UI'; g.fillText('メニュー',150,105);
+      var items=['パーティ','どうぐ','ずかん','せってい','セーブ','とじる'];
+      for(var i=0;i<items.length;i++){
+        g.fillStyle=i===menu.sel?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(150,130+i*64,300,52); g.strokeStyle='#5a6488'; g.strokeRect(150,130+i*64,300,52);
+        g.fillStyle='#fff'; g.font='19px Segoe UI'; g.fillText(items[i],170,162+i*64);
+      }
+      g.fillStyle='#aab4d4'; g.font='14px Segoe UI';
+      g.fillText('所持金: '+state.player.gem+' ジェム',500,150);
+      g.fillText('バッジ: '+state.player.badges+'/4',500,176);
+      g.fillText('図鑑: '+Object.keys(state.dex).length+'/18',500,202);
+      g.fillText('捕獲数: '+(state.stats.caught||0),500,228);
+      g.fillText('プレイ時間: '+fmtTime(state.stats.playTime||0),500,254);
+    } else if(menu.page==='party'){
+      g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('パーティ（Zで先頭と入替 / X戻る）',150,100);
+      for(var p=0;p<state.party.length;p++){ var m=state.party[p];
+        var y=130+p*70;
+        g.fillStyle=p===menu.sub?'#26304a':'rgba(24,30,46,.9)';
+        g.fillRect(150,y,640,60); g.strokeStyle=p===menu.sub?'#7fc8ff':'#444c66'; g.strokeRect(150,y,640,60);
+        drawCreature(185,y+30,Mon.type(m),20,0,false);
+        g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(Mon.name(m),225,y+24);
+        g.fillStyle=DB.TYPECOL[Mon.type(m)]; g.font='13px Segoe UI';
+        g.fillText(DB.TYPEJP[Mon.type(m)]+(settings.colorAssist?DB.TYPESYM[Mon.type(m)]:''),225,y+44);
+        g.fillStyle='#cdd6ee'; g.font='14px Segoe UI';
+        g.fillText('Lv'+m.lv,420,y+24);
+        drawHpBar(420,y+34,200,m.hp,m.maxhp);
+        g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('HP '+m.hp+'/'+m.maxhp,640,y+44);
+        if(p===0){ g.fillStyle='#ffd86b'; g.font='12px Segoe UI'; g.fillText('先頭',760,y+24); }
+      }
+    } else if(menu.page==='bag'){
+      g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('どうぐ（X戻る）',150,100);
+      var ks=Object.keys(state.bag), yy=140;
+      var any=false;
+      for(var k=0;k<ks.length;k++){ if(state.bag[ks[k]]<=0) continue; any=true;
+        g.fillStyle='rgba(24,30,46,.9)'; g.fillRect(150,yy,640,40); g.strokeStyle='#444c66'; g.strokeRect(150,yy,640,40);
+        g.fillStyle='#fff'; g.font='16px Segoe UI'; g.fillText(DB.ITEMS[ks[k]].name,170,yy+26);
+        g.fillStyle='#ffd86b'; g.fillText('×'+state.bag[ks[k]],720,yy+26); yy+=48; }
+      if(!any){ g.fillStyle='#9aa4c4'; g.font='15px Segoe UI'; g.fillText('なにも もっていない',170,150); }
+    } else if(menu.page==='dex'){
+      g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('ずかん '+Object.keys(state.dex).length+'/18（↑↓ X戻る）',150,100);
+      var ids=Object.keys(DB.SPECIES);
+      var top=Math.max(0,Math.min(ids.length-9,menu.sub-4));
+      for(var d=0;d<9 && top+d<ids.length;d++){ var sid=ids[top+d], sp=DB.SPECIES[sid], got=state.dex[sid];
+        var yy2=128+d*48;
+        g.fillStyle=(top+d===menu.sub)?'#26304a':'rgba(24,30,46,.9)';
+        g.fillRect(150,yy2,640,42); g.strokeStyle='#444c66'; g.strokeRect(150,yy2,640,42);
+        if(got){ drawCreature(178,yy2+21,sp.type,15,0,false);
+          g.fillStyle='#fff'; g.font='16px Segoe UI'; g.fillText(sp.name,210,yy2+27);
+          g.fillStyle=DB.TYPECOL[sp.type]; g.font='13px Segoe UI';
+          g.fillText(DB.TYPEJP[sp.type]+(settings.colorAssist?DB.TYPESYM[sp.type]:''),650,yy2+27);
+        } else { g.fillStyle='#555c70'; g.font='16px Segoe UI'; g.fillText('??? （未発見）',210,yy2+27); }
+      }
+    } else if(menu.page==='set'){
+      g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('せってい（←→で変更 / X戻る）',150,100);
+      var opts=[['BGM',Math.round(settings.bgm*10)],['SE',Math.round(settings.se*10)],
+        ['テキスト速度',settings.textSpeed],['画面振動',settings.shake?'ON':'OFF'],
+        ['色覚補助',settings.colorAssist?'ON':'OFF'],['チュートリアル再表示','▶ Z']];
+      for(var o=0;o<opts.length;o++){ var y3=140+o*58;
+        g.fillStyle=o===menu.sub?'#3a64ff':'rgba(30,36,52,.9)';
+        g.fillRect(150,y3,640,46); g.strokeStyle='#5a6488'; g.strokeRect(150,y3,640,46);
+        g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(opts[o][0],170,y3+29);
+        g.fillStyle='#ffd86b'; g.fillText(''+opts[o][1],680,y3+29);
+      }
+    }
+  }
+  function fmtTime(s){ s=Math.floor(s); var m=Math.floor(s/60); return m+'分'+(s%60)+'秒'; }
+
+  /* ===================== END (§10) ===================== */
+  var endT=0;
+  function endingTrigger(){ /* battleVictory 内で呼ばれ、end へ */
+    B.afterMsg='ending';
+  }
+  function drawEnd(){
+    g.fillStyle='#080a12'; g.fillRect(0,0,960,640);
+    for(var i=0;i<60;i++){ g.fillStyle='rgba(180,200,255,'+(0.1+(i%7)*0.05)+')';
+      g.fillRect((i*131+endT)%960,(i*73)%640,2,2); }
+    g.textAlign='center';
+    g.fillStyle='#ffd86b'; g.font='bold 48px Segoe UI'; g.fillText('― ENDING ―',480,200);
+    g.fillStyle='#fff'; g.font='20px Segoe UI';
+    g.fillText('監督者ヴァロンを止め、世界に平和が戻った。',480,280);
+    g.fillText('あなたとエレモンの旅は、まだ続く――',480,316);
+    g.fillStyle='#9fe0ff'; g.font='17px Segoe UI';
+    g.fillText('クリアタイム: '+fmtTime(state.stats.playTime||0),480,390);
+    g.fillText('図鑑登録: '+Object.keys(state.dex).length+'/18   捕獲数: '+(state.stats.caught||0),480,420);
+    g.fillStyle='#7f88a8'; g.font='14px Segoe UI';
+    g.fillText('Z: タイトルへ（セーブから周回継続できます）',480,540);
+    g.textAlign='left';
+  }
+  function updateEnd(){ endT+=0.5;
+    if(edge.ok){ Audio.se('ok'); Save.save(state);
+      transition(function(){ scene=SC.TITLE; titleStage='menu'; titleSel=0; Audio.stopBgm(); }); } }
+
+  /* ===================== 共通：クリーチャー描画 (§12) ===================== */
+  function drawCreature(cx,cy,type,r,t,back){
+    var col=DB.TYPECOL[type]||'#9aa0a8';
+    var bob=Math.sin(t)*r*0.06;
+    cy+=bob;
+    // 影
+    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+r*0.95,r*0.8,r*0.25,0,0,7); g.fill();
+    // ボディ
+    g.fillStyle=col; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill();
+    g.fillStyle='rgba(255,255,255,.18)'; g.beginPath(); g.arc(cx-r*0.3,cy-r*0.3,r*0.45,0,7); g.fill();
+    g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); g.lineWidth=1;
+    // 属性ごとの装飾
+    g.fillStyle='rgba(0,0,0,.45)';
+    if(type==='grass'){ g.beginPath(); g.moveTo(cx,cy-r); g.lineTo(cx-r*0.4,cy-r*1.5); g.lineTo(cx+r*0.2,cy-r*1.1); g.fill(); }
+    else if(type==='fire'){ for(var f=0;f<3;f++){ g.beginPath(); g.moveTo(cx-r*0.4+f*r*0.4,cy-r*0.8);
+      g.lineTo(cx-r*0.2+f*r*0.4,cy-r*1.5); g.lineTo(cx+f*r*0.4,cy-r*0.8); g.fill(); } }
+    else if(type==='water'){ g.beginPath(); g.arc(cx,cy-r*1.1,r*0.25,0,7); g.fill(); }
+    else if(type==='elec'){ g.beginPath(); g.moveTo(cx-r*0.2,cy-r); g.lineTo(cx+r*0.1,cy-r*0.3);
+      g.lineTo(cx-r*0.1,cy-r*0.3); g.lineTo(cx+r*0.3,cy-r*1.6); g.fill(); }
+    else if(type==='earth'){ g.fillRect(cx-r*0.5,cy-r*1.3,r,r*0.4); }
+    if(!back){
+      // 目
+      g.fillStyle='#fff'; g.beginPath(); g.arc(cx-r*0.35,cy-r*0.1,r*0.22,0,7); g.arc(cx+r*0.35,cy-r*0.1,r*0.22,0,7); g.fill();
+      g.fillStyle='#111'; g.beginPath(); g.arc(cx-r*0.32,cy-r*0.05,r*0.1,0,7); g.arc(cx+r*0.38,cy-r*0.05,r*0.1,0,7); g.fill();
+      // 口
+      g.strokeStyle='#111'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy+r*0.25,r*0.3,0.15*Math.PI,0.85*Math.PI); g.stroke(); g.lineWidth=1;
+    } else {
+      g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx,cy+r*0.2,r*0.5,0,7); g.fill();
+    }
+  }
+
+  /* ===================== トースト描画 ===================== */
+  function drawToasts(dt){
+    for(var i=toasts.length-1;i>=0;i--){
+      var ts=toasts[i]; ts.t-=dt;
+      var idx=toasts.length-1-i;
+      var a=Math.min(1,ts.t/400);
+      g.globalAlpha=Math.max(0,a);
+      g.fillStyle='rgba(20,26,40,.95)';
+      var w=g.measureText(ts.msg).width+40;
+      g.fillRect(940-w-16,16+idx*44,w,34);
+      g.strokeStyle='#5a8cff'; g.strokeRect(940-w-16,16+idx*44,w,34);
+      g.fillStyle='#cfe0ff'; g.font='14px Segoe UI'; g.textAlign='left';
+      g.fillText(ts.msg,940-w,38+idx*44);
+      g.globalAlpha=1;
+      if(ts.t<=0) toasts.splice(i,1);
+    }
+  }
+
+  /* ===================== メインループ (§16) ===================== */
+  var last=0, acc=0, STEP=1000/60;
+  function frame(now){
+    try{
+      if(!last) last=now;
+      var dt=now-last; last=now;
+      if(dt>200) dt=200; // タブ復帰時の暴走防止
+      acc+=dt;
+      var steps=0;
+      while(acc>=STEP && steps<5){ tick(STEP); acc-=STEP; steps++; }
+      render(dt);
+      // エッジ入力リセット
+      for(var k in edge) edge[k]=false;
+    }catch(e){
+      console.error(e);
+      // 致命でなければ FIELD へ復帰を試みる
+      try{ if(state){ scene=SC.FIELD; B=null; } }catch(_){}
+    }
+    requestAnimationFrame(frame);
+  }
+  function tick(dt){
+    if(tut.on){ updateTutorial(); return; }
+    if(fadeDir!==0){
+      fade += fadeDir* (dt/250);
+      if(fadeDir>0 && fade>=1){ fade=1; if(fadeCb){ var c=fadeCb; fadeCb=null; c(); } fadeDir=-1; }
+      else if(fadeDir<0 && fade<=0){ fade=0; fadeDir=0; }
+      return; // 遷移中は入力ロック（連打多重防止 §17）
+    }
+    if(scene===SC.TITLE) updateTitle();
+    else if(scene===SC.FIELD) updateField(dt);
+    else if(scene===SC.BATTLE) updateBattle();
+    else if(scene===SC.MENU) updateMenu();
+    else if(scene===SC.SHOP) updateShop();
+    else if(scene===SC.END) updateEnd();
+    if(shake>0) shake-=1;
+    if(state&&state.stats) state.stats.playTime=(Date.now()-(state.stats.start||Date.now()))/1000;
+  }
+  function render(dt){
+    g.save();
+    if(shake>0 && (Audio.settings.shake)){
+      g.translate((Math.random()-0.5)*6,(Math.random()-0.5)*6);
+    }
+    if(scene===SC.TITLE) drawTitle();
+    else if(scene===SC.FIELD) drawField();
+    else if(scene===SC.BATTLE){ if(B) drawBattle(); else drawField(); }
+    else if(scene===SC.MENU) drawMenu();
+    else if(scene===SC.SHOP) drawShop();
+    else if(scene===SC.END) drawEnd();
+    g.restore();
+    if(tut.on) drawTutorial();
+    drawToasts(dt);
+    if(fade>0){ g.fillStyle='rgba(0,0,0,'+fade+')'; g.fillRect(0,0,960,640); }
+  }
+
+  // afterMsg='ending' のフック
+  var _origUpdateBattle=updateBattle;
+
+  /* ---------- 起動 ---------- */
+  function boot(){
+    try{
+      settings=Save.loadSettings();
+      Audio.setVol(settings.bgm,settings.se);
+      Audio.settings.shake=settings.shake;
+      resize();
+      document.getElementById('ld').style.display='none';
+      scene=SC.TITLE;
+      requestAnimationFrame(frame);
+    }catch(e){ fatal(e&&e.message||String(e)); }
+  }
+
+  // battleVictory の ending 連結（afterMsg 'ending' 対応）
+  var realBattleVictory=battleVictory;
+  // updateBattle 内 afterMsg ハンドラに 'ending' を足す
+  (function patchEnding(){
+    var orig=updateBattle;
+    updateBattle=function(){
+      if(B && B.phase==='msg' && B.msgQ.length===0 && B.afterMsg==='ending'){
+        B.afterMsg=null; B=null;
+        Save.save(state);
+        transition(function(){ scene=SC.END; Audio.playBgm('win'); });
+        return;
+      }
+      orig();
+    };
+  })();
+
+  return {boot};
+})();
+
+/* ---------- 起動トリガ ---------- */
+try{
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',Game.boot);
+  else Game.boot();
+}catch(e){ fatal(e&&e.message||String(e)); }
+
+})();
+</script>
+</body>
+</html>
