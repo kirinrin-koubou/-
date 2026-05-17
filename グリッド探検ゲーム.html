@@ -27,9 +27,11 @@
     position: absolute; width: 24px; height: 24px;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
     display: flex; align-items: center; justify-content: center;
-    font-size: 17px; line-height: 1; user-select: none;
   }
-  .cell > span { pointer-events: none; }
+  .item { width: 22px; height: 22px; background: center/contain no-repeat; pointer-events: none; display: none; }
+  .item.flower { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cline x1='12' y1='23' x2='12' y2='12' stroke='%233f6b34' stroke-width='2'/%3E%3Cg fill='%23e8728f'%3E%3Ccircle cx='12' cy='6' r='3.1'/%3E%3Ccircle cx='7.3' cy='9' r='3.1'/%3E%3Ccircle cx='16.7' cy='9' r='3.1'/%3E%3Ccircle cx='9.2' cy='13' r='3.1'/%3E%3Ccircle cx='14.8' cy='13' r='3.1'/%3E%3C/g%3E%3Ccircle cx='12' cy='9.4' r='2.5' fill='%23f4c64a'/%3E%3C/svg%3E"); }
+  .item.grass { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%234f7d3a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M8 22 C7 16 6 14 5 11'/%3E%3Cpath d='M12 22 C12 15 12 13 12 9'/%3E%3Cpath d='M16 22 C17 16 18 14 19 11'/%3E%3C/g%3E%3C/svg%3E"); }
+  .item.tree { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='10.7' y='14' width='2.6' height='8' fill='%235e421f'/%3E%3Ccircle cx='12' cy='9' r='7' fill='%233f6b34'/%3E%3Ccircle cx='8' cy='12' r='4.6' fill='%234f7d3a'/%3E%3Ccircle cx='16' cy='12' r='4.6' fill='%234f7d3a'/%3E%3C/svg%3E"); }
   .t0 { background: #79a85c; }                                   /* 草（薄め） */
   .t1 { background: #8a6a45; }                                   /* 土 */
   .t2 { background: repeating-linear-gradient(0deg,#6b4a26 0 4px,#553a1d 4px 8px); } /* 畑（濃い茶） */
@@ -296,21 +298,21 @@ for (let y=0;y<SIZE;y++){
 
 // ---- アイテム（ブロックの上の装飾）：開始時に花・草・木をたくさん配置 ----
 const I_NONE=0, I_FLOWER=1, I_GRASS=2, I_TREE=3;
-const ICHAR = ['', '🌸', '🌿', '🌳'];
+const ICLS = ['', 'item flower', 'item grass', 'item tree'];
 const items = new Uint8Array(SIZE*SIZE);
 for (let y=0;y<SIZE;y++){
   for (let x=0;x<SIZE;x++){
     const t = map[idx(x,y)];
     const r = rnd();
     if (t===T_GRASS){
-      if (r<0.10) items[idx(x,y)] = I_TREE;
-      else if (r<0.28) items[idx(x,y)] = I_GRASS;
-      else if (r<0.44) items[idx(x,y)] = I_FLOWER;
+      if (r<0.04) items[idx(x,y)] = I_TREE;
+      else if (r<0.11) items[idx(x,y)] = I_GRASS;
+      else if (r<0.18) items[idx(x,y)] = I_FLOWER;
     } else if (t===T_DIRT){
-      if (r<0.06) items[idx(x,y)] = I_TREE;
-      else if (r<0.12) items[idx(x,y)] = I_GRASS;
+      if (r<0.02) items[idx(x,y)] = I_TREE;
+      else if (r<0.05) items[idx(x,y)] = I_GRASS;
     } else if (t===T_FIELD){
-      if (r<0.10) items[idx(x,y)] = I_FLOWER;
+      if (r<0.04) items[idx(x,y)] = I_FLOWER;
     }
   }
 }
@@ -339,7 +341,11 @@ mctx.imageSmoothingEnabled = false;
 let camX = 130.5*CELL, camY = 130.5*CELL;
 const SPEED = 520;
 const pool = [];
-function makeCell(){ const d=document.createElement('div'); d.className='cell'; grid.appendChild(d); return d; }
+function makeCell(){
+  const d=document.createElement('div'); d.className='cell';
+  const s=document.createElement('span'); s.className='item';
+  d.appendChild(s); d._item=s; grid.appendChild(d); return d;
+}
 
 let lastOX=null, lastOY=null, curOX=0, curOY=0;
 function render(){
@@ -365,7 +371,7 @@ function render(){
           : t===T_DEEP ? 'cell deepbed wtr'
           : t===T_WATER ? 'cell t'+sub[idx(x,y)]+' wtr'
           : 'cell t'+t;
-        el.textContent = ICHAR[items[idx(x,y)]];
+        el._item.className = ICLS[items[idx(x,y)]] || 'item';
         el.style.left = x*CELL+'px';
         el.style.top  = y*CELL+'px';
         el.style.display='flex';
