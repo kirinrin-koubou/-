@@ -178,7 +178,30 @@ var DB=(function(){
     T:[{id:'t_boss',x:24,y:6,name:'監督者ヴァロン',party:[['terran',26],['pyrogon',27],['tidalon',28]],reward:1500,badge:5,boss:true}]
   };
 
-  return {TYPES,TYPEJP,TYPESYM,TYPECOL,MOVES,SPECIES,ITEMS,AREAS,TRAINERS,eff};
+  // 種族ごとの見た目（一目で判別：体色/腹色/目/口/頭の飾り/体型）
+  // eye: round/big/sharp/sleepy/dot  mouth: smile/fang/frown/open/line
+  // orn: leaf/flower/mush/thorn/tuft/crest/spark/smoke/drop/fin/cheek/coral/bolt/zig/ball/rock/boulder/crystal
+  var LOOK={
+    sprig:{col:'#62c24a',col2:'#dff0b0',eye:'round',mouth:'smile',orn:'leaf',shape:'round'},
+    florvine:{col:'#2f9b3e',col2:'#9be07a',eye:'sharp',mouth:'smile',orn:'flower',shape:'tall'},
+    mosska:{col:'#7f9a3c',col2:'#cdd98f',eye:'sleepy',mouth:'line',orn:'mush',shape:'wide'},
+    thornel:{col:'#3fae7a',col2:'#bdeacb',eye:'sharp',mouth:'fang',orn:'thorn',shape:'round'},
+    embo:{col:'#ff7a3c',col2:'#ffd6a8',eye:'big',mouth:'smile',orn:'tuft',shape:'round'},
+    pyrogon:{col:'#e23b22',col2:'#ffb070',eye:'sharp',mouth:'fang',orn:'crest',shape:'tall'},
+    cindle:{col:'#ff5530',col2:'#ffce8a',eye:'round',mouth:'open',orn:'spark',shape:'round'},
+    ashca:{col:'#c8662e',col2:'#e7b58a',eye:'sleepy',mouth:'frown',orn:'smoke',shape:'wide'},
+    aqualet:{col:'#3aa0ff',col2:'#cfeaff',eye:'round',mouth:'smile',orn:'drop',shape:'round'},
+    tidalon:{col:'#1f6fd6',col2:'#86c4ff',eye:'sharp',mouth:'fang',orn:'fin',shape:'tall'},
+    rivu:{col:'#35c2d8',col2:'#c6f3fa',eye:'big',mouth:'open',orn:'cheek',shape:'round'},
+    coralu:{col:'#2f8fb0',col2:'#bfe6ef',eye:'sleepy',mouth:'line',orn:'coral',shape:'wide'},
+    voltik:{col:'#ffd43b',col2:'#fff3b0',eye:'big',mouth:'open',orn:'bolt',shape:'round'},
+    zaplit:{col:'#ffb02e',col2:'#ffe09a',eye:'sharp',mouth:'fang',orn:'zig',shape:'tall'},
+    ohmly:{col:'#eadf5a',col2:'#f7f0b6',eye:'round',mouth:'smile',orn:'ball',shape:'wide'},
+    glemo:{col:'#b07a3a',col2:'#e0c08a',eye:'sleepy',mouth:'line',orn:'rock',shape:'round'},
+    terran:{col:'#8a5a2a',col2:'#c79a5e',eye:'sharp',mouth:'frown',orn:'boulder',shape:'wide'},
+    gravok:{col:'#c08850',col2:'#e8c79a',eye:'round',mouth:'fang',orn:'crystal',shape:'tall'}
+  };
+  return {TYPES,TYPEJP,TYPESYM,TYPECOL,MOVES,SPECIES,ITEMS,AREAS,TRAINERS,LOOK,eff};
 })();
 
 /* ---------- 2. オーディオ (§11) WebAudio 合成 ---------- */
@@ -557,7 +580,7 @@ var Game=(function(){
         g.fillRect(sx-90,330,180,200);
         g.strokeStyle=s===starterSel?'#7fc8ff':'#444c66'; g.lineWidth=s===starterSel?3:1;
         g.strokeRect(sx-90,330,180,200); g.lineWidth=1;
-        drawCreature(sx,420,sp.type,40,0,false);
+        drawCreature(sx,420,sid,40,0,false);
         g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(sp.name,sx,500);
         g.fillStyle=DB.TYPECOL[sp.type]; g.font='13px Segoe UI';
         g.fillText(DB.TYPEJP[sp.type]+'タイプ '+DB.TYPESYM[sp.type],sx,520);
@@ -809,7 +832,7 @@ var Game=(function(){
     for(var pi=0;pi<state.party.length;pi++){ var pm=state.party[pi];
       var ry=90+pi*44;
       g.fillStyle='rgba(24,30,46,.85)'; g.fillRect(PX+8,ry,196,38);
-      drawCreature(PX+24,ry+19,Mon.type(pm),12,0,false);
+      drawCreature(PX+24,ry+19,pm.sid,12,0,false);
       g.fillStyle='#fff'; g.font='12px Segoe UI'; g.fillText(Mon.name(pm),PX+42,ry+15);
       g.fillStyle=DB.TYPECOL[Mon.type(pm)]; g.font='11px Segoe UI';
       g.fillText('Lv'+pm.lv+' '+DB.TYPEJP[Mon.type(pm)]+(settings.colorAssist?DB.TYPESYM[Mon.type(pm)]:''),PX+150,ry+15);
@@ -1248,9 +1271,9 @@ var Game=(function(){
     var f=fMon(), p=pMon();
     // 敵
     var fHurt = (B.phase==='exec'||B.anim)?0:0;
-    drawCreature(720,360, Mon.type(f), 44, performance.now()/300, false);
+    drawCreature(720,360, f.sid, 44, performance.now()/300, false);
     // 自分（背面表現＝大きめ）
-    drawCreature(240,420, Mon.type(p), 56, performance.now()/300, true);
+    drawCreature(240,420, p.sid, 56, performance.now()/300, true);
     // 敵情報枠
     g.fillStyle='rgba(12,16,26,.88)'; g.fillRect(40,40,360,76);
     g.strokeStyle='#5a6488'; g.strokeRect(40,40,360,76);
@@ -1482,7 +1505,7 @@ var Game=(function(){
         var y=130+p*70;
         g.fillStyle=p===menu.sub?'#26304a':'rgba(24,30,46,.9)';
         g.fillRect(150,y,640,60); g.strokeStyle=p===menu.sub?'#7fc8ff':'#444c66'; g.strokeRect(150,y,640,60);
-        drawCreature(185,y+30,Mon.type(m),20,0,false);
+        drawCreature(185,y+30,m.sid,20,0,false);
         g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(Mon.name(m),225,y+24);
         g.fillStyle=DB.TYPECOL[Mon.type(m)]; g.font='13px Segoe UI';
         g.fillText(DB.TYPEJP[Mon.type(m)]+(settings.colorAssist?DB.TYPESYM[Mon.type(m)]:''),225,y+44);
@@ -1510,7 +1533,7 @@ var Game=(function(){
         var yy2=128+d*48;
         g.fillStyle=(top+d===menu.sub)?'#26304a':'rgba(24,30,46,.9)';
         g.fillRect(150,yy2,640,42); g.strokeStyle='#444c66'; g.strokeRect(150,yy2,640,42);
-        if(got){ drawCreature(178,yy2+21,sp.type,15,0,false);
+        if(got){ drawCreature(178,yy2+21,sid,15,0,false);
           g.fillStyle='#fff'; g.font='16px Segoe UI'; g.fillText(sp.name,210,yy2+27);
           g.fillStyle=DB.TYPECOL[sp.type]; g.font='13px Segoe UI';
           g.fillText(DB.TYPEJP[sp.type]+(settings.colorAssist?DB.TYPESYM[sp.type]:''),650,yy2+27);
@@ -1560,33 +1583,129 @@ var Game=(function(){
       transition(function(){ scene=SC.TITLE; titleStage='menu'; titleSel=0; Audio.stopBgm(); }); } }
 
   /* ===================== 共通：クリーチャー描画 (§12) ===================== */
-  function drawCreature(cx,cy,type,r,t,back){
-    var col=DB.TYPECOL[type]||'#9aa0a8';
-    var bob=Math.sin(t)*r*0.06;
-    cy+=bob;
+  // sidOrType: 種族id（LOOKに従い固有描画）または属性文字列（汎用）
+  function drawCreature(cx,cy,sidOrType,r,t,back){
+    var L=DB.LOOK[sidOrType], type;
+    if(L){ type=(DB.SPECIES[sidOrType]||{}).type||'none'; }
+    else { type=sidOrType; var c=DB.TYPECOL[type]||'#9aa0a8';
+      L={col:c,col2:'#ffffff',eye:'round',mouth:'smile',orn:'none',shape:'round'}; }
+    var bob=Math.sin(t)*r*0.06; cy+=bob;
+    function lerp(){ return; }
     // 影
-    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+r*0.95,r*0.8,r*0.25,0,0,7); g.fill();
-    // ボディ
-    g.fillStyle=col; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill();
-    g.fillStyle='rgba(255,255,255,.18)'; g.beginPath(); g.arc(cx-r*0.3,cy-r*0.3,r*0.45,0,7); g.fill();
-    g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke(); g.lineWidth=1;
-    // 属性ごとの装飾
-    g.fillStyle='rgba(0,0,0,.45)';
-    if(type==='grass'){ g.beginPath(); g.moveTo(cx,cy-r); g.lineTo(cx-r*0.4,cy-r*1.5); g.lineTo(cx+r*0.2,cy-r*1.1); g.fill(); }
-    else if(type==='fire'){ for(var f=0;f<3;f++){ g.beginPath(); g.moveTo(cx-r*0.4+f*r*0.4,cy-r*0.8);
-      g.lineTo(cx-r*0.2+f*r*0.4,cy-r*1.5); g.lineTo(cx+f*r*0.4,cy-r*0.8); g.fill(); } }
-    else if(type==='water'){ g.beginPath(); g.arc(cx,cy-r*1.1,r*0.25,0,7); g.fill(); }
-    else if(type==='elec'){ g.beginPath(); g.moveTo(cx-r*0.2,cy-r); g.lineTo(cx+r*0.1,cy-r*0.3);
-      g.lineTo(cx-r*0.1,cy-r*0.3); g.lineTo(cx+r*0.3,cy-r*1.6); g.fill(); }
-    else if(type==='earth'){ g.fillRect(cx-r*0.5,cy-r*1.3,r,r*0.4); }
+    g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(cx,cy+r*0.98,r*0.82,r*0.24,0,0,7); g.fill();
+    // ボディ（体型差）
+    var rx=r, ry=r;
+    if(L.shape==='tall'){ rx=r*0.84; ry=r*1.12; }
+    else if(L.shape==='wide'){ rx=r*1.14; ry=r*0.84; }
+    g.fillStyle=L.col; g.beginPath(); g.ellipse(cx,cy,rx,ry,0,0,7); g.fill();
+    // お腹（差し色）
+    g.fillStyle=L.col2; g.beginPath(); g.ellipse(cx,cy+ry*0.28,rx*0.62,ry*0.6,0,0,7); g.fill();
+    // ハイライト＆輪郭
+    g.fillStyle='rgba(255,255,255,.20)'; g.beginPath(); g.ellipse(cx-rx*0.32,cy-ry*0.34,rx*0.42,ry*0.34,0,0,7); g.fill();
+    g.strokeStyle='rgba(0,0,0,.4)'; g.lineWidth=Math.max(1.5,r*0.05);
+    g.beginPath(); g.ellipse(cx,cy,rx,ry,0,0,7); g.stroke(); g.lineWidth=1;
+
+    // ===== 頭の飾り（種族固有） =====
+    var topY=cy-ry, dk='rgba(0,0,0,.30)';
+    function tri(x1,y1,x2,y2,x3,y3,fs){ g.fillStyle=fs; g.beginPath();
+      g.moveTo(x1,y1); g.lineTo(x2,y2); g.lineTo(x3,y3); g.closePath(); g.fill(); }
+    var o=L.orn;
+    if(o==='leaf'){ g.fillStyle='#3f8f33'; g.beginPath();
+      g.ellipse(cx,topY-r*0.28,r*0.16,r*0.42,0.5,0,7); g.fill();
+      g.strokeStyle='#2c6b22'; g.beginPath(); g.moveTo(cx,topY); g.lineTo(cx,topY-r*0.55); g.stroke(); }
+    else if(o==='flower'){ g.fillStyle='#ffd34d';
+      for(var pf=0;pf<6;pf++){ var ag=pf/6*6.283; g.beginPath();
+        g.ellipse(cx+Math.cos(ag)*r*0.34, topY-r*0.18+Math.sin(ag)*r*0.34, r*0.17,r*0.11,ag,0,7); g.fill(); }
+      g.fillStyle='#e2542a'; g.beginPath(); g.arc(cx,topY-r*0.18,r*0.16,0,7); g.fill(); }
+    else if(o==='mush'){ g.fillStyle='#c94d4d'; g.beginPath();
+      g.ellipse(cx,topY-r*0.04,r*0.5,r*0.3,0,Math.PI,0,true); g.fill();
+      g.fillStyle='#f3d9b0'; for(var ms=0;ms<3;ms++) g.fillRect(cx-r*0.3+ms*r*0.26,topY-r*0.16,r*0.12,r*0.1); }
+    else if(o==='thorn'){ for(var th=-1;th<=1;th++) tri(cx+th*r*0.34,topY+r*0.05, cx+th*r*0.34-r*0.12,topY-r*0.4, cx+th*r*0.34+r*0.12,topY-r*0.4,'#2f6b4a'); }
+    else if(o==='tuft'){ tri(cx-r*0.2,topY+r*0.05, cx,topY-r*0.5, cx+r*0.2,topY+r*0.05,'#ffd24d');
+      tri(cx-r*0.1,topY+r*0.05, cx+r*0.06,topY-r*0.32, cx+r*0.2,topY+r*0.05,'#ff8a3c'); }
+    else if(o==='crest'){ tri(cx-r*0.5,topY+r*0.1, cx-r*0.1,topY-r*0.6, cx+r*0.05,topY+r*0.1,'#ff8a3c');
+      tri(cx-r*0.05,topY+r*0.1, cx+r*0.25,topY-r*0.7, cx+r*0.5,topY+r*0.1,'#ffce5a');
+      // 角
+      tri(cx-rx*0.8,cy-ry*0.5,cx-rx*1.05,cy-ry*0.95,cx-rx*0.55,cy-ry*0.6,'#7a2f1a');
+      tri(cx+rx*0.8,cy-ry*0.5,cx+rx*1.05,cy-ry*0.95,cx+rx*0.55,cy-ry*0.6,'#7a2f1a'); }
+    else if(o==='spark'){ g.fillStyle='#ffd24d';
+      for(var sp2=0;sp2<5;sp2++){ var sa=sp2/5*6.283; g.beginPath();
+        g.arc(cx+Math.cos(sa)*r*0.5, cy-ry*0.5+Math.sin(sa)*r*0.4, r*0.07,0,7); g.fill(); } }
+    else if(o==='smoke'){ g.fillStyle='rgba(150,150,160,.7)';
+      g.beginPath(); g.arc(cx-r*0.12,topY-r*0.18,r*0.16,0,7);
+      g.arc(cx+r*0.1,topY-r*0.32,r*0.13,0,7); g.arc(cx+r*0.26,topY-r*0.16,r*0.1,0,7); g.fill(); }
+    else if(o==='drop'){ g.fillStyle='#aee4ff';
+      tri(cx,topY-r*0.55, cx-r*0.2,topY-r*0.05, cx+r*0.2,topY-r*0.05,'#aee4ff');
+      g.beginPath(); g.arc(cx,topY-r*0.08,r*0.2,0,7); g.fill();
+      g.fillStyle='rgba(255,255,255,.6)'; g.beginPath(); g.arc(cx-r*0.06,topY-r*0.1,r*0.06,0,7); g.fill(); }
+    else if(o==='fin'){ tri(cx,topY-r*0.6, cx-r*0.34,topY+r*0.1, cx+r*0.34,topY+r*0.1,'#1f6fd6');
+      g.strokeStyle='#0c4fa0'; g.beginPath(); g.moveTo(cx-r*0.12,topY-r*0.15); g.lineTo(cx-r*0.12,topY+r*0.05);
+      g.moveTo(cx+r*0.12,topY-r*0.15); g.lineTo(cx+r*0.12,topY+r*0.05); g.stroke(); }
+    else if(o==='cheek'){ g.fillStyle='#7fd6e6';
+      tri(cx-rx*0.85,cy, cx-rx*1.3,cy-r*0.18, cx-rx*1.3,cy+r*0.22,'#7fd6e6');
+      tri(cx+rx*0.85,cy, cx+rx*1.3,cy-r*0.18, cx+rx*1.3,cy+r*0.22,'#7fd6e6'); }
+    else if(o==='coral'){ g.strokeStyle='#e87fa0'; g.lineWidth=Math.max(2,r*0.12);
+      g.beginPath(); g.moveTo(cx,topY); g.lineTo(cx,topY-r*0.45);
+      g.moveTo(cx,topY-r*0.25); g.lineTo(cx-r*0.3,topY-r*0.5);
+      g.moveTo(cx,topY-r*0.3); g.lineTo(cx+r*0.3,topY-r*0.52); g.stroke(); g.lineWidth=1; }
+    else if(o==='bolt'){ g.strokeStyle='#ffd24d'; g.lineWidth=Math.max(2,r*0.09);
+      g.beginPath(); g.moveTo(cx,topY); g.lineTo(cx,topY-r*0.3); g.stroke(); g.lineWidth=1;
+      tri(cx-r*0.22,topY-r*0.3, cx+r*0.12,topY-r*0.3, cx-r*0.05,topY-r*0.62,'#ffe06a');
+      tri(cx-r*0.05,topY-r*0.62, cx+r*0.22,topY-r*0.5, cx+r*0.02,topY-r*0.3,'#ffe06a'); }
+    else if(o==='zig'){ tri(cx-rx*0.55,topY+r*0.15, cx-rx*0.7,topY-r*0.6, cx-rx*0.2,topY,'#ffd24d');
+      tri(cx+rx*0.55,topY+r*0.15, cx+rx*0.7,topY-r*0.6, cx+rx*0.2,topY,'#ffd24d'); }
+    else if(o==='ball'){ g.strokeStyle='#cdb840'; g.lineWidth=Math.max(2,r*0.06);
+      g.beginPath(); g.moveTo(cx-r*0.28,topY); g.lineTo(cx-r*0.36,topY-r*0.4);
+      g.moveTo(cx+r*0.28,topY); g.lineTo(cx+r*0.36,topY-r*0.4); g.stroke(); g.lineWidth=1;
+      g.fillStyle='#fff07a'; g.beginPath(); g.arc(cx-r*0.38,topY-r*0.46,r*0.16,0,7);
+      g.arc(cx+r*0.38,topY-r*0.46,r*0.16,0,7); g.fill(); }
+    else if(o==='rock'){ g.fillStyle='#7a5a32';
+      for(var rk=-1;rk<=1;rk++){ g.beginPath();
+        g.arc(cx+rk*r*0.32, topY-r*0.05-(rk===0?r*0.16:0), r*0.2,0,7); g.fill(); } }
+    else if(o==='boulder'){ g.fillStyle='#6e4a24';
+      g.beginPath(); g.ellipse(cx,topY-r*0.02,r*0.62,r*0.4,0,Math.PI,0,true); g.fill();
+      g.fillStyle='rgba(0,0,0,.25)'; g.fillRect(cx-r*0.4,topY-r*0.18,r*0.18,r*0.12);
+      g.fillRect(cx+r*0.16,topY-r*0.24,r*0.16,r*0.12); }
+    else if(o==='crystal'){ tri(cx-r*0.3,topY+r*0.05, cx-r*0.36,topY-r*0.55, cx-r*0.08,topY+r*0.05,'#9fe0ff');
+      tri(cx+r*0.05,topY+r*0.05, cx+r*0.16,topY-r*0.66, cx+r*0.34,topY+r*0.05,'#cfeaff');
+      tri(cx-r*0.1,topY+r*0.05, cx+r*0.02,topY-r*0.45, cx+r*0.12,topY+r*0.05,'#7fb8e6'); }
+
     if(!back){
-      // 目
-      g.fillStyle='#fff'; g.beginPath(); g.arc(cx-r*0.35,cy-r*0.1,r*0.22,0,7); g.arc(cx+r*0.35,cy-r*0.1,r*0.22,0,7); g.fill();
-      g.fillStyle='#111'; g.beginPath(); g.arc(cx-r*0.32,cy-r*0.05,r*0.1,0,7); g.arc(cx+r*0.38,cy-r*0.05,r*0.1,0,7); g.fill();
-      // 口
-      g.strokeStyle='#111'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy+r*0.25,r*0.3,0.15*Math.PI,0.85*Math.PI); g.stroke(); g.lineWidth=1;
+      // ===== 目（種族固有） =====
+      var ex=rx*0.4, ey=cy-ry*0.12, es=r*0.24;
+      function eyeWhite(x){ g.fillStyle='#fff'; g.beginPath(); g.arc(x,ey,es,0,7); g.fill(); }
+      function pupil(x,d){ g.fillStyle='#101216'; g.beginPath(); g.arc(x+d,ey+es*0.15,es*0.5,0,7); g.fill();
+        g.fillStyle='#fff'; g.beginPath(); g.arc(x+d-es*0.18,ey-es*0.05,es*0.18,0,7); g.fill(); }
+      if(L.eye==='sleepy'){
+        g.strokeStyle='#101216'; g.lineWidth=Math.max(2,r*0.07);
+        g.beginPath(); g.arc(cx-ex,ey,es,0.15*Math.PI,0.95*Math.PI);
+        g.arc(cx+ex,ey,es,0.05*Math.PI,0.85*Math.PI); g.stroke(); g.lineWidth=1;
+      } else if(L.eye==='sharp'){
+        eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,es*0.2); pupil(cx+ex,-es*0.2);
+        g.fillStyle=L.col; // 怒り眉
+        tri(cx-ex-es,ey-es*0.9, cx-ex+es,ey-es*0.2, cx-ex+es,ey-es,L.col);
+        tri(cx+ex+es,ey-es*0.9, cx+ex-es,ey-es*0.2, cx+ex-es,ey-es,L.col);
+      } else if(L.eye==='big'){
+        es=r*0.3; eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,0); pupil(cx+ex,0);
+      } else if(L.eye==='dot'){
+        g.fillStyle='#101216'; g.beginPath(); g.arc(cx-ex,ey,es*0.45,0,7); g.arc(cx+ex,ey,es*0.45,0,7); g.fill();
+      } else { // round
+        eyeWhite(cx-ex); eyeWhite(cx+ex); pupil(cx-ex,0); pupil(cx+ex,0);
+      }
+      // ===== 口（種族固有） =====
+      var my=cy+ry*0.34;
+      g.strokeStyle='#101216'; g.fillStyle='#101216'; g.lineWidth=Math.max(2,r*0.06);
+      if(L.mouth==='smile'){ g.beginPath(); g.arc(cx,my-r*0.05,r*0.26,0.15*Math.PI,0.85*Math.PI); g.stroke(); }
+      else if(L.mouth==='frown'){ g.beginPath(); g.arc(cx,my+r*0.22,r*0.24,1.18*Math.PI,1.82*Math.PI); g.stroke(); }
+      else if(L.mouth==='line'){ g.beginPath(); g.moveTo(cx-r*0.2,my); g.lineTo(cx+r*0.2,my); g.stroke(); }
+      else if(L.mouth==='open'){ g.beginPath(); g.ellipse(cx,my,r*0.18,r*0.16,0,0,7); g.fill();
+        g.fillStyle='#ff8a8a'; g.beginPath(); g.ellipse(cx,my+r*0.05,r*0.1,r*0.08,0,0,7); g.fill(); }
+      else if(L.mouth==='fang'){ g.beginPath(); g.moveTo(cx-r*0.22,my-r*0.04); g.lineTo(cx+r*0.22,my-r*0.04); g.stroke();
+        g.fillStyle='#fff'; tri(cx-r*0.16,my-r*0.04, cx-r*0.06,my-r*0.04, cx-r*0.11,my+r*0.12,'#fff');
+        tri(cx+r*0.16,my-r*0.04, cx+r*0.06,my-r*0.04, cx+r*0.11,my+r*0.12,'#fff'); }
+      g.lineWidth=1;
     } else {
-      g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.arc(cx,cy+r*0.2,r*0.5,0,7); g.fill();
+      g.fillStyle='rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(cx,cy+ry*0.2,rx*0.55,ry*0.5,0,0,7); g.fill();
     }
   }
 
