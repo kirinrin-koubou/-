@@ -251,9 +251,13 @@ for (let y=0;y<SIZE;y++){
     const dx=x-cx, dy=y-cy;
     const dist=Math.hypot(dx,dy);
     let ai=((Math.atan2(dy,dx)/(Math.PI*2))*ANG)|0; ai=((ai%ANG)+ANG)%ANG;
-    const e = edgeR[ai];
-    if (dist > e){ map[idx(x,y)] = T_OCEAN; sub[idx(x,y)] = T_GRAVEL; }
-    else if (dist > e-4){ map[idx(x,y)] = T_DEEP; }   // 海を4マス内側へ拡張＝濃い深い海
+    if (dist > edgeR[ai]){ map[idx(x,y)] = T_OCEAN; sub[idx(x,y)] = T_GRAVEL; }
+  }
+}
+// マップ最外周6マスは濃い「深い海」（編集不可）
+for (let y=0;y<SIZE;y++){
+  for (let x=0;x<SIZE;x++){
+    if (x<6 || y<6 || x>=SIZE-6 || y>=SIZE-6) map[idx(x,y)] = T_DEEP;
   }
 }
 // 海岸：内側7マスは砂浜確定。さらに外側へフェザーして砂利との境目を自然に。
