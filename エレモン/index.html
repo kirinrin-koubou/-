@@ -887,7 +887,7 @@ var Game=(function(){
     B={ wild:opt.wild, trainer:opt.trainer||null, foeParty:opt.foe, foeIdx:0,
         pIdx:pi, msgQ:[], phase:'intro', sel:0, sub:0, anim:0,
         pHpShown:state.party[pi].hp, fHpShown:opt.foe[0].hp,
-        catchShake:0, busy:0, popups:[], runTries:0, ended:false, expGiven:false };
+        catchShake:0, busy:0, popups:[], runTries:0, ended:false, expGiven:false, forceSwitch:false };
     Audio.playBgm(opt.trainer&&opt.trainer.boss?'boss':'battle');
     pushMsg(opt.wild? ('野生の '+Mon.name(opt.foe[0])+' があらわれた！')
       : (B.trainer.name+' が しょうぶを しかけてきた！'));
@@ -976,9 +976,15 @@ var Game=(function(){
   }
   function battleDefeatNext(){
     // 自分の手持ち交代 or 全滅
-    var ni=firstAlive(state.party);
+    var aliveN=0, ni=-1;
+    for(var i=0;i<state.party.length;i++){ if(state.party[i].hp>0){ aliveN++; if(ni<0)ni=i; } }
     if(ni<0){ pushMsg('めの まえが まっくらに なった…',function(){ blackout(); }); B.phase='msg'; B.afterMsg='lose'; }
-    else { B.pIdx=ni; B.pHpShown=pMon().hp; pushMsg('がんばれ！ '+Mon.name(pMon())+'！'); B.phase='msg'; B.afterMsg='menu'; }
+    else if(aliveN===1){ // 選択の余地なし→自動
+      B.pIdx=ni; B.pHpShown=state.party[ni].hp;
+      pushMsg('がんばれ！ '+Mon.name(state.party[ni])+'！'); B.phase='msg'; B.afterMsg='menu';
+    } else { // 次に出すエレモンを選択させる
+      pushMsg('つぎの エレモンを えらんで！'); B.phase='msg'; B.afterMsg='forceswitch';
+    }
   }
   function foeDefeated(){
     B.lastFoe=fMon();
@@ -1107,6 +1113,7 @@ var Game=(function(){
       else if(a==='end'){ endBattle(); }
       else if(a==='lose'){ /* blackout cb 済 */ }
       else if(a==='catchok'){ finishCatch(); }
+      else if(a==='forceswitch'){ B.phase='switch'; B.forceSwitch=true; B.sub=firstAlive(state.party); B.sel=0; }
       else { B.phase='menu'; B.sel=0; }
       return;
     }
@@ -1132,14 +1139,21 @@ var Game=(function(){
     if(B.phase==='switch'){
       var pr=state.party;
       B.sub=gridMove(B.sub,pr.length,3);
-      if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
+      if(edge.cancel){
+        if(B.forceSwitch){ toast('えらばないと たたかえない'); }
+        else { Audio.se('cancel'); B.phase='menu'; }
+      }
       if(edge.ok){
-        if(B.sub===B.pIdx){ toast('すでに せんとうちゅう'); }
+        if(B.sub===B.pIdx && !B.forceSwitch){ toast('すでに せんとうちゅう'); }
         else if(pr[B.sub].hp<=0){ toast('そのエレモンは たたかえない'); }
+        else if(B.forceSwitch){ // 戦闘不能後の交代：敵の追加行動なし
+          Audio.se('ok'); B.forceSwitch=false; B.pIdx=B.sub; B.pHpShown=pMon().hp;
+          pushMsg('いけ！ '+Mon.name(pMon())+'！'); B.phase='msg'; B.afterMsg='menu';
+        }
         else { Audio.se('ok'); B.pIdx=B.sub; B.pHpShown=pMon().hp;
           pushMsg('いけ！ '+Mon.name(pMon())+'！');
-          // 交代は1ターン消費 → 敵行動
-          var fm=aiChoose(); B.turnQ=[['f',fm]]; B.phase='msg'; B.afterMsg='execAfterSwitch';
+          // 通常の交代は1ターン消費 → 敵行動
+          var fm=aiChoose(); B.turnQ=[['f',fm]]; B.phase='msg';
           B.execI=0; B.afterMsg='exec';
         }
       }
@@ -1304,8 +1318,10 @@ var Game=(function(){
         g.fillStyle='#9fe0ff'; g.font='12px Segoe UI'; g.fillText('Lv'+sm.lv+' HP '+sm.hp+'/'+sm.maxhp,sx+10,sy+38);
         (function(idx){ zone(sx,sy,280,48,function(){ B.sub=idx; edge.ok=true; }); })(s);
       }
-      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X／右クリック もどる',920,612); g.textAlign='left';
-      zone(860,598,90,28,function(){ edge.cancel=true; });
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right';
+      g.fillText(B.forceSwitch?'つぎに だす エレモンを えらぶ':'X／右クリック もどる',920,612);
+      g.textAlign='left';
+      if(!B.forceSwitch) zone(860,598,90,28,function(){ edge.cancel=true; });
     } else if(B.phase==='item'){
       var keys=B._itemKeys||[];
       if(keys.length===0){ g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('どうぐを もっていない（Z/Xで戻る）',44,520);
