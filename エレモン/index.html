@@ -408,6 +408,32 @@ var Game=(function(){
   bindPad('u','up');bindPad('d','down');bindPad('l','left');bindPad('r','right');
   bindPad('bZ','ok');bindPad('bX','cancel');bindPad('bM','menu');
 
+  /* ---- クリック操作：ゾーン登録＆ヒットテスト ---- */
+  var zones=[]; // 毎フレーム描画時に再構築
+  function zone(x,y,w,h,fn){ zones.push({x:x,y:y,w:w,h:h,fn:fn}); }
+  function canvasPoint(ev){
+    var r=cv.getBoundingClientRect();
+    var cx=(ev.touches?ev.touches[0].clientX:ev.clientX);
+    var cy=(ev.touches?ev.touches[0].clientY:ev.clientY);
+    return { x:(cx-r.left)/r.width*960, y:(cy-r.top)/r.height*640 };
+  }
+  function handlePointer(ev){
+    Audio.resume();
+    var p=canvasPoint(ev);
+    // 仮想パッド領域(画面下)はパッド側で処理するため無視
+    for(var i=zones.length-1;i>=0;i--){ var z=zones[i];
+      if(p.x>=z.x&&p.x<=z.x+z.w&&p.y>=z.y&&p.y<=z.y+z.h){
+        ev.preventDefault(); z.fn(); return;
+      }
+    }
+  }
+  cv.addEventListener('mousedown',function(e){ if(e.button===2){ e.preventDefault(); edge.cancel=true; Audio.resume(); return; } handlePointer(e); });
+  cv.addEventListener('contextmenu',function(e){ e.preventDefault(); edge.cancel=true; });
+  cv.addEventListener('touchstart',function(e){ handlePointer(e); },{passive:false});
+  // クリック＝「その項目を選んで決定」: 選択変数を設定後 edge.ok を立てる
+  function pick(setSel){ if(setSel)setSel(); edge.ok=true; }
+  function pickCancel(){ edge.cancel=true; }
+
   /* ---- 画面フィット ---- */
   function resize(){
     var stg=document.getElementById('stage');
@@ -496,9 +522,10 @@ var Game=(function(){
         g.fillRect(360,300+k*64,240,48);
         g.strokeStyle='#5a6488'; g.strokeRect(360,300+k*64,240,48);
         g.fillStyle='#fff'; g.font='20px Segoe UI'; g.fillText(items[k],480,330+k*64);
+        (function(idx){ zone(360,300+idx*64,240,48,function(){ titleSel=idx; edge.ok=true; }); })(k);
       }
       g.fillStyle='#7f88a8'; g.font='13px Segoe UI';
-      g.fillText('↑↓ 選択 / Z 決定 / X 戻る ・ 移動:矢印 メニュー:M',480,610);
+      g.fillText('↑↓／クリックで選択・決定 ・ 移動:矢印 メニュー:M',480,610);
     } else if(titleStage==='starter'){
       g.fillStyle='#fff'; g.font='22px Segoe UI'; g.fillText('最初の相棒を選ぼう',480,290);
       var sts=['sprig','embo','aqualet'];
@@ -512,8 +539,9 @@ var Game=(function(){
         g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(sp.name,sx,500);
         g.fillStyle=DB.TYPECOL[sp.type]; g.font='13px Segoe UI';
         g.fillText(DB.TYPEJP[sp.type]+'タイプ '+DB.TYPESYM[sp.type],sx,520);
+        (function(idx){ zone(sx-90,330,180,200,function(){ starterSel=idx; edge.ok=true; }); })(s);
       }
-      g.fillStyle='#7f88a8'; g.font='13px Segoe UI'; g.fillText('← → 選択 / Z 決定 / X 戻る',480,580);
+      g.fillStyle='#7f88a8'; g.font='13px Segoe UI'; g.fillText('← →／クリックで選択・決定 / 右クリック 戻る',480,580);
     } else if(titleStage==='help'){
       g.fillStyle='rgba(15,18,28,.95)'; g.fillRect(140,250,680,330);
       g.strokeStyle='#5a6488'; g.strokeRect(140,250,680,330);
@@ -526,8 +554,9 @@ var Game=(function(){
         '◆ 拠点(青い床)で全回復＆オートセーブ。Mでメニュー。'];
       for(var L=0;L<lines.length;L++) g.fillText(lines[L],170,300+L*42);
       g.textAlign='center'; g.fillStyle='#7f88a8'; g.font='13px Segoe UI';
-      g.fillText('Z / X で戻る',480,560);
+      g.fillText('Z / X / クリックで戻る',480,560);
       g.textAlign='left';
+      zone(140,250,680,330,function(){ edge.cancel=true; });
     }
   }
 
@@ -558,8 +587,9 @@ var Game=(function(){
     g.fillStyle='#fff'; g.font='17px Segoe UI';
     wrapText(pg[1],480,310,460,26);
     g.fillStyle='#9aa4c4'; g.font='13px Segoe UI';
-    g.fillText((tut.page+1)+' / '+tutPages.length+'   Z:次へ  X:スキップ',480,405);
+    g.fillText((tut.page+1)+' / '+tutPages.length+'   Z／クリック:次へ  右クリック:スキップ',480,405);
     g.textAlign='left';
+    zone(0,0,960,640,function(){ edge.ok=true; });
   }
   function wrapText(t,cx,cy,maxw,lh){
     var words=t.split(''), line='', lines=[];
@@ -705,14 +735,67 @@ var Game=(function(){
     var eo={down:[0,4],up:[0,-4],left:[-4,0],right:[4,0]}[p.facing]||[0,4];
     g.beginPath(); g.arc(psx+16+eo[0],psy+14+eo[1],4,0,7); g.fill();
     g.fillStyle='#3a64c8'; g.fillRect(psx+8,psy+22,16,10);
-    // HUD §9
-    g.fillStyle='rgba(8,10,18,.7)'; g.fillRect(0,0,300,58);
+    // HUD §9 ＋ 常時パネル（移動中も手持ち/道具/実績/ミニマップを表示）
+    g.fillStyle='rgba(8,10,18,.72)'; g.fillRect(0,0,360,58);
     g.fillStyle='#ffd86b'; g.font='16px Segoe UI'; g.textAlign='left';
     g.fillText('◇ '+state.player.gem+' ジェム',12,24);
     g.fillStyle='#9fe0ff'; g.fillText('★ バッジ '+state.player.badges+'/4',12,46);
-    g.fillStyle='rgba(8,10,18,.7)'; g.fillRect(660,0,300,28);
     g.fillStyle='#cdd6ee'; g.font='14px Segoe UI'; g.textAlign='right';
-    g.fillText(def.name,948,19); g.textAlign='left';
+    g.fillText(def.name,348,46); g.textAlign='left';
+
+    // 右：手持ちパーティ（クリックでメニュー）
+    var PX=744;
+    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,64,212,300);
+    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('てもち '+state.party.length+'/6',PX+10,82);
+    for(var pi=0;pi<state.party.length;pi++){ var pm=state.party[pi];
+      var ry=90+pi*44;
+      g.fillStyle='rgba(24,30,46,.85)'; g.fillRect(PX+8,ry,196,38);
+      drawCreature(PX+24,ry+19,Mon.type(pm),12,0,false);
+      g.fillStyle='#fff'; g.font='12px Segoe UI'; g.fillText(Mon.name(pm),PX+42,ry+15);
+      g.fillStyle=DB.TYPECOL[Mon.type(pm)]; g.font='11px Segoe UI';
+      g.fillText('Lv'+pm.lv+' '+DB.TYPEJP[Mon.type(pm)]+(settings.colorAssist?DB.TYPESYM[Mon.type(pm)]:''),PX+150,ry+15);
+      drawHpBar(PX+42,ry+22,150,pm.hp,pm.maxhp);
+      g.fillStyle='#9aa4c4'; g.font='10px Segoe UI'; g.fillText(pm.hp+'/'+pm.maxhp,PX+42,ry+36);
+    }
+    zone(PX,64,212,300,function(){ scene=SC.MENU; menuInit(); });
+
+    // 右下：道具
+    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,372,212,150);
+    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('どうぐ',PX+10,390);
+    var bk=Object.keys(state.bag).filter(function(k){return state.bag[k]>0;}), by=406;
+    if(bk.length===0){ g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('なし',PX+14,by+8); }
+    for(var bi=0;bi<bk.length && bi<6;bi++){
+      g.fillStyle='#cdd6ee'; g.font='12px Segoe UI';
+      g.fillText(DB.ITEMS[bk[bi]].name,PX+14,by+bi*18+8);
+      g.fillStyle='#ffd86b'; g.textAlign='right'; g.fillText('×'+state.bag[bk[bi]],PX+198,by+bi*18+8); g.textAlign='left';
+    }
+
+    // 右最下：プレイ実績
+    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,530,212,98);
+    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('じっせき',PX+10,548);
+    g.fillStyle='#cdd6ee'; g.font='12px Segoe UI';
+    g.fillText('図鑑 '+Object.keys(state.dex).length+'/18',PX+14,566);
+    g.fillText('捕獲 '+(state.stats.caught||0),PX+14,584);
+    g.fillText('時間 '+fmtTime(state.stats.playTime||0),PX+14,602);
+    g.fillText('バッジ '+state.player.badges+'/4',PX+14,620);
+
+    // 左下：ミニマップ
+    var MS=4, MW=map.w*MS, MH=map.h*MS, MX=12, MY=628-MH-6;
+    g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(MX-4,MY-16,MW+8,MH+22);
+    g.fillStyle='#7fc8ff'; g.font='12px Segoe UI'; g.fillText('MAP: '+def.name,MX,MY-4);
+    for(var my=0;my<map.h;my++)for(var mx=0;mx<map.w;mx++){
+      var tt=World.tile(map,mx,my), col;
+      if(tt===1) col='#3a3f50'; else if(tt===2) col='#3f7a44';
+      else if(tt===4) col=gateOpen()?'#5fbf5f':'#b08040';
+      else if(tt===5) col='#3a8fe0'; else col='#1c2030';
+      g.fillStyle=col; g.fillRect(MX+mx*MS,MY+my*MS,MS,MS);
+    }
+    var trs2=DB.TRAINERS[p.area]||[];
+    for(var ti=0;ti<trs2.length;ti++){ if(state.flags['beat_'+trs2[ti].id])continue;
+      g.fillStyle=trs2[ti].boss?'#d04bff':'#ff7a3c';
+      g.fillRect(MX+trs2[ti].x*MS-1,MY+trs2[ti].y*MS-1,MS+2,MS+2); }
+    g.fillStyle='#fff'; g.fillRect(MX+p.x*MS-1,MY+p.y*MS-1,MS+2,MS+2);
+
     if(World.tile(map,p.x,p.y)===5){
       g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(330,596,300,32);
       g.fillStyle='#9fe0ff'; g.font='15px Segoe UI'; g.textAlign='center';
@@ -918,6 +1001,20 @@ var Game=(function(){
     B.phase='msg'; B.afterMsg='exec';
   }
 
+  // 2Dグリッド移動：←→で列、↑↓で行（レイアウトに一致）
+  function gridMove(idx,count,cols){
+    if(count<=0) return 0;
+    idx=Math.max(0,Math.min(count-1,idx));
+    var rows=Math.ceil(count/cols), r=Math.floor(idx/cols), c=idx%cols, moved=false;
+    if(edge.left){ c=(c-1+cols)%cols; moved=true; }
+    else if(edge.right){ c=(c+1)%cols; moved=true; }
+    if(edge.up){ r=(r-1+rows)%rows; moved=true; }
+    else if(edge.down){ r=(r+1)%rows; moved=true; }
+    var ni=r*cols+c;
+    if(ni>=count) ni=count-1;
+    if(moved && ni!==idx) Audio.se('ok');
+    return ni;
+  }
   function updateBattle(){
     if(!B){ scene=SC.FIELD; return; }
     // HPバー補間
@@ -950,11 +1047,7 @@ var Game=(function(){
       return;
     }
     if(B.phase==='menu'){
-      var labels=['たたかう','エレモン','どうぐ','つかまえる','にげる'];
-      if(edge.up)  { B.sel=(B.sel+3)%5; Audio.se('ok'); }
-      if(edge.down){ B.sel=(B.sel+1)%5; Audio.se('ok'); }
-      if(edge.left&&B.sel>0){ B.sel--; Audio.se('ok'); }
-      if(edge.right&&B.sel<4){ B.sel++; Audio.se('ok'); }
+      B.sel=gridMove(B.sel,5,3);
       if(edge.ok){
         Audio.se('ok');
         if(B.sel===0){ B.phase='move'; B.sub=0; }
@@ -967,16 +1060,14 @@ var Game=(function(){
     }
     if(B.phase==='move'){
       var mv=pMon().moves;
-      if(edge.up)  { B.sub=(B.sub+mv.length-1)%mv.length; Audio.se('ok'); }
-      if(edge.down){ B.sub=(B.sub+1)%mv.length; Audio.se('ok'); }
+      B.sub=gridMove(B.sub,mv.length,2);
       if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
       if(edge.ok){ Audio.se('ok'); var chosen=mv[B.sub]; resolveTurn(chosen); }
       return;
     }
     if(B.phase==='switch'){
       var pr=state.party;
-      if(edge.up)  { B.sub=(B.sub+pr.length-1)%pr.length; Audio.se('ok'); }
-      if(edge.down){ B.sub=(B.sub+1)%pr.length; Audio.se('ok'); }
+      B.sub=gridMove(B.sub,pr.length,3);
       if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
       if(edge.ok){
         if(B.sub===B.pIdx){ toast('すでに せんとうちゅう'); }
@@ -994,8 +1085,7 @@ var Game=(function(){
       var keys=Object.keys(state.bag).filter(function(k){ return state.bag[k]>0; });
       if(keys.length===0){ if(edge.ok||edge.cancel){ Audio.se('cancel'); B.phase='menu'; } B._itemKeys=[]; return; }
       B._itemKeys=keys;
-      if(edge.up)  { B.sub=(B.sub+keys.length-1)%keys.length; Audio.se('ok'); }
-      if(edge.down){ B.sub=(B.sub+1)%keys.length; Audio.se('ok'); }
+      B.sub=gridMove(B.sub,keys.length,2);
       if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
       if(edge.ok){
         var key=keys[B.sub], it=DB.ITEMS[key];
@@ -1116,7 +1206,8 @@ var Game=(function(){
       g.fillStyle='#fff'; g.font='20px Segoe UI';
       wrapL(B.msgQ[0].t,44,510,880,30);
       g.fillStyle='#9aa4c4'; g.font='13px Segoe UI'; g.textAlign='right';
-      g.fillText('▼ Z/X ですすむ',920,610); g.textAlign='left';
+      g.fillText('▼ Z/X・クリックで すすむ',920,610); g.textAlign='left';
+      zone(20,470,920,150,function(){ edge.ok=true; });
     } else if(B.phase==='menu'){
       var labels=['たたかう','エレモン','どうぐ','つかまえる','にげる'];
       for(var L=0;L<labels.length;L++){
@@ -1124,6 +1215,7 @@ var Game=(function(){
         g.fillStyle=L===B.sel?'#3a64ff':'rgba(30,36,52,.9)';
         g.fillRect(cx,cy,260,42); g.strokeStyle='#5a6488'; g.strokeRect(cx,cy,260,42);
         g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(labels[L],cx+18,cy+27);
+        (function(idx){ zone(cx,cy,260,42,function(){ B.sel=idx; edge.ok=true; }); })(L);
       }
     } else if(B.phase==='move'){
       var mv=pMon().moves;
@@ -1134,8 +1226,10 @@ var Game=(function(){
         g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(mo.name,mx+14,my+28);
         g.fillStyle=DB.TYPECOL[mo.type]; g.font='13px Segoe UI';
         g.fillText(DB.TYPEJP[mo.type]+(settings.colorAssist?DB.TYPESYM[mo.type]:'')+(mo.power?' 威力'+mo.power:' 補助'),mx+300,my+28);
+        (function(idx){ zone(mx,my,430,44,function(){ B.sub=idx; edge.ok=true; }); })(M);
       }
-      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X／右クリック もどる',920,612); g.textAlign='left';
+      zone(860,598,90,28,function(){ edge.cancel=true; });
     } else if(B.phase==='switch'){
       for(var s=0;s<state.party.length;s++){ var sm=state.party[s];
         var sx=44+(s%3)*300, sy=500+Math.floor(s/3)*56;
@@ -1144,19 +1238,24 @@ var Game=(function(){
         g.fillStyle='#fff'; g.font='15px Segoe UI';
         g.fillText(Mon.name(sm)+(s===B.pIdx?'(出)':''),sx+10,sy+20);
         g.fillStyle='#9fe0ff'; g.font='12px Segoe UI'; g.fillText('Lv'+sm.lv+' HP '+sm.hp+'/'+sm.maxhp,sx+10,sy+38);
+        (function(idx){ zone(sx,sy,280,48,function(){ B.sub=idx; edge.ok=true; }); })(s);
       }
-      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X／右クリック もどる',920,612); g.textAlign='left';
+      zone(860,598,90,28,function(){ edge.cancel=true; });
     } else if(B.phase==='item'){
       var keys=B._itemKeys||[];
-      if(keys.length===0){ g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('どうぐを もっていない（Z/Xで戻る）',44,520); }
+      if(keys.length===0){ g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('どうぐを もっていない（Z/Xで戻る）',44,520);
+        zone(20,470,920,150,function(){ edge.cancel=true; }); }
       for(var I=0;I<keys.length;I++){ var it=DB.ITEMS[keys[I]];
         var ix=44+(I%2)*450, iy=498+Math.floor(I/2)*40;
         g.fillStyle=I===B.sub?'#3a64ff':'rgba(30,36,52,.9)';
         g.fillRect(ix,iy,430,34); g.strokeStyle='#5a6488'; g.strokeRect(ix,iy,430,34);
         g.fillStyle='#fff'; g.font='15px Segoe UI';
         g.fillText(it.name+'  ×'+state.bag[keys[I]],ix+12,iy+22);
+        (function(idx){ zone(ix,iy,430,34,function(){ B.sub=idx; edge.ok=true; }); })(I);
       }
-      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X もどる',920,612); g.textAlign='left';
+      g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.textAlign='right'; g.fillText('X／右クリック もどる',920,612); g.textAlign='left';
+      zone(860,598,90,28,function(){ edge.cancel=true; });
     } else if(B.phase==='catch'){
       g.fillStyle='#fff'; g.font='20px Segoe UI';
       var sh=Math.sin(B.catchShake*0.6)* (B.catchShake<40?6:0);
@@ -1212,13 +1311,15 @@ var Game=(function(){
       g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(it.name,228,y+31);
       g.fillStyle=state.player.gem>=it.price?'#9fe0ff':'#ff7a7a'; g.font='16px Segoe UI';
       g.fillText(it.price+' ジェム  （所持 ×'+(state.bag[shop.stock[i]]||0)+'）',460,y+31);
+      (function(idx){ zone(210,y,540,48,function(){ shop.sel=idx; edge.ok=true; }); })(i);
     }
     var ey=150+shop.stock.length*60;
     g.fillStyle=shop.sel===shop.stock.length?'#3a64ff':'rgba(30,36,52,.9)';
     g.fillRect(210,ey,540,44); g.strokeStyle='#5a6488'; g.strokeRect(210,ey,540,44);
     g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText('でる',228,ey+29);
+    (function(idx){ zone(210,ey,540,44,function(){ shop.sel=idx; edge.ok=true; }); })(shop.stock.length);
     g.fillStyle='#9aa4c4'; g.font='13px Segoe UI';
-    g.fillText('↑↓ 選択 / Z 購入 / X 出る ・ 上位品はバッジで解放',210,548);
+    g.fillText('↑↓／クリックで選択・購入 / 右クリックで出る ・ 上位品はバッジ解放',210,548);
   }
 
   /* ===================== MENU (§9) ===================== */
@@ -1285,6 +1386,7 @@ var Game=(function(){
         g.fillStyle=i===menu.sel?'#3a64ff':'rgba(30,36,52,.9)';
         g.fillRect(150,130+i*64,300,52); g.strokeStyle='#5a6488'; g.strokeRect(150,130+i*64,300,52);
         g.fillStyle='#fff'; g.font='19px Segoe UI'; g.fillText(items[i],170,162+i*64);
+        (function(idx){ zone(150,130+idx*64,300,52,function(){ menu.sel=idx; edge.ok=true; }); })(i);
       }
       g.fillStyle='#aab4d4'; g.font='14px Segoe UI';
       g.fillText('所持金: '+state.player.gem+' ジェム',500,150);
@@ -1302,6 +1404,7 @@ var Game=(function(){
         g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(Mon.name(m),225,y+24);
         g.fillStyle=DB.TYPECOL[Mon.type(m)]; g.font='13px Segoe UI';
         g.fillText(DB.TYPEJP[Mon.type(m)]+(settings.colorAssist?DB.TYPESYM[Mon.type(m)]:''),225,y+44);
+        (function(idx){ zone(150,y,640,60,function(){ menu.sub=idx; edge.ok=true; }); })(p);
         g.fillStyle='#cdd6ee'; g.font='14px Segoe UI';
         g.fillText('Lv'+m.lv,420,y+24);
         drawHpBar(420,y+34,200,m.hp,m.maxhp);
@@ -1364,8 +1467,9 @@ var Game=(function(){
     g.fillText('クリアタイム: '+fmtTime(state.stats.playTime||0),480,390);
     g.fillText('図鑑登録: '+Object.keys(state.dex).length+'/18   捕獲数: '+(state.stats.caught||0),480,420);
     g.fillStyle='#7f88a8'; g.font='14px Segoe UI';
-    g.fillText('Z: タイトルへ（セーブから周回継続できます）',480,540);
+    g.fillText('Z／クリック: タイトルへ（セーブから周回継続できます）',480,540);
     g.textAlign='left';
+    zone(0,0,960,640,function(){ edge.ok=true; });
   }
   function updateEnd(){ endT+=0.5;
     if(edge.ok){ Audio.se('ok'); Save.save(state);
@@ -1458,6 +1562,7 @@ var Game=(function(){
     if(state&&state.stats) state.stats.playTime=(Date.now()-(state.stats.start||Date.now()))/1000;
   }
   function render(dt){
+    zones.length=0; // クリックゾーンを毎フレーム再構築
     g.save();
     if(shake>0 && (Audio.settings.shake)){
       g.translate((Math.random()-0.5)*6,(Math.random()-0.5)*6);
