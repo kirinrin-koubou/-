@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>のんびり島ぐらし 〜スローライフ〜</title>
+<style>
+  :root{
+    --bg:#fdf3e3; --panel:#fffaf0; --ink:#5a4632; --line:#e3d2b0;
+    --green:#7fb069; --green-d:#5c8a4a; --blue:#6fb3d6; --gold:#e0a635;
+    --pink:#e89ab0; --shadow:0 4px 0 rgba(0,0,0,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    background:linear-gradient(180deg,#cfe8f3,#fdf3e3 40%);
+    color:var(--ink); display:flex; justify-content:center;
+    padding:10px; min-height:100%;
+  }
+  #app{width:100%;max-width:480px}
+  h1{font-size:20px;text-align:center;margin:6px 0;letter-spacing:1px}
+  .sub{text-align:center;font-size:12px;color:#a08b6c;margin-bottom:8px}
+
+  .hud{
+    display:flex;gap:6px;background:var(--panel);border:2px solid var(--line);
+    border-radius:14px;padding:8px;font-size:13px;flex-wrap:wrap;
+    justify-content:space-between;box-shadow:var(--shadow)
+  }
+  .hud span{white-space:nowrap}
+  .bar{height:8px;background:#eadfc6;border-radius:6px;overflow:hidden;flex:1;min-width:80px;align-self:center}
+  .bar>i{display:block;height:100%;background:var(--green);transition:width .3s}
+  .bar.en>i{background:linear-gradient(90deg,#f6c54b,#e88c3b)}
+
+  .scene{
+    margin:10px 0;background:var(--panel);border:2px solid var(--line);
+    border-radius:18px;padding:14px;box-shadow:var(--shadow);min-height:230px
+  }
+  .scene h2{font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .field{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .plot{
+    aspect-ratio:1;border-radius:12px;background:#caa46a;border:2px solid #a9824b;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:26px;cursor:pointer;position:relative;transition:transform .1s;user-select:none
+  }
+  .plot:active{transform:scale(.94)}
+  .plot.wet{background:#9c7b48;border-color:#7d5f33}
+  .plot small{font-size:9px;color:#fff;position:absolute;bottom:3px;background:rgba(0,0,0,.25);padding:0 4px;border-radius:6px}
+  .plot .drop{position:absolute;top:3px;right:4px;font-size:11px}
+
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  button{
+    font-family:inherit;font-size:14px;color:#fff;background:var(--green);
+    border:none;border-radius:12px;padding:11px 14px;cursor:pointer;
+    box-shadow:0 3px 0 var(--green-d);transition:transform .08s,box-shadow .08s;flex:1;min-width:90px
+  }
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--green-d)}
+  button.b{background:var(--blue);box-shadow:0 3px 0 #4f8aa8}
+  button.g{background:var(--gold);box-shadow:0 3px 0 #b07d1e}
+  button.p{background:var(--pink);box-shadow:0 3px 0 #c06f88}
+  button.ghost{background:#fff;color:var(--ink);box-shadow:0 3px 0 var(--line)}
+  button:disabled{opacity:.45;filter:grayscale(.4)}
+
+  .nav{display:flex;gap:6px;margin-top:10px}
+  .nav button{font-size:13px;padding:10px 6px}
+  .nav button.on{outline:3px solid #fff;outline-offset:-3px}
+
+  .log{
+    background:#fff;border:2px dashed var(--line);border-radius:12px;
+    padding:8px 10px;font-size:12px;margin-top:10px;height:62px;overflow:auto;line-height:1.6
+  }
+  .log p{opacity:.55} .log p:last-child{opacity:1;font-weight:bold}
+
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{
+    display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--line);
+    border-radius:12px;padding:8px 10px;font-size:14px
+  }
+  .item .ic{font-size:22px}
+  .item .nm{flex:1}
+  .item .ct{font-size:12px;color:#a08b6c}
+  .tag{font-size:11px;background:#f0e6cf;border-radius:8px;padding:2px 7px;color:#8a7350}
+
+  .pop{
+    position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;
+    align-items:center;justify-content:center;padding:20px;z-index:9
+  }
+  .pop.show{display:flex}
+  .card{background:var(--panel);border-radius:18px;padding:20px;max-width:340px;width:100%;text-align:center;border:3px solid var(--line)}
+  .card .big{font-size:46px;margin:6px 0}
+  .float{
+    position:fixed;left:50%;top:38%;transform:translateX(-50%);
+    font-size:22px;font-weight:bold;color:var(--green-d);pointer-events:none;
+    text-shadow:0 2px 0 #fff;animation:fl 1.1s ease-out forwards;z-index:20
+  }
+  @keyframes fl{0%{opacity:0;transform:translate(-50%,10px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-40px)}}
+  .sky{text-align:center;font-size:13px;color:#8a7350;margin-bottom:8px}
+  .hint{font-size:11px;color:#a08b6c;text-align:center;margin-top:8px}
+  footer{text-align:center;font-size:11px;color:#bfa985;margin:14px 0 6px}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🏝️ のんびり島ぐらし</h1>
+  <div class="sub">〜あくせくしない、スローライフ〜</div>
+
+  <div class="hud">
+    <span>🪙 <b id="gold">0</b></span>
+    <span>📅 <b id="day">1</b>日目</span>
+    <span id="timeTxt">☀️ 朝</span>
+    <span style="display:flex;align-items:center;gap:6px;flex:1">⚡<div class="bar en"><i id="enBar"></i></div></span>
+  </div>
+
+  <div class="sky" id="sky"></div>
+  <div class="scene" id="scene"></div>
+
+  <div class="nav">
+    <button class="ghost on" data-v="farm">🌱 畑</button>
+    <button class="ghost" data-v="pond">🎣 池</button>
+    <button class="ghost" data-v="forest">🌲 森</button>
+    <button class="ghost" data-v="shop">🏪 店</button>
+    <button class="ghost" data-v="bag">🎒 袋</button>
+  </div>
+
+  <div class="log" id="log"></div>
+  <div class="hint">タップでのんびり操作 ・ 進行は自動セーブされます</div>
+  <footer>のんびり島ぐらし v1.0</footer>
+</div>
+
+<div class="pop" id="pop">
+  <div class="card">
+    <div class="big" id="popIc">🌙</div>
+    <h2 id="popTitle">おやすみなさい</h2>
+    <p id="popBody" style="margin:10px 0;font-size:14px"></p>
+    <button class="g" onclick="closePop()">つづける</button>
+  </div>
+</div>
+
+<script>
+const ITEMS = {
+  // seeds
+  kabu_s:{n:"カブの種",ic:"🫛",buy:8},
+  tomato_s:{n:"トマトの種",ic:"🫛",buy:15},
+  corn_s:{n:"トウモロコシの種",ic:"🫛",buy:25},
+  // crops
+  kabu:{n:"カブ",ic:"🥬",sell:18},
+  tomato:{n:"トマト",ic:"🍅",sell:34},
+  corn:{n:"トウモロコシ",ic:"🌽",sell:60},
+  // fish
+  fune:{n:"フナ",ic:"🐟",sell:14},
+  koi:{n:"コイ",ic:"🐠",sell:40},
+  nushi:{n:"ぬし",ic:"🐡",sell:150},
+  // forest
+  ki:{n:"きのこ",ic:"🍄",sell:12},
+  ichigo:{n:"野いちご",ic:"🍓",sell:22},
+  hachi:{n:"はちみつ",ic:"🍯",sell:55},
+  eda:{n:"枝",ic:"🪵",sell:5},
+};
+const GROW = {
+  kabu_s:{into:"kabu",days:2}, tomato_s:{into:"tomato",days:3}, corn_s:{into:"corn",days:4}
+};
+const SHOP = ["kabu_s","tomato_s","corn_s"];
+
+const fresh = () => ({
+  gold:50, day:1, time:0, energy:100,
+  plots:Array.from({length:8},()=>({seed:null,age:0,wet:false,ready:false})),
+  bag:{kabu_s:3},
+  view:"farm", best:0
+});
+let S = load() || fresh();
+
+const TIMES=[["☀️ 朝","#cfe8f3"],["🌤️ 昼","#bfe3ef"],["🌇 夕方","#f3d6b8"],["🌙 夜","#b9aed6"]];
+const $=id=>document.getElementById(id);
+
+function save(){localStorage.setItem("nonbiri",JSON.stringify(S))}
+function load(){try{return JSON.parse(localStorage.getItem("nonbiri"))}catch(e){return null}}
+
+let logs=[];
+function log(t){logs.push(t);logs=logs.slice(-6);
+  $("log").innerHTML=logs.map(x=>`<p>${x}</p>`).join("");
+  $("log").scrollTop=9999;}
+function floatTxt(t){const f=document.createElement("div");f.className="float";f.textContent=t;
+  document.body.appendChild(f);setTimeout(()=>f.remove(),1100);}
+
+function spend(e){ if(S.energy<e){log("⚡ つかれた…少し休もう。");return false;}
+  S.energy-=e; return true; }
+
+function advanceTime(){
+  S.time++;
+  if(S.time>=4){ sleep(); return; }
+  draw();
+}
+function sleep(){
+  S.day++; S.time=0; S.energy=100;
+  let grew=0;
+  S.plots.forEach(p=>{
+    if(p.seed && p.wet && !p.ready){
+      p.age++; p.wet=false;
+      const g=GROW[p.seed];
+      if(g && p.age>=g.days){ p.ready=true; grew++; }
+    } else if(p.seed){ p.wet=false; }
+  });
+  save();
+  $("popIc").textContent="🌙";
+  $("popTitle").textContent=`${S.day-1}日目 おわり`;
+  $("popBody").textContent = grew>0
+    ? `ぐっすり眠った。畑の作物が ${grew}個 実ったみたい！`
+    : "ぐっすり眠って体力が回復した。";
+  $("pop").classList.add("show");
+  draw();
+}
+function closePop(){$("pop").classList.remove("show")}
+
+function give(k,n=1){ S.bag[k]=(S.bag[k]||0)+n; }
+function take(k,n=1){ if((S.bag[k]||0)<n)return false; S.bag[k]-=n; if(S.bag[k]<=0)delete S.bag[k]; return true; }
+
+/* ---------- FARM ---------- */
+function farmView(){
+  let seeds=Object.keys(S.bag).filter(k=>GROW[k]);
+  let sel=window._seed && S.bag[window._seed]?window._seed:(seeds[0]||null);
+  window._seed=sel;
+  let h=`<h2>🌱 畑のしごと</h2><div class="field">`;
+  S.plots.forEach((p,i)=>{
+    let face="🟫",sub="";
+    if(p.seed){
+      if(p.ready){ face=ITEMS[GROW[p.seed].into].ic; sub="しゅうかく!"; }
+      else { const st=p.age; face=st===0?"🌱":st===1?"🌿":"🍀"; sub=`あと${GROW[p.seed].days-p.age}日`; }
+    }
+    h+=`<div class="plot ${p.wet?'wet':''}" onclick="plot(${i})">
+      ${p.wet&&!p.ready?'<span class="drop">💧</span>':''}
+      ${face}${sub?`<small>${sub}</small>`:''}</div>`;
+  });
+  h+=`</div><div class="row">`;
+  if(seeds.length){
+    h+=`<button class="g" onclick="cycleSeed()">🫛 種: ${ITEMS[sel].n}</button>`;
+  } else {
+    h+=`<button class="ghost" disabled>種がない…店で買おう</button>`;
+  }
+  h+=`<button class="b" onclick="advanceTime()">⏳ 時間をすすめる</button></div>
+  <p class="hint">空き地=種まき / 🌿=水やり / 実=収穫 ・ 水やりした作物だけ夜に育つ</p>`;
+  $("scene").innerHTML=h;
+}
+function cycleSeed(){
+  let seeds=Object.keys(S.bag).filter(k=>GROW[k]);
+  let i=seeds.indexOf(window._seed); window._seed=seeds[(i+1)%seeds.length];
+  draw();
+}
+function plot(i){
+  const p=S.plots[i];
+  if(!p.seed){
+    const s=window._seed;
+    if(!s||!S.bag[s]){log("🫛 種がないよ。");return;}
+    if(!spend(4))return;
+    take(s,1); p.seed=s; p.age=0; p.wet=false; p.ready=false;
+    log(`🌱 ${ITEMS[s].n} をまいた。`); floatTxt("🌱 -4⚡");
+  } else if(p.ready){
+    const c=GROW[p.seed].into; give(c,1);
+    log(`🧺 ${ITEMS[c].n} を収穫！`); floatTxt(`${ITEMS[c].ic} +1`);
+    p.seed=null;p.age=0;p.ready=false;p.wet=false;
+  } else if(!p.wet){
+    if(!spend(2))return;
+    p.wet=true; log(`💧 水をやった。`); floatTxt("💧 -2⚡");
+  } else { log("もう水やり済み。夜になれば育つよ。"); }
+  save(); draw();
+}
+
+/* ---------- POND ---------- */
+function pondView(){
+  $("scene").innerHTML=`<h2>🎣 静かな池</h2>
+  <div style="text-align:center;font-size:62px;margin:14px 0">🪷🐟🪷</div>
+  <p style="text-align:center;font-size:13px;color:#8a7350">水面がきらきら揺れている…</p>
+  <div class="row">
+    <button class="b" onclick="fish()">🎣 釣りをする (-6⚡)</button>
+    <button class="ghost" onclick="advanceTime()">⏳ 時間をすすめる</button>
+  </div>
+  <p class="hint">夜は大物が釣れやすい… かも？</p>`;
+}
+function fish(){
+  if(!spend(6))return;
+  floatTxt("🎣 -6⚡");
+  const night=S.time>=3;
+  const r=Math.random();
+  let k;
+  if(r < (night?0.10:0.03)) k="nushi";
+  else if(r < (night?0.45:0.30)) k="koi";
+  else if(r < 0.85) k="fune";
+  else { log("🌊 …逃げられた。"); save();draw(); return; }
+  give(k,1);
+  log(`🎣 ${ITEMS[k].n} が釣れた！`);
+  if(k==="nushi"){$("popIc").textContent="🐡";$("popTitle").textContent="ぬしを釣った!!";
+    $("popBody").textContent="池の主が姿を現した…!すごい大物だ！";$("pop").classList.add("show");}
+  save();draw();
+}
+
+/* ---------- FOREST ---------- */
+function forestView(){
+  $("scene").innerHTML=`<h2>🌲 おさんぽの森</h2>
+  <div style="text-align:center;font-size:58px;margin:14px 0">🌲🍄🌳🍓🌲</div>
+  <p style="text-align:center;font-size:13px;color:#8a7350">木もれ日が気持ちいい。</p>
+  <div class="row">
+    <button onclick="forage()">🧺 採取する (-5⚡)</button>
+    <button class="ghost" onclick="advanceTime()">⏳ 時間をすすめる</button>
+  </div>
+  <p class="hint">きのこ・野いちご・はちみつ・枝が見つかる</p>`;
+}
+function forage(){
+  if(!spend(5))return;
+  floatTxt("🧺 -5⚡");
+  const t=[["ki",.40],["eda",.30],["ichigo",.22],["hachi",.08]];
+  let r=Math.random(),acc=0,got="ki";
+  for(const[k,p]of t){acc+=p;if(r<=acc){got=k;break;}}
+  give(got,1);
+  log(`🧺 ${ITEMS[got].n} を見つけた！`);
+  save();draw();
+}
+
+/* ---------- SHOP ---------- */
+function shopView(){
+  let h=`<h2>🏪 よろず屋</h2><div class="list">`;
+  SHOP.forEach(k=>{
+    h+=`<div class="item"><span class="ic">${ITEMS[k].ic}</span>
+      <span class="nm">${ITEMS[k].n}<br><span class="ct">🪙${ITEMS[k].buy}</span></span>
+      <button class="g" style="flex:0;min-width:64px" onclick="buy('${k}')">買う</button></div>`;
+  });
+  h+=`</div><h2 style="margin-top:14px">💰 売る</h2><div class="list">`;
+  let sell=Object.keys(S.bag).filter(k=>ITEMS[k].sell);
+  if(!sell.length) h+=`<p style="font-size:13px;color:#a08b6c">売れる物がない。</p>`;
+  sell.forEach(k=>{
+    h+=`<div class="item"><span class="ic">${ITEMS[k].ic}</span>
+      <span class="nm">${ITEMS[k].n} <span class="tag">×${S.bag[k]}</span><br>
+      <span class="ct">1個 🪙${ITEMS[k].sell}</span></span>
+      <button class="p" style="flex:0;min-width:54px" onclick="sell1('${k}')">1個</button>
+      <button class="b" style="flex:0;min-width:64px" onclick="sellAll('${k}')">全部</button></div>`;
+  });
+  h+=`</div>`;
+  $("scene").innerHTML=h;
+}
+function buy(k){
+  if(S.gold<ITEMS[k].buy){log("🪙 お金が足りない…");return;}
+  S.gold-=ITEMS[k].buy; give(k,1); log(`🛒 ${ITEMS[k].n} を買った。`);
+  save();draw();
+}
+function sell1(k){ if(!take(k,1))return; S.gold+=ITEMS[k].sell;
+  log(`💰 ${ITEMS[k].n} を売った (+${ITEMS[k].sell})`); save();draw(); }
+function sellAll(k){ const n=S.bag[k]||0; if(!n)return; const g=n*ITEMS[k].sell;
+  delete S.bag[k]; S.gold+=g; log(`💰 ${ITEMS[k].n}×${n} を売った (+${g})`);
+  S.best=Math.max(S.best,g); save();draw(); }
+
+/* ---------- BAG ---------- */
+function bagView(){
+  let keys=Object.keys(S.bag);
+  let h=`<h2>🎒 もちもの</h2><div class="list">`;
+  if(!keys.length) h+=`<p style="font-size:13px;color:#a08b6c">袋はからっぽ。</p>`;
+  keys.forEach(k=>{
+    h+=`<div class="item"><span class="ic">${ITEMS[k].ic}</span>
+      <span class="nm">${ITEMS[k].n}</span><span class="tag">×${S.bag[k]}</span></div>`;
+  });
+  h+=`</div><div class="row"><button class="ghost" onclick="resetGame()">🔄 はじめから</button></div>`;
+  $("scene").innerHTML=h;
+}
+function resetGame(){
+  if(!confirm("最初からやり直しますか？"))return;
+  S=fresh(); save(); logs=[]; log("🌅 あたらしい島の暮らしがはじまった。"); draw();
+}
+
+/* ---------- RENDER ---------- */
+function draw(){
+  $("gold").textContent=S.gold;
+  $("day").textContent=S.day;
+  $("timeTxt").textContent=TIMES[S.time][0];
+  $("enBar").style.width=S.energy+"%";
+  document.body.style.background=`linear-gradient(180deg,${TIMES[S.time][1]},var(--bg) 45%)`;
+  $("sky").textContent = ["島に朝がきた。今日はなにをしよう？","おひさまが高い。のんびりいこう。","夕やけがきれい…","星がきらめく夜。"][S.time];
+  document.querySelectorAll(".nav button").forEach(b=>
+    b.classList.toggle("on",b.dataset.v===S.view));
+  ({farm:farmView,pond:pondView,forest:forestView,shop:shopView,bag:bagView})[S.view]();
+}
+document.querySelectorAll(".nav button").forEach(b=>
+  b.onclick=()=>{S.view=b.dataset.v;save();draw();});
+
+log("🌅 ようこそ、のんびり島へ。");
+draw();
+</script>
+</body>
+</html>
