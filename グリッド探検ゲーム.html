@@ -28,9 +28,9 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
     display: flex; align-items: center; justify-content: center;
   }
-  .item { width: 22px; height: 22px; background: center/contain no-repeat; pointer-events: none; display: none; }
-  .item.flower { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cline x1='12' y1='23' x2='12' y2='12' stroke='%233f6b34' stroke-width='2'/%3E%3Cg fill='%23e8728f'%3E%3Ccircle cx='12' cy='6' r='3.1'/%3E%3Ccircle cx='7.3' cy='9' r='3.1'/%3E%3Ccircle cx='16.7' cy='9' r='3.1'/%3E%3Ccircle cx='9.2' cy='13' r='3.1'/%3E%3Ccircle cx='14.8' cy='13' r='3.1'/%3E%3C/g%3E%3Ccircle cx='12' cy='9.4' r='2.5' fill='%23f4c64a'/%3E%3C/svg%3E"); }
-  .item.grass { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%234f7d3a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M8 22 C7 16 6 14 5 11'/%3E%3Cpath d='M12 22 C12 15 12 13 12 9'/%3E%3Cpath d='M16 22 C17 16 18 14 19 11'/%3E%3C/g%3E%3C/svg%3E"); }
+  .item { width: 24px; height: 24px; background: center/cover no-repeat; pointer-events: none; display: none; }
+  .item.flower { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%234f7d3a' stroke-width='1.5' stroke-linecap='round' fill='none'%3E%3Cpath d='M3 24 V18'/%3E%3Cpath d='M8 24 V17'/%3E%3Cpath d='M13 24 V18'/%3E%3Cpath d='M18 24 V17'/%3E%3Cpath d='M22 24 V19'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='4' cy='15' r='2.4' fill='%23e8728f'/%3E%3Ccircle cx='4' cy='15' r='1' fill='%23f4c64a'/%3E%3Ccircle cx='9' cy='13' r='2.4' fill='%23f0efe9'/%3E%3Ccircle cx='9' cy='13' r='1' fill='%23f4c64a'/%3E%3Ccircle cx='14' cy='15' r='2.4' fill='%23d7639b'/%3E%3Ccircle cx='14' cy='15' r='1' fill='%23f4c64a'/%3E%3Ccircle cx='18.5' cy='12.5' r='2.4' fill='%23f0a93c'/%3E%3Ccircle cx='18.5' cy='12.5' r='1' fill='%23fff3cf'/%3E%3Ccircle cx='22' cy='16' r='2.2' fill='%23e8728f'/%3E%3Ccircle cx='22' cy='16' r='.9' fill='%23f4c64a'/%3E%3C/g%3E%3C/svg%3E"); }
+  .item.grass { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%233f6b34' stroke-width='2' stroke-linecap='round' fill='none'%3E%3Cpath d='M2 24 C2 17 1 15 1.5 11'/%3E%3Cpath d='M7 24 C7 16 6.5 14 6 9'/%3E%3Cpath d='M12 24 C12 15 12 13 12 8'/%3E%3Cpath d='M17 24 C17 16 17.5 14 18 9'/%3E%3Cpath d='M22 24 C22 17 23 15 22.5 11'/%3E%3C/g%3E%3Cg stroke='%236fae57' stroke-width='1.8' stroke-linecap='round' fill='none'%3E%3Cpath d='M4.5 24 C4.5 18 4 16 4.5 13'/%3E%3Cpath d='M9.5 24 C9.5 17 9.5 15 9 11'/%3E%3Cpath d='M14.5 24 C14.5 17 14.5 15 15 11'/%3E%3Cpath d='M19.5 24 C19.5 18 20 16 19.5 13'/%3E%3C/g%3E%3C/svg%3E"); }
   .item.tree { display: block; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='10.7' y='14' width='2.6' height='8' fill='%235e421f'/%3E%3Ccircle cx='12' cy='9' r='7' fill='%233f6b34'/%3E%3Ccircle cx='8' cy='12' r='4.6' fill='%234f7d3a'/%3E%3Ccircle cx='16' cy='12' r='4.6' fill='%234f7d3a'/%3E%3C/svg%3E"); }
   .t0 { background: #79a85c; }                                   /* 草（薄め） */
   .t1 { background: #8a6a45; }                                   /* 土 */
@@ -305,15 +305,15 @@ for (let y=0;y<SIZE;y++){
     const t = map[idx(x,y)];
     const r = rnd();
     if (t===T_GRASS){
-      if (r<0.04) items[idx(x,y)] = I_TREE;
-      else if (r<0.52) items[idx(x,y)] = I_GRASS;
-      else if (r<0.92) items[idx(x,y)] = I_FLOWER;
+      if (r<0.05) items[idx(x,y)] = I_TREE;
+      else if (r<0.38) items[idx(x,y)] = I_GRASS;
+      else if (r<0.62) items[idx(x,y)] = I_FLOWER;
     } else if (t===T_DIRT){
       if (r<0.02) items[idx(x,y)] = I_TREE;
-      else if (r<0.42) items[idx(x,y)] = I_GRASS;
-      else if (r<0.66) items[idx(x,y)] = I_FLOWER;
+      else if (r<0.18) items[idx(x,y)] = I_GRASS;
+      else if (r<0.26) items[idx(x,y)] = I_FLOWER;
     } else if (t===T_FIELD){
-      if (r<0.55) items[idx(x,y)] = I_FLOWER;
+      if (r<0.35) items[idx(x,y)] = I_FLOWER;
     }
   }
 }
