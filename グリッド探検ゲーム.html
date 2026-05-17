@@ -26,7 +26,10 @@
   .cell {
     position: absolute; width: 24px; height: 24px;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; line-height: 1; user-select: none;
   }
+  .cell > span { pointer-events: none; }
   .t0 { background: #79a85c; }                                   /* 草（薄め） */
   .t1 { background: #8a6a45; }                                   /* 土 */
   .t2 { background: repeating-linear-gradient(0deg,#6b4a26 0 4px,#553a1d 4px 8px); } /* 畑（濃い茶） */
@@ -291,6 +294,27 @@ for (let y=0;y<SIZE;y++){
   }
 }
 
+// ---- アイテム（ブロックの上の装飾）：開始時に花・草・木をたくさん配置 ----
+const I_NONE=0, I_FLOWER=1, I_GRASS=2, I_TREE=3;
+const ICHAR = ['', '🌸', '🌿', '🌳'];
+const items = new Uint8Array(SIZE*SIZE);
+for (let y=0;y<SIZE;y++){
+  for (let x=0;x<SIZE;x++){
+    const t = map[idx(x,y)];
+    const r = rnd();
+    if (t===T_GRASS){
+      if (r<0.10) items[idx(x,y)] = I_TREE;
+      else if (r<0.28) items[idx(x,y)] = I_GRASS;
+      else if (r<0.44) items[idx(x,y)] = I_FLOWER;
+    } else if (t===T_DIRT){
+      if (r<0.06) items[idx(x,y)] = I_TREE;
+      else if (r<0.12) items[idx(x,y)] = I_GRASS;
+    } else if (t===T_FIELD){
+      if (r<0.10) items[idx(x,y)] = I_FLOWER;
+    }
+  }
+}
+
 // ---- ミニマップを一度だけプリレンダ -------------------------------------
 const PAL = {0:[121,168,92],1:[138,106,69],2:[93,63,32],3:[140,148,184],4:[217,200,121],5:[140,74,54],6:[140,140,140],7:[140,148,184]};
 const mapImg = document.createElement('canvas');
@@ -341,9 +365,10 @@ function render(){
           : t===T_DEEP ? 'cell deepbed wtr'
           : t===T_WATER ? 'cell t'+sub[idx(x,y)]+' wtr'
           : 'cell t'+t;
+        el.textContent = ICHAR[items[idx(x,y)]];
         el.style.left = x*CELL+'px';
         el.style.top  = y*CELL+'px';
-        el.style.display='block';
+        el.style.display='flex';
         n++;
       }
     }
@@ -376,6 +401,7 @@ function paintAt(clientX,clientY){
   if(map[idx(x,y)]===T_DEEP) return;          // 深い海は編集不可
   if(map[idx(x,y)]===brush) return;
   map[idx(x,y)]=brush;
+  items[idx(x,y)]=0;                          // 設置で上の装飾は消える
   lastOX=null;                               // セルクラスを再構築させる
   const c=PAL[brush], o=(y*SIZE+x)*4;        // ミニマップも更新
   imgd.data[o]=c[0]; imgd.data[o+1]=c[1]; imgd.data[o+2]=c[2]; imgd.data[o+3]=255;
