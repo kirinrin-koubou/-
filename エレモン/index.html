@@ -234,7 +234,7 @@ var Audio=(function(){
 /* ---------- 3. セーブ (§15) ---------- */
 var Save=(function(){
   var KEY='elemon.save.v3', BAK='elemon.save.bak', SKEY='elemon.settings', VER=3;
-  function defSettings(){ return {bgm:.3,se:.6,textSpeed:2,shake:true,colorAssist:true,tutorial:true}; }
+  function defSettings(){ return {bgm:.3,se:.6,textSpeed:2,shake:true,colorAssist:true,tutorial:true,hudPanel:true}; }
   function loadSettings(){
     try{ var s=JSON.parse(localStorage.getItem(SKEY)); if(s&&typeof s==='object'){ var d=defSettings(); for(var k in d) if(s[k]==null)s[k]=d[k]; return s; } }
     catch(e){}
@@ -386,11 +386,12 @@ var Game=(function(){
   var SC={TITLE:'TITLE',FIELD:'FIELD',BATTLE:'BATTLE',MENU:'MENU',DIALOG:'DIALOG',END:'END',SHOP:'SHOP'};
   var state, settings, scene='TITLE', shake=0, fade=0, fadeDir=0, fadeCb=null;
   var toasts=[];
-  var input={up:0,down:0,left:0,right:0,ok:0,cancel:0,menu:0};
-  var edge={ok:false,cancel:false,menu:false,up:false,down:false,left:false,right:false};
+  var input={up:0,down:0,left:0,right:0,ok:0,cancel:0,menu:0,hud:0};
+  var edge={ok:false,cancel:false,menu:false,up:false,down:false,left:false,right:false,hud:false};
   var keyMap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
     KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right',
-    KeyZ:'ok',Enter:'ok',Space:'ok',KeyX:'cancel',Escape:'cancel',KeyM:'menu'};
+    KeyZ:'ok',Enter:'ok',Space:'ok',KeyX:'cancel',Escape:'cancel',KeyM:'menu',
+    KeyH:'hud',Tab:'hud'};
 
   /* ---- 入力 ---- */
   window.addEventListener('keydown',function(e){
@@ -628,6 +629,8 @@ var Game=(function(){
   }
   function updateField(dt){
     var p=state.player, map=curMap();
+    if(edge.hud){ settings.hudPanel=!settings.hudPanel; Audio.se('ok');
+      Save.saveSettings(settings); toast(settings.hudPanel?'パネル表示':'パネル非表示'); }
     if(edge.menu){ Audio.se('ok'); scene=SC.MENU; menuInit(); return; }
     if(p.moving){
       var tx=p.x*32, ty=p.y*32, sp=8;
@@ -743,6 +746,15 @@ var Game=(function(){
     g.fillStyle='#cdd6ee'; g.font='14px Segoe UI'; g.textAlign='right';
     g.fillText(def.name,348,46); g.textAlign='left';
 
+    // 表示/非表示トグル（常時表示・キーH/Tab/クリック）
+    var TB=settings.hudPanel?'パネル ▶ 非表示 (H)':'パネル ◀ 表示 (H)';
+    g.fillStyle='rgba(8,10,18,.8)'; g.fillRect(744,30,212,26);
+    g.strokeStyle='#5a6488'; g.strokeRect(744,30,212,26);
+    g.fillStyle='#9fe0ff'; g.font='13px Segoe UI'; g.textAlign='center';
+    g.fillText(TB,850,48); g.textAlign='left';
+    zone(744,30,212,26,function(){ edge.hud=true; });
+
+    if(settings.hudPanel){
     // 右：手持ちパーティ（クリックでメニュー）
     var PX=744;
     g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,64,212,300);
@@ -795,6 +807,7 @@ var Game=(function(){
       g.fillStyle=trs2[ti].boss?'#d04bff':'#ff7a3c';
       g.fillRect(MX+trs2[ti].x*MS-1,MY+trs2[ti].y*MS-1,MS+2,MS+2); }
     g.fillStyle='#fff'; g.fillRect(MX+p.x*MS-1,MY+p.y*MS-1,MS+2,MS+2);
+    } // end if(settings.hudPanel)
 
     if(World.tile(map,p.x,p.y)===5){
       g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(330,596,300,32);
@@ -1351,7 +1364,7 @@ var Game=(function(){
         toast('せんとうを いれかえた');
       }
     } else if(menu.page==='set'){
-      var opts=['BGM','SE','テキスト速度','画面振動','色覚補助','チュートリアル再表示'];
+      var opts=['BGM','SE','テキスト速度','画面振動','色覚補助','フィールドパネル','チュートリアル再表示'];
       if(edge.down){menu.sub=(menu.sub+1)%opts.length;Audio.se('ok');}
       if(edge.up){menu.sub=(menu.sub+opts.length-1)%opts.length;Audio.se('ok');}
       if(edge.left||edge.right){
@@ -1361,10 +1374,12 @@ var Game=(function(){
         else if(menu.sub===2){ settings.textSpeed=Math.max(1,Math.min(3,settings.textSpeed+d)); }
         else if(menu.sub===3){ settings.shake=!settings.shake; }
         else if(menu.sub===4){ settings.colorAssist=!settings.colorAssist; }
+        else if(menu.sub===5){ settings.hudPanel=!settings.hudPanel; }
         Audio.setVol(settings.bgm,settings.se); Audio.shake=settings.shake;
         Audio.settings.shake=settings.shake; Save.saveSettings(settings);
       }
-      if(edge.ok && menu.sub===5){ Audio.se('ok'); scene=SC.FIELD; openTutorial(null); }
+      if(edge.ok && menu.sub===5){ settings.hudPanel=!settings.hudPanel; Audio.se('ok'); Save.saveSettings(settings); }
+      if(edge.ok && menu.sub===6){ Audio.se('ok'); scene=SC.FIELD; openTutorial(null); }
     } else if(menu.page==='dex'){
       // スクロール
       var ids=Object.keys(DB.SPECIES);
@@ -1438,12 +1453,14 @@ var Game=(function(){
       g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('せってい（←→で変更 / X戻る）',150,100);
       var opts=[['BGM',Math.round(settings.bgm*10)],['SE',Math.round(settings.se*10)],
         ['テキスト速度',settings.textSpeed],['画面振動',settings.shake?'ON':'OFF'],
-        ['色覚補助',settings.colorAssist?'ON':'OFF'],['チュートリアル再表示','▶ Z']];
-      for(var o=0;o<opts.length;o++){ var y3=140+o*58;
+        ['色覚補助',settings.colorAssist?'ON':'OFF'],['フィールドパネル',settings.hudPanel?'ON':'OFF'],
+        ['チュートリアル再表示','▶ Z']];
+      for(var o=0;o<opts.length;o++){ var y3=128+o*52;
         g.fillStyle=o===menu.sub?'#3a64ff':'rgba(30,36,52,.9)';
-        g.fillRect(150,y3,640,46); g.strokeStyle='#5a6488'; g.strokeRect(150,y3,640,46);
-        g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(opts[o][0],170,y3+29);
-        g.fillStyle='#ffd86b'; g.fillText(''+opts[o][1],680,y3+29);
+        g.fillRect(150,y3,640,42); g.strokeStyle='#5a6488'; g.strokeRect(150,y3,640,42);
+        g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(opts[o][0],170,y3+27);
+        g.fillStyle='#ffd86b'; g.fillText(''+opts[o][1],680,y3+27);
+        (function(idx){ zone(150,y3,640,42,function(){ menu.sub=idx; if(idx===6)edge.ok=true; else edge.right=true; }); })(o);
       }
     }
   }
