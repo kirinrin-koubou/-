@@ -170,12 +170,13 @@ var DB=(function(){
   };
 
   // トレーナー配置 (§6/§10)：各エリアに関門1
+  // 各エリアの街にいるライバル（撃破でそのエリアのゲートが開く）
   var TRAINERS={
-    A1:[{id:'t_a1',x:24,y:9,name:'研修生レナ',party:[['embo',5],['aqualet',5]],reward:120,badge:1}],
-    A2:[{id:'t_a2',x:25,y:9,name:'森番カイ',party:[['mosska',9],['voltik',9],['thornel',10]],reward:260,badge:2}],
-    A3:[{id:'t_a3',x:25,y:9,name:'炎術士ジン',party:[['cindle',15],['ashca',15],['pyrogon',17]],reward:420,badge:3}],
-    A4:[{id:'t_a4',x:25,y:9,name:'氷将アヤ',party:[['coralu',21],['ohmly',21],['tidalon',23]],reward:620,badge:4}],
-    T:[{id:'t_boss',x:24,y:6,name:'監督者ヴァロン',party:[['terran',26],['pyrogon',27],['tidalon',28]],reward:1500,badge:5,boss:true}]
+    A1:[{id:'t_a1',name:'ライバル ケイ',party:[['embo',5],['aqualet',5]],reward:120,badge:1}],
+    A2:[{id:'t_a2',name:'ライバル ソラ',party:[['mosska',9],['voltik',9],['thornel',10]],reward:260,badge:2}],
+    A3:[{id:'t_a3',name:'ライバル レン',party:[['cindle',15],['ashca',15],['pyrogon',17]],reward:420,badge:3}],
+    A4:[{id:'t_a4',name:'ライバル アサ',party:[['coralu',21],['ohmly',21],['tidalon',23]],reward:620,badge:4}],
+    T:[{id:'t_boss',name:'監督者ヴァロン',party:[['terran',26],['pyrogon',27],['tidalon',28]],reward:1500,badge:5,boss:true}]
   };
 
   // 動物＋属性デザイン
@@ -381,45 +382,108 @@ var Mon=(function(){
 
 /* ---------- 5. ワールド/マップ生成 (§5) ---------- */
 var World=(function(){
-  var W=44,H=28,TS=32, MID=14;
+  var W=700,H=500,TS=32, MID=Math.floor(H/2);
+  var TW=44,TH=30;            // 街マップ
   var cache={};
-  // 各エリア手続き生成。0床1壁2草4前ゲート5回復6戻りゲート
+  function isTown(a){ return (''+a).indexOf('TOWN_')===0; }
+  // タイル: 0床 1壁 2草(遭遇) 4前ゲート 5拠点 6戻り/出口 7木 8川 9街入口
   function gen(area){
     if(cache[area]) return cache[area];
-    var def=DB.AREAS[area];
+    if(isTown(area)) return (cache[area]=genTown(area));
+    return (cache[area]=genField(area));
+  }
+  function genField(area){
+    var def=DB.AREAS[area]||{pal:'#1f3b22',name:area};
     var g=new Array(W*H);
-    for(var y=0;y<H;y++)for(var x=0;x<W;x++){
-      g[y*W+x]=(x===0||y===0||x===W-1||y===H-1)?1:0;
-    }
+    for(var y=0;y<H;y++){ var row=y*W;
+      for(var x=0;x<W;x++) g[row+x]=(x===0||y===0||x===W-1||y===H-1)?1:0; }
+    function gt(x,y){ return (x<1||y<1||x>=W-1||y>=H-1)?1:g[y*W+x]; }
     function set(x,y,v){ if(x>0&&y>0&&x<W-1&&y<H-1) g[y*W+x]=v; }
-    // 草パッチ（広め・複数）
-    var patches=[[6,4,16,10],[24,4,38,10],[5,18,18,24],[24,18,39,24],[19,12,28,16]];
-    for(var p=0;p<patches.length;p++){ var a=patches[p];
-      for(var yy=a[1];yy<=a[3];yy++)for(var xx=a[0];xx<=a[2];xx++) set(xx,yy,2); }
-    // 障害の壁（短く・横移動回廊 y=13..15 とトレーナー帯は避ける）
-    var walls=[[9,4,10,7],[16,18,18,21],[30,5,32,8],[34,18,36,21],[20,21,23,23],[37,4,39,6]];
-    for(var w=0;w<walls.length;w++){ var b=walls[w];
-      for(var wy=b[1];wy<=b[3];wy++)for(var wx=b[0];wx<=b[2];wx++)
-        if(wy<13||wy>15) set(wx,wy,1); }
-    // 横断回廊を確保
-    for(var cx=1;cx<W-1;cx++){ set(cx,MID,0); }
-    // 回復拠点・前後ゲート
-    set(3,MID,5);
-    set(W-2,MID,4);
-    if(def.prev) set(1,MID,6);
-    // 落ちているアイテム（周囲を歩行可能に整地）
-    var items=[];
-    (def.drops||[]).forEach(function(d,i){
-      var ix=d[0],iy=d[1];
+    function rect(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) set(xx,yy,v); }
+    var startX=4, healX=7, backX=1, fwdX=W-2;
+    var townX=Math.floor(W*0.60), townY=Math.floor(H*0.40);
+    function protectedAt(x,y){
+      if(Math.abs(y-MID)<=2) return true;                 // 横断回廊
+      if(Math.abs(x-townX)<=2 && y>=Math.min(MID,townY)-2 && y<=Math.max(MID,townY)+2) return true;
+      if(x<healX+3) return true;
+      if(x>fwdX-4) return true;
+      if(Math.abs(x-townX)<=3 && Math.abs(y-townY)<=3) return true;
+      return false;
+    }
+    // 川（縦帯）＋橋
+    var rivers=[Math.floor(W*0.30), Math.floor(W*0.50), Math.floor(W*0.80)];
+    for(var ri=0;ri<rivers.length;ri++){ var rx=rivers[ri];
+      for(var ry=1;ry<H-1;ry++){ set(rx,ry,8); set(rx+1,ry,8); }
+      // 橋（回廊・町列）
+      rect(rx,MID-1,rx+1,MID+1,0);
+      rect(rx,townY-1,rx+1,townY+1,0);
+    }
+    // 川（横帯）＋橋（縦連結を通す）
+    var hr=[Math.floor(H*0.16), Math.floor(H*0.84)];
+    for(var hi=0;hi<hr.length;hi++){ var ry2=hr[hi];
+      for(var hx=1;hx<W-1;hx++){ set(hx,ry2,8); set(hx,ry2+1,8); }
+      rect(townX-1,ry2,townX+1,ry2+1,0);
+    }
+    // 草むら（広い区画を複数）
+    var gp=[[0.10,0.55,0.24,0.74],[0.34,0.10,0.48,0.30],[0.52,0.58,0.70,0.80],
+            [0.66,0.12,0.82,0.30],[0.84,0.55,0.97,0.78],[0.14,0.18,0.26,0.34]];
+    for(var p=0;p<gp.length;p++){ var a=gp[p];
+      var gx0=Math.floor(W*a[0]),gy0=Math.floor(H*a[1]),gx1=Math.floor(W*a[2]),gy1=Math.floor(H*a[3]);
+      for(var yy=gy0;yy<=gy1;yy++)for(var xx=gx0;xx<=gx1;xx++)
+        if(gt(xx,yy)===0 && !protectedAt(xx,yy)) set(xx,yy,2); }
+    // 木（点在クラスタ）— 経路を塞がない
+    var rseed=98765;
+    function rnd(){ rseed=(rseed*1103515245+12345)&0x7fffffff; return rseed/0x7fffffff; }
+    var clusters=Math.floor(W*H/2600);
+    for(var c=0;c<clusters;c++){
+      var bx=2+Math.floor(rnd()*(W-4)), by=2+Math.floor(rnd()*(H-4));
+      var n=3+Math.floor(rnd()*6);
+      for(var k=0;k<n;k++){ var tx=bx+Math.floor((rnd()-0.5)*8), ty=by+Math.floor((rnd()-0.5)*8);
+        if(gt(tx,ty)===0 && !protectedAt(tx,ty)) set(tx,ty,7); }
+    }
+    // 横断回廊・縦連結を確保（最後に上書き）
+    for(var cxr=1;cxr<W-1;cxr++) set(cxr,MID,0);
+    var c0=Math.min(MID,townY), c1=Math.max(MID,townY);
+    for(var cyr=c0;cyr<=c1;cyr++){ set(townX,cyr,0); set(townX+1,cyr,0); }
+    set(townX,townY,9);                          // 街の入口
+    set(townX,townY+1,0); set(townX,townY-1,0);
+    set(healX,MID,5);                             // 拠点
+    set(fwdX,MID,4);                              // 前ゲート
+    if(def.prev) set(backX,MID,6);                // 戻りゲート
+    // 落ちアイテム（回廊沿いに配置）
+    var items=[], drops=def.drops||[];
+    for(var di=0;di<drops.length;di++){
+      var ix=Math.floor(W*(0.16+0.11*di)), iy=MID+((di%2)?3:-3);
       set(ix,iy,0); set(ix-1,iy,0); set(ix+1,iy,0); set(ix,iy-1,0); set(ix,iy+1,0);
-      items.push({x:ix,y:iy,key:d[2],id:area+'_'+i});
-    });
-    cache[area]={w:W,h:H,grid:g,start:{x:5,y:MID},pal:def.pal,
-      healAt:{x:3,y:MID}, gate:{x:W-2,y:MID}, backGate:{x:1,y:MID}, items:items};
-    return cache[area];
+      items.push({x:ix,y:iy,key:drops[di][2],id:area+'_'+di});
+    }
+    return {w:W,h:H,grid:g,isTown:false,pal:def.pal,name:def.name,
+      start:{x:startX,y:MID}, healAt:{x:healX,y:MID},
+      gate:{x:fwdX,y:MID}, backGate:{x:backX,y:MID}, town:{x:townX,y:townY}, items:items};
+  }
+  function genTown(area){
+    var base=area.slice(5), bd=DB.AREAS[base]||{name:base};
+    var g=new Array(TW*TH);
+    for(var y=0;y<TH;y++)for(var x=0;x<TW;x++)
+      g[y*TW+x]=(x===0||y===0||x===TW-1||y===TH-1)?1:0;
+    function set(x,y,v){ if(x>0&&y>0&&x<TW-1&&y<TH-1) g[y*TW+x]=v; }
+    function rect(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) set(xx,yy,v); }
+    // 建物（壁ブロック）＝装飾兼障害
+    rect(4,4,11,8,1); rect(16,4,27,8,1); rect(32,4,39,9,1);
+    rect(4,15,12,21,1); rect(31,15,39,22,1);
+    // 中央広場は空け、噴水(拠点5)を置く
+    set(7,12,5);
+    // ライバルは中央上
+    var rivalX=Math.floor(TW/2), rivalY=9;
+    // 出口（下方）
+    var exitX=Math.floor(TW/2), exitY=TH-2;
+    set(exitX,exitY,6); set(exitX,exitY-1,0); set(exitX,exitY-2,0);
+    return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:'#2c2a3e',
+      name:bd.name+'の街', start:{x:exitX,y:exitY-2}, healAt:{x:7,y:12},
+      rival:{x:rivalX,y:rivalY}, exitAt:{x:exitX,y:exitY}};
   }
   function tile(map,x,y){ if(x<0||y<0||x>=map.w||y>=map.h) return 1; return map.grid[y*map.w+x]; }
-  return {gen,tile,W,H,TS};
+  return {gen,tile,isTown,W,H,TS};
 })();
 
 /* ---------- 6. ゲーム本体：状態・シーン・ループ (§14) ---------- */
@@ -507,8 +571,9 @@ var Game=(function(){
 
   /* ---- 新規/継続 ---- */
   function newGame(starterSid){
+    var s0=World.gen('A1').start;
     state={
-      player:{x:5,y:10,area:'A1',gem:0,badges:0,facing:'down',px:5*32,py:10*32,moving:false},
+      player:{x:s0.x,y:s0.y,area:'A1',gem:0,badges:0,facing:'down',px:s0.x*32,py:s0.y*32,moving:false},
       party:[Mon.create(starterSid,5)],
       box:[], bag:{potion:3,spotion:0,hpotion:0,ball:5,sball:0,mball:0},
       dex:{}, flags:{}, stats:{playTime:0,caught:1,start:Date.now()},
@@ -525,13 +590,10 @@ var Game=(function(){
     // 防御的補完
     if(!state.party.length) state.party=[Mon.create('sprig',5)];
     state.party.forEach(function(m){ if(m.maxhp==null) Mon.recalc(m); if(m.hp==null)m.hp=m.maxhp; });
-    // マップ拡張に伴う安全化：壁/範囲外なら開始地点へ
-    if(!DB.AREAS[state.player.area]) state.player.area='A1';
+    // マップ刷新に伴う安全化：必ず現エリアの開始地点へ
+    if(!DB.AREAS[state.player.area] && !World.isTown(state.player.area)) state.player.area='A1';
     var sm=World.gen(state.player.area);
-    if(state.player.x==null||state.player.y==null||World.tile(sm,state.player.x,state.player.y)===1
-       || state.player.x>=sm.w || state.player.y>=sm.h){
-      state.player.x=sm.start.x; state.player.y=sm.start.y;
-    }
+    state.player.x=sm.start.x; state.player.y=sm.start.y;
     state.player.px=state.player.x*32; state.player.py=state.player.y*32; state.player.moving=false;
     return true;
   }
@@ -673,19 +735,31 @@ var Game=(function(){
   }
   function curMap(){ return World.gen(state.player.area); }
   function canWalk(map,x,y){
-    return World.tile(map,x,y)!==1; // 壁以外は通行可（ゲート通過は踏破後に判定）
+    var t=World.tile(map,x,y);
+    return t!==1 && t!==7 && t!==8; // 壁/木/川は通行不可
+  }
+  function baseArea(a){ return World.isTown(a)? a.slice(5) : a; }
+  function areaTrainers(){
+    var a=state.player.area;
+    if(World.isTown(a)){
+      var base=a.slice(5), rv=DB.TRAINERS[base] && DB.TRAINERS[base][0];
+      if(!rv) return [];
+      var mp=World.gen(a), o={}; for(var k in rv) o[k]=rv[k];
+      o.x=mp.rival.x; o.y=mp.rival.y; o.rival=true;
+      return [o];
+    }
+    return []; // 野外にトレーナーは居ない（ライバルは街の中）
   }
   function gateOpen(){
-    var area=state.player.area, def=DB.AREAS[area];
-    // 各エリアの関門トレーナーバッジを取得していれば開く
-    var tr=DB.TRAINERS[area][0];
-    return state.flags['beat_'+tr.id];
+    var rv=DB.TRAINERS[baseArea(state.player.area)];
+    rv=rv && rv[0];
+    return rv? !!state.flags['beat_'+rv.id] : true;
   }
   function updateField(dt){
     var p=state.player, map=curMap();
     if(edge.menu){ Audio.se('ok'); scene=SC.MENU; menuInit(); return; }
     if(p.moving){
-      var tx=p.x*32, ty=p.y*32, sp=8;
+      var tx=p.x*32, ty=p.y*32, sp=16;
       if(p.px<tx)p.px=Math.min(tx,p.px+sp); else if(p.px>tx)p.px=Math.max(tx,p.px-sp);
       if(p.py<ty)p.py=Math.min(ty,p.py+sp); else if(p.py>ty)p.py=Math.max(ty,p.py-sp);
       if(p.px===tx&&p.py===ty){ p.moving=false; onStep(); }
@@ -712,7 +786,7 @@ var Game=(function(){
     }
   }
   function trainerAt(x,y){
-    var list=DB.TRAINERS[state.player.area]||[];
+    var list=areaTrainers();
     for(var i=0;i<list.length;i++){ var tr=list[i];
       if(tr.x===x&&tr.y===y && !state.flags['beat_'+tr.id]) return tr; }
     return null;
@@ -739,21 +813,43 @@ var Game=(function(){
         }
       }
     }
-    if(t===4){ // 前ゲート → 次エリア（関門突破が必要）
+    if(t===9){ // 街の入口 → 街へ
+      transition(function(){
+        var base=p.area; state._ret={area:base,x:p.x,y:p.y};
+        p.area='TOWN_'+base; var tm=World.gen(p.area);
+        p.x=tm.start.x; p.y=tm.start.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+        toast((DB.AREAS[base]?DB.AREAS[base].name:base)+' の街に入った');
+        Save.save(state);
+      });
+      return;
+    }
+    if(map.isTown && t===6){ // 街の出口 → 野外へ
+      transition(function(){
+        var r=state._ret||{area:p.area.slice(5)};
+        p.area=r.area; var om=World.gen(p.area);
+        var ex=om.town||{x:om.start.x,y:om.start.y};
+        p.x=(r.x!=null?r.x:ex.x); p.y=Math.min(om.h-2,(r.y!=null?r.y:ex.y)+1);
+        if(World.tile(om,p.x,p.y)!==0) p.y=(r.y!=null?r.y:ex.y)+1;
+        p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+        toast('街を 出た'); Save.save(state);
+      });
+      return;
+    }
+    if(t===4 && !map.isTown){ // 前ゲート → 次エリア（ライバル撃破が必要）
       var def=DB.AREAS[p.area];
-      if(def.next && gateOpen()){
+      if(def && def.next && gateOpen()){
         transition(function(){
           p.area=def.next; var nm=World.gen(p.area);
-          p.x=2; p.y=nm.backGate.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+          p.x=3; p.y=nm.backGate.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
           toast(DB.AREAS[p.area].name+' に到着');
           Save.save(state);
         });
-      } else { toast('このゲートは関門を突破すると開く'); }
+      } else { toast('街の ライバルを たおすと ゲートが ひらく'); }
       return;
     }
-    if(t===6){ // 戻りゲート → 前エリア（いつでも可）
+    if(t===6 && !map.isTown){ // 戻りゲート → 前エリア（いつでも可）
       var def2=DB.AREAS[p.area];
-      if(def2.prev){
+      if(def2 && def2.prev){
         transition(function(){
           p.area=def2.prev; var pm=World.gen(p.area);
           p.x=pm.w-3; p.y=pm.gate.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
@@ -770,12 +866,12 @@ var Game=(function(){
     } else state.steps=0;
   }
   function drawField(){
-    var p=state.player, map=curMap(), def=DB.AREAS[p.area];
+    var p=state.player, map=curMap(), def=DB.AREAS[p.area]||{name:map.name,pal:map.pal};
     // カメラ
     var camx=Math.floor(p.px - 480 + 16), camy=Math.floor(p.py - 320 + 16);
     camx=Math.max(0,Math.min(camx, map.w*32-960));
     camy=Math.max(0,Math.min(camy, map.h*32-640));
-    g.fillStyle=def.pal; g.fillRect(0,0,960,640);
+    g.fillStyle=map.pal||def.pal; g.fillRect(0,0,960,640);
     var c0=Math.floor(camx/32), r0=Math.floor(camy/32);
     for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
       for(var rx=c0; rx<c0+31 && rx<map.w; rx++){
@@ -792,7 +888,23 @@ var Game=(function(){
           g.fillStyle='#fff'; g.font='16px Segoe UI'; g.textAlign='center'; g.fillText('+',sx+16,sy+22); g.textAlign='left'; }
         else if(t===6){ g.fillStyle='#3a6a8f'; g.fillRect(sx,sy,32,32);
           g.fillStyle='#cdd6ee'; g.font='18px Segoe UI'; g.textAlign='center';
-          g.fillText('＜',sx+16,sy+22); g.textAlign='left'; }
+          g.fillText(map.isTown?'出口':'＜',sx+16,sy+22); g.textAlign='left'; }
+        else if(t===7){ // 木
+          g.fillStyle='#274a2c'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#6b4a2a'; g.fillRect(sx+13,sy+18,6,12);
+          g.fillStyle='#3f8f44'; g.beginPath(); g.arc(sx+16,sy+13,12,0,7); g.fill();
+          g.fillStyle='#4fae54'; g.beginPath(); g.arc(sx+11,sy+11,7,0,7); g.arc(sx+21,sy+14,6,0,7); g.fill(); }
+        else if(t===8){ // 川
+          g.fillStyle='#2f6fb0'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='rgba(255,255,255,.18)';
+          var wv=Math.sin((rx+performance.now()/400))*2;
+          g.fillRect(sx+3,sy+10+wv,26,3); g.fillRect(sx+5,sy+20-wv,22,3); }
+        else if(t===9){ // 街の入口
+          g.fillStyle='#7a6a4a'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#caa46a'; g.fillRect(sx+3,sy+3,26,26);
+          g.fillStyle='#5a3f22'; g.fillRect(sx+12,sy+12,8,17);
+          g.fillStyle='#fff'; g.font='10px Segoe UI'; g.textAlign='center';
+          g.fillText('街',sx+16,sy+9); g.textAlign='left'; }
         else { g.fillStyle = (rx+ry)%2? 'rgba(255,255,255,.02)':'rgba(0,0,0,.05)'; g.fillRect(sx,sy,32,32); }
       }
     }
@@ -808,8 +920,8 @@ var Game=(function(){
       g.fillStyle='#7a5a10'; g.font='12px Segoe UI'; g.textAlign='center';
       g.fillText('?',isx+16,isy+20+bob2); g.textAlign='left';
     }
-    // トレーナー
-    var trs=DB.TRAINERS[p.area]||[];
+    // ライバル（街の中）
+    var trs=areaTrainers();
     for(var i=0;i<trs.length;i++){ var tr=trs[i]; if(state.flags['beat_'+tr.id]) continue;
       var tsx=tr.x*32-camx, tsy=tr.y*32-camy;
       g.fillStyle=tr.boss?'#d04bff':'#ff7a3c'; g.beginPath();
