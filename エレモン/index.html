@@ -1436,16 +1436,17 @@ var Game=(function(){
   function menuInit(){ menu.page='root'; menu.sel=0; menu.sub=0; }
   function updateMenu(){
     if(menu.page==='root'){
-      var items=['パーティ','どうぐ','ずかん','せってい','セーブ','とじる'];
+      var items=['パーティ','ボックス','どうぐ','ずかん','せってい','セーブ','とじる'];
       if(edge.down){menu.sel=(menu.sel+1)%items.length;Audio.se('ok');}
       if(edge.up){menu.sel=(menu.sel+items.length-1)%items.length;Audio.se('ok');}
       if(edge.cancel||edge.menu){ Audio.se('cancel'); scene=SC.FIELD; return; }
       if(edge.ok){ Audio.se('ok');
         if(menu.sel===0){menu.page='party';menu.sub=0;}
-        else if(menu.sel===1){menu.page='bag';menu.sub=0;}
-        else if(menu.sel===2){menu.page='dex';menu.sub=0;}
-        else if(menu.sel===3){menu.page='set';menu.sub=0;}
-        else if(menu.sel===4){ if(Save.save(state)) toast('セーブしました'); else toast('セーブ失敗'); }
+        else if(menu.sel===1){menu.page='box';menu.sub=0;}
+        else if(menu.sel===2){menu.page='bag';menu.sub=0;}
+        else if(menu.sel===3){menu.page='dex';menu.sub=0;}
+        else if(menu.sel===4){menu.page='set';menu.sub=0;}
+        else if(menu.sel===5){ if(Save.save(state)) toast('セーブしました'); else toast('セーブ失敗'); }
         else { scene=SC.FIELD; }
       }
       return;
@@ -1458,6 +1459,24 @@ var Game=(function(){
       if(edge.ok && n>1){ // 先頭と入替
         Audio.se('ok'); var t=state.party[0]; state.party[0]=state.party[menu.sub]; state.party[menu.sub]=t; menu.sub=0;
         toast('せんとうを いれかえた');
+      }
+    } else if(menu.page==='box'){
+      var bn=state.box.length;
+      if(bn>0){
+        if(edge.down){menu.sub=Math.min(bn-1,menu.sub+1);Audio.se('ok');}
+        if(edge.up){menu.sub=Math.max(0,menu.sub-1);Audio.se('ok');}
+        if(edge.ok){
+          var bi=Math.min(menu.sub,bn-1), bm=state.box[bi];
+          if(state.party.length<6){
+            state.box.splice(bi,1); state.party.push(bm);
+            Audio.se('ok'); toast(Mon.name(bm)+' を パーティに いれた');
+            if(menu.sub>=state.box.length) menu.sub=Math.max(0,state.box.length-1);
+          } else {
+            var lead=state.party[0]; state.party[0]=bm; state.box[bi]=lead;
+            Audio.se('ok'); toast(Mon.name(bm)+' ⇔ '+Mon.name(lead)+' を いれかえた');
+          }
+          Save.save(state);
+        }
       }
     } else if(menu.page==='set'){
       var opts=['BGM','SE','テキスト速度','画面振動','色覚補助','フィールドパネル','チュートリアル再表示'];
@@ -1491,13 +1510,14 @@ var Game=(function(){
     g.strokeStyle='#5a6488'; g.lineWidth=2; g.strokeRect(120,60,720,520); g.lineWidth=1;
     g.textAlign='left';
     if(menu.page==='root'){
-      g.fillStyle='#7fc8ff'; g.font='bold 24px Segoe UI'; g.fillText('メニュー',150,105);
-      var items=['パーティ','どうぐ','ずかん','せってい','セーブ','とじる'];
+      g.fillStyle='#7fc8ff'; g.font='bold 24px Segoe UI'; g.fillText('メニュー',150,100);
+      var items=['パーティ','ボックス','どうぐ','ずかん','せってい','セーブ','とじる'];
       for(var i=0;i<items.length;i++){
+        var ry=120+i*62;
         g.fillStyle=i===menu.sel?'#3a64ff':'rgba(30,36,52,.9)';
-        g.fillRect(150,130+i*64,300,52); g.strokeStyle='#5a6488'; g.strokeRect(150,130+i*64,300,52);
-        g.fillStyle='#fff'; g.font='19px Segoe UI'; g.fillText(items[i],170,162+i*64);
-        (function(idx){ zone(150,130+idx*64,300,52,function(){ menu.sel=idx; edge.ok=true; }); })(i);
+        g.fillRect(150,ry,300,50); g.strokeStyle='#5a6488'; g.strokeRect(150,ry,300,50);
+        g.fillStyle='#fff'; g.font='19px Segoe UI'; g.fillText(items[i],170,ry+31);
+        (function(idx,yy){ zone(150,yy,300,50,function(){ menu.sel=idx; edge.ok=true; }); })(i,ry);
       }
       g.fillStyle='#aab4d4'; g.font='14px Segoe UI';
       g.fillText('所持金: '+state.player.gem+' ジェム',500,150);
@@ -1521,6 +1541,31 @@ var Game=(function(){
         drawHpBar(420,y+34,200,m.hp,m.maxhp);
         g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('HP '+m.hp+'/'+m.maxhp,640,y+44);
         if(p===0){ g.fillStyle='#ffd86b'; g.font='12px Segoe UI'; g.fillText('先頭',760,y+24); }
+      }
+    } else if(menu.page==='box'){
+      g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI';
+      g.fillText('ボックス '+state.box.length+'匹（Z=出す/入替 X戻る）',150,100);
+      g.fillStyle='#9aa4c4'; g.font='13px Segoe UI';
+      g.fillText('パーティ '+state.party.length+'/6'+(state.party.length<6?'（空きあり：選ぶとパーティへ）':'（満員：先頭と入替）'),150,120);
+      if(state.box.length===0){
+        g.fillStyle='#9aa4c4'; g.font='16px Segoe UI';
+        g.fillText('まだ あずけている エレモンは いない',170,180);
+      } else {
+        var bids=state.box, vis=6, btop=Math.max(0,Math.min(bids.length-vis,menu.sub-2));
+        for(var d=0;d<vis && btop+d<bids.length;d++){ var bm=bids[btop+d], by2=134+d*70, sl=btop+d;
+          g.fillStyle=sl===menu.sub?'#26304a':'rgba(24,30,46,.9)';
+          g.fillRect(150,by2,640,60); g.strokeStyle=sl===menu.sub?'#7fc8ff':'#444c66'; g.strokeRect(150,by2,640,60);
+          drawCreature(185,by2+30,bm.sid,20,0,false);
+          g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(Mon.name(bm),225,by2+24);
+          g.fillStyle=DB.TYPECOL[Mon.type(bm)]; g.font='13px Segoe UI';
+          g.fillText(DB.TYPEJP[Mon.type(bm)]+(settings.colorAssist?DB.TYPESYM[Mon.type(bm)]:''),225,by2+44);
+          g.fillStyle='#cdd6ee'; g.font='14px Segoe UI'; g.fillText('Lv'+bm.lv,420,by2+24);
+          drawHpBar(420,by2+34,200,bm.hp,bm.maxhp);
+          g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('HP '+bm.hp+'/'+bm.maxhp,640,by2+44);
+          (function(idx,yy){ zone(150,yy,640,60,function(){ menu.sub=idx; edge.ok=true; }); })(sl,by2);
+        }
+        if(bids.length>vis){ g.fillStyle='#7f88a8'; g.font='12px Segoe UI';
+          g.fillText((menu.sub+1)+' / '+bids.length+'（↑↓でスクロール）',150,560); }
       }
     } else if(menu.page==='bag'){
       g.fillStyle='#7fc8ff'; g.font='bold 22px Segoe UI'; g.fillText('どうぐ（X戻る）',150,100);
