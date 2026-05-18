@@ -1595,15 +1595,20 @@ var Game=(function(){
     if(!L){ var el=sidOrType; L={body:'quad',ear:'round',tail:'thin',el:DB.TYPECOL[el]?el:'none',
       col:DB.TYPECOL[el]||'#9aa0a8',col2:'#ffffff',acc:'#888',eye:'round'}; }
     var bob=Math.sin(t)*r*0.05; cy+=bob;
-    var OUT='#241d2b', LW=Math.max(2,r*0.075);
     function hx(h){ h=h.replace('#',''); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
       return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
     function mix(h,to,a){ var c=hx(h); return 'rgb('+Math.round(c[0]+(to-c[0])*a)+','+
       Math.round(c[1]+(to-c[1])*a)+','+Math.round(c[2]+(to-c[2])*a)+')'; }
-    var SHA=mix(L.col,0,0.24), LIT=mix(L.col,255,0.30);
+    // 淡い色合いに（パステル化）＋細く柔らかい線
+    L={body:L.body,ear:L.ear,tail:L.tail,el:L.el,eye:L.eye,
+       antler:L.antler,horn:L.horn,wing:L.wing,stocky:L.stocky,
+       col:mix(L.col,255,0.30), col2:mix(L.col2,255,0.22), acc:mix(L.acc,255,0.22)};
+    var OUT=mix(L.col,40,0.55);              // 体色になじむ濃すぎない輪郭
+    var LW=Math.max(1.3,r*0.042);
+    var SHA=mix(L.col,255,-0.10), LIT='rgba(255,255,255,.38)';
     function P(){ g.beginPath(); }
     function fill(c){ g.fillStyle=c; g.fill(); }
-    function out(w){ g.strokeStyle=OUT; g.lineWidth=w||Math.max(1.5,r*0.045); g.stroke(); }
+    function out(w){ g.strokeStyle=OUT; g.lineWidth=w||Math.max(1,r*0.028); g.stroke(); }
     function ell(x,y,a,b,c,ow){ P(); g.ellipse(x,y,a,b,0,0,7); fill(c); if(ow!==0) out(ow); }
     function tri(x1,y1,x2,y2,x3,y3,c,ow){ P(); g.moveTo(x1,y1); g.lineTo(x2,y2);
       g.lineTo(x3,y3); g.closePath(); fill(c); if(ow!==0) out(ow); }
@@ -1638,36 +1643,36 @@ var Game=(function(){
     // ===== 共通：顔（目・鼻・口） =====
     function face(hx0,hy0,hr,opt){
       opt=opt||{};
-      var es=hr*(L.eye==='big'?0.40:0.34), exo=hr*0.42, ey=hy0+hr*0.04;
+      var EYE='#4a3f48';                       // 柔らかい瞳の色（真っ黒を避ける）
+      var es=hr*(L.eye==='big'?0.34:0.30), exo=hr*0.40, ey=hy0+hr*0.10;
       function eye(x){
-        if(L.eye==='sleepy'){ g.strokeStyle=OUT; g.lineWidth=Math.max(2,r*0.05); g.lineCap='round';
-          P(); g.arc(x,ey,es,Math.PI*0.15,Math.PI*0.85); g.stroke(); g.lineCap='butt';
-          g.fillStyle='#1d1726'; P(); g.arc(x,ey+es*0.45,es*0.28,0,7); g.fill(); return; }
-        if(L.eye==='sharp'){ P(); g.moveTo(x-es,ey); g.quadraticCurveTo(x,ey-es*1.2,x+es,ey-es*0.2);
-          g.quadraticCurveTo(x,ey+es*0.8,x-es,ey); g.closePath(); }
-        else { P(); g.ellipse(x,ey,es*0.92,es*1.05,0,0,7); }
-        fill('#fff'); out(Math.max(2,r*0.05));
-        g.save(); g.clip(); g.fillStyle='#1d1726';
-        P(); g.arc(x+es*0.08,ey+es*0.18,es*0.6,0,7); g.fill();
-        g.fillStyle='#fff'; P(); g.ellipse(x-es*0.12,ey-es*0.12,es*0.22,es*0.28,0.3,0,7); g.fill();
+        if(L.eye==='sleepy'){ g.strokeStyle=EYE; g.lineWidth=Math.max(1.4,r*0.035); g.lineCap='round';
+          P(); g.arc(x,ey+es*0.2,es*0.95,Math.PI*1.12,Math.PI*1.88); g.stroke(); g.lineCap='butt';
+          return; }
+        // まんまる＆やさしい瞳（sharpもまるく）
+        P(); g.ellipse(x,ey,es*0.92,es,0,0,7);
+        g.fillStyle=EYE; g.fill();
+        g.save(); g.clip();
+        // 大きなツヤ＋小さなきらめき
+        g.fillStyle='rgba(255,255,255,.95)';
+        P(); g.ellipse(x-es*0.26,ey-es*0.30,es*0.34,es*0.40,0.3,0,7); g.fill();
+        g.globalAlpha=0.85; P(); g.arc(x+es*0.30,ey+es*0.34,es*0.18,0,7); g.fill();
+        g.globalAlpha=0.5;  P(); g.arc(x-es*0.05,ey+es*0.42,es*0.10,0,7); g.fill();
         g.restore();
       }
       eye(hx0-exo); eye(hx0+exo);
-      // 鼻
-      var ny=hy0+hr*0.42;
-      if(opt.snout){ ell(hx0,ny,hr*0.34,hr*0.26,mix(L.col2,255,0.15)); }
-      ell(hx0,ny-hr*0.02,hr*0.1,hr*0.075,'#3a2f3e',Math.max(1.2,r*0.025));
-      // 口
-      g.strokeStyle=OUT; g.lineWidth=Math.max(2,r*0.045); g.lineCap='round';
-      P(); g.moveTo(hx0,ny+hr*0.05); g.lineTo(hx0,ny+hr*0.16);
-      g.arc(hx0-hr*0.13,ny+hr*0.16,hr*0.13,0,Math.PI*0.5);
-      g.stroke();
-      P(); g.moveTo(hx0,ny+hr*0.16); g.arc(hx0+hr*0.13,ny+hr*0.16,hr*0.13,Math.PI*0.5,Math.PI);
-      g.stroke(); g.lineCap='butt'; g.lineWidth=1;
-      // ほっぺ
-      g.save(); g.globalAlpha=0.28; g.fillStyle='#ff7e9a';
-      P(); g.ellipse(hx0-hr*0.62,hy0+hr*0.34,hr*0.2,hr*0.14,0,0,7);
-      g.ellipse(hx0+hr*0.62,hy0+hr*0.34,hr*0.2,hr*0.14,0,0,7); g.fill(); g.restore();
+      // 鼻（小さく淡く）
+      var ny=hy0+hr*0.46;
+      if(opt.snout){ ell(hx0,ny,hr*0.30,hr*0.22,mix(L.col2,255,0.25),0); }
+      ell(hx0,ny-hr*0.02,hr*0.07,hr*0.05,'#9a7f86',0);
+      // 口（ちいさな笑顔／細線）
+      g.strokeStyle='#9a7f86'; g.lineWidth=Math.max(1.2,r*0.028); g.lineCap='round';
+      P(); g.arc(hx0,ny+hr*0.06,hr*0.16,Math.PI*0.20,Math.PI*0.80); g.stroke();
+      g.lineCap='butt'; g.lineWidth=1;
+      // ほっぺ（ふんわり）
+      g.save(); g.globalAlpha=0.22; g.fillStyle='#ff9bb0';
+      P(); g.ellipse(hx0-hr*0.60,hy0+hr*0.36,hr*0.22,hr*0.15,0,0,7);
+      g.ellipse(hx0+hr*0.60,hy0+hr*0.36,hr*0.22,hr*0.15,0,0,7); g.fill(); g.restore();
     }
     function ears(hx0,hy0,hr){
       var e=L.ear;
@@ -1810,7 +1815,7 @@ var Game=(function(){
         P(); g.ellipse(fbx+fs*feo,fey,fes,fes,0,0,7); out(LW);
         ell(fbx+fs*feo,fey+fes*0.1,fes*0.55,fes*0.6,'#fff',Math.max(1.5,r*0.04));
         g.save(); P(); g.arc(fbx+fs*feo,fey+fes*0.1,fes*0.6,0,7); g.clip();
-        g.fillStyle='#1d1726'; P(); g.arc(fbx+fs*feo,fey+fes*0.25,fes*0.34,0,7); g.fill();
+        g.fillStyle='#4a3f48'; P(); g.arc(fbx+fs*feo,fey+fes*0.25,fes*0.34,0,7); g.fill();
         g.fillStyle='#fff'; P(); g.arc(fbx+fs*feo-fes*0.1,fey-fes*0.02,fes*0.12,0,7); g.fill();
         g.restore(); }
       // 口（横に広く）
@@ -1853,7 +1858,7 @@ var Game=(function(){
       var bes=bhr*(L.eye==='big'?0.42:0.34);
       ell(bhx-bhr*0.05,bhy-bhr*0.05,bes*0.92,bes*1.05,'#fff',Math.max(2,r*0.05));
       g.save(); P(); g.arc(bhx-bhr*0.05,bhy-bhr*0.05,bes,0,7); g.clip();
-      g.fillStyle='#1d1726'; P(); g.arc(bhx+bes*0.05,bhy-bhr*0.05+bes*0.15,bes*0.6,0,7); g.fill();
+      g.fillStyle='#4a3f48'; P(); g.arc(bhx+bes*0.05,bhy-bhr*0.05+bes*0.15,bes*0.6,0,7); g.fill();
       g.fillStyle='#fff'; P(); g.arc(bhx-bes*0.15,bhy-bhr*0.05-bes*0.12,bes*0.2,0,7); g.fill();
       g.restore();
     }
