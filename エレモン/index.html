@@ -833,63 +833,6 @@ var Game=(function(){
     g.fillStyle='#cdd6ee'; g.font='14px Segoe UI'; g.textAlign='right';
     g.fillText(def.name,348,46); g.textAlign='left';
 
-    // 右：手持ちパーティ（クリックでメニュー）
-    var PX=744;
-    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,64,212,300);
-    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('てもち '+state.party.length+'/6',PX+10,82);
-    for(var pi=0;pi<state.party.length;pi++){ var pm=state.party[pi];
-      var ry=90+pi*44;
-      g.fillStyle='rgba(24,30,46,.85)'; g.fillRect(PX+8,ry,196,38);
-      drawCreature(PX+24,ry+19,pm.sid,12,0,false);
-      g.fillStyle='#fff'; g.font='12px Segoe UI'; g.fillText(Mon.name(pm),PX+42,ry+15);
-      g.fillStyle=DB.TYPECOL[Mon.type(pm)]; g.font='11px Segoe UI';
-      g.fillText('Lv'+pm.lv+' '+DB.TYPEJP[Mon.type(pm)]+(settings.colorAssist?DB.TYPESYM[Mon.type(pm)]:''),PX+150,ry+15);
-      drawHpBar(PX+42,ry+22,150,pm.hp,pm.maxhp);
-      g.fillStyle='#9aa4c4'; g.font='10px Segoe UI'; g.fillText(pm.hp+'/'+pm.maxhp,PX+42,ry+36);
-    }
-    zone(PX,64,212,300,function(){ scene=SC.MENU; menuInit(); });
-
-    // 右下：道具
-    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,372,212,150);
-    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('どうぐ',PX+10,390);
-    var bk=Object.keys(state.bag).filter(function(k){return state.bag[k]>0;}), by=406;
-    if(bk.length===0){ g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('なし',PX+14,by+8); }
-    for(var bi=0;bi<bk.length && bi<6;bi++){
-      g.fillStyle='#cdd6ee'; g.font='12px Segoe UI';
-      g.fillText(DB.ITEMS[bk[bi]].name,PX+14,by+bi*18+8);
-      g.fillStyle='#ffd86b'; g.textAlign='right'; g.fillText('×'+state.bag[bk[bi]],PX+198,by+bi*18+8); g.textAlign='left';
-    }
-
-    // 右最下：プレイ実績
-    g.fillStyle='rgba(8,10,18,.74)'; g.fillRect(PX,530,212,98);
-    g.fillStyle='#7fc8ff'; g.font='13px Segoe UI'; g.fillText('じっせき',PX+10,548);
-    g.fillStyle='#cdd6ee'; g.font='12px Segoe UI';
-    g.fillText('図鑑 '+Object.keys(state.dex).length+'/18',PX+14,566);
-    g.fillText('捕獲 '+(state.stats.caught||0),PX+14,584);
-    g.fillText('時間 '+fmtTime(state.stats.playTime||0),PX+14,602);
-    g.fillText('バッジ '+state.player.badges+'/4',PX+14,620);
-
-    // 左下：ミニマップ
-    var MS=4, MW=map.w*MS, MH=map.h*MS, MX=12, MY=628-MH-6;
-    g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(MX-4,MY-16,MW+8,MH+22);
-    g.fillStyle='#7fc8ff'; g.font='12px Segoe UI'; g.fillText('MAP: '+def.name,MX,MY-4);
-    for(var my=0;my<map.h;my++)for(var mx=0;mx<map.w;mx++){
-      var tt=World.tile(map,mx,my), col;
-      if(tt===1) col='#3a3f50'; else if(tt===2) col='#3f7a44';
-      else if(tt===4) col=gateOpen()?'#5fbf5f':'#b08040';
-      else if(tt===6) col='#5fa0d0';
-      else if(tt===5) col='#3a8fe0'; else col='#1c2030';
-      g.fillStyle=col; g.fillRect(MX+mx*MS,MY+my*MS,MS,MS);
-    }
-    if(map.items) for(var mmi=0;mmi<map.items.length;mmi++){ var mit=map.items[mmi];
-      if(state.flags['itm_'+mit.id]) continue;
-      g.fillStyle='#ffd86b'; g.fillRect(MX+mit.x*MS-1,MY+mit.y*MS-1,MS+1,MS+1); }
-    var trs2=DB.TRAINERS[p.area]||[];
-    for(var ti=0;ti<trs2.length;ti++){ if(state.flags['beat_'+trs2[ti].id])continue;
-      g.fillStyle=trs2[ti].boss?'#d04bff':'#ff7a3c';
-      g.fillRect(MX+trs2[ti].x*MS-1,MY+trs2[ti].y*MS-1,MS+2,MS+2); }
-    g.fillStyle='#fff'; g.fillRect(MX+p.x*MS-1,MY+p.y*MS-1,MS+2,MS+2);
-
     if(World.tile(map,p.x,p.y)===5){
       g.fillStyle='rgba(8,10,18,.78)'; g.fillRect(330,596,300,32);
       g.fillStyle='#9fe0ff'; g.font='15px Segoe UI'; g.textAlign='center';
