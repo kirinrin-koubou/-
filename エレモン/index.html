@@ -1272,14 +1272,14 @@ var Game=(function(){
     var grd=g.createLinearGradient(0,0,0,640);
     grd.addColorStop(0,'#2a3a5a'); grd.addColorStop(1,'#1a2030');
     g.fillStyle=grd; g.fillRect(0,0,960,640);
-    g.fillStyle='rgba(255,255,255,.06)'; g.beginPath(); g.ellipse(720,420,150,40,0,0,7); g.fill();
-    g.beginPath(); g.ellipse(240,470,170,46,0,0,7); g.fill();
+    g.fillStyle='rgba(255,255,255,.06)'; g.beginPath(); g.ellipse(700,290,130,26,0,0,7); g.fill();
+    g.beginPath(); g.ellipse(250,452,170,40,0,0,7); g.fill();
     var f=fMon(), p=pMon();
-    // 敵
+    // 敵（HP枠に重ならないよう上方に配置）
     var fHurt = (B.phase==='exec'||B.anim)?0:0;
-    drawCreature(720,360, f.sid, 44, performance.now()/300, false);
+    drawCreature(700,225, f.sid, 42, performance.now()/300, false);
     // 自分（背面表現＝大きめ）
-    drawCreature(240,420, p.sid, 56, performance.now()/300, true);
+    drawCreature(250,398, p.sid, 54, performance.now()/300, true);
     // 敵情報枠
     g.fillStyle='rgba(12,16,26,.88)'; g.fillRect(40,40,360,76);
     g.strokeStyle='#5a6488'; g.strokeRect(40,40,360,76);
