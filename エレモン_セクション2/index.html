@@ -447,10 +447,23 @@ var World=(function(){
       var ix=7+Math.floor((W-12)*(di+1)/(drops.length+1)), iy=MID + (di%2?3:-3);
       box(ix-1,iy-1,ix+1,iy+1,3); items.push({x:ix,y:iy,key:drops[di][2],id:area+'_'+di});
     }
-    return {w:W,h:H,grid:g,isTown:false,pal:def.pal,name:def.name,
-      start:{x:4,y:MID}, healAt:{x:4,y:MID}, gate:{x:W-2,y:MID},
+    var fth=FIELD_THEME[area]||FIELD_THEME.A1;
+    return {w:W,h:H,grid:g,isTown:false,pal:fth.bg,name:def.name+'（'+fth.name+'）',
+      theme:fth, start:{x:4,y:MID}, healAt:{x:4,y:MID}, gate:{x:W-2,y:MID},
       backGate:{x:1,y:MID}, town:{x:TX,y:TY}, items:items};
   }
+  var FIELD_THEME={
+    A1:{name:'草原',g1:'#4f9243',g2:'#468a3c',grass1:'#3f7a44',grass2:'#37703c',gblade:'#5fb255',
+        water:'#3f86d6',tree:'#3f8c43',dirt1:'#8a6a42',dirt2:'#7e6038',cliff:'#5a6a4a',bg:'#3a6633'},
+    A2:{name:'森',g1:'#3c7a38',g2:'#356f32',grass1:'#356b34',grass2:'#2e6030',gblade:'#4f9a47',
+        water:'#3f7fb0',tree:'#2f6b34',dirt1:'#6f5a36',dirt2:'#62502f',cliff:'#4a5a3c',bg:'#274a2c'},
+    A3:{name:'渓谷',g1:'#b5894a',g2:'#a87c40',grass1:'#9a8f3a',grass2:'#8c8233',gblade:'#b5a24a',
+        water:'#c2532f',tree:'#7a6a34',dirt1:'#9a6a3a',dirt2:'#8a5e32',cliff:'#7a5230',bg:'#6a4a2a'},
+    A4:{name:'雪原',g1:'#d8e6ef',g2:'#cddfe9',grass1:'#bcd0dc',grass2:'#b0c6d4',gblade:'#9ec0d2',
+        water:'#7fb6e0',tree:'#8fb6c8',dirt1:'#b8c4cc',dirt2:'#aab8c2',cliff:'#9aabb6',bg:'#cfe0ea'},
+    T :{name:'天空',g1:'#b9add8',g2:'#b0a3d0',grass1:'#9a86d0',grass2:'#8f7bc6',gblade:'#c0b2ee',
+        water:'#7fb0e6',tree:'#9a86d0',dirt1:'#a99fc4',dirt2:'#9d93ba',cliff:'#8a7fb0',bg:'#b6a9d6'}
+  };
   var TOWN_THEME={
     A1:{name:'草原',  g1:'#86c87c',g2:'#7cbf72',bg:'#a9dcb0',tree:'#3f8c43',prop:'flower',
         hcol:'#f3c66a',hroof:'#d4694a'},
@@ -951,24 +964,39 @@ var Game=(function(){
     for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
       for(var rx=c0; rx<c0+31 && rx<map.w; rx++){
         var t=World.tile(map,rx,ry), sx=rx*32-camx, sy=ry*32-camy;
-        function grassTile(){ g.fillStyle=((rx+ry)&1)?'#5fae57':'#56a44e'; g.fillRect(sx,sy,32,32);
+        var FT=map.theme||null;
+        function grassTile(){ // 野外の地面（エリアテーマ色）
+          var a=FT?FT.g1:'#5fae57', b2=FT?FT.g2:'#56a44e';
+          g.fillStyle=((rx+ry)&1)?a:b2; g.fillRect(sx,sy,32,32);
           var q=((rx*7+ry*13)%6);
-          if(q===0){ g.fillStyle='#73c267'; g.fillRect(sx+6,sy+8,3,7); g.fillRect(sx+10,sy+6,3,9); }
-          else if(q===1){ g.fillStyle='#ffe25a'; g.fillRect(sx+20,sy+18,4,4); }
-          else if(q===2){ g.fillStyle='#ff8fb4'; g.fillRect(sx+13,sy+22,4,4); }
-          else if(q===3){ g.fillStyle='rgba(255,255,255,.07)'; g.fillRect(sx+22,sy+9,6,4); } }
+          if(q===0){ g.fillStyle=FT?FT.gblade:'#73c267'; g.fillRect(sx+6,sy+9,3,7); g.fillRect(sx+10,sy+7,3,9); }
+          else if(q===1){ g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(sx+20,sy+18,6,4); }
+          else if(q===2){ g.fillStyle='rgba(0,0,0,.05)'; g.fillRect(sx+13,sy+21,6,4); } }
+        function townFloor(){ // 街の地面（街テーマ色）＝家はこの上に出す
+          var th=map.theme||{g1:'#86c87c',g2:'#7cbf72'};
+          g.fillStyle=((rx+ry)&1)?th.g1:th.g2; g.fillRect(sx,sy,32,32);
+          g.fillStyle='rgba(255,255,255,.07)'; g.fillRect(sx+3,sy+3,26,2);
+          var qq=(rx*5+ry*3)%7;
+          if(qq===0 && th.prop==='flower'){ g.fillStyle='#ff8fb4'; g.fillRect(sx+22,sy+20,4,4); }
+          else if(qq===1 && th.prop==='snow'){ g.fillStyle='rgba(255,255,255,.55)'; g.fillRect(sx+8,sy+22,7,4); }
+          else if(qq===2 && th.prop==='crystal'){ g.fillStyle='rgba(180,160,255,.30)'; g.fillRect(sx+18,sy+10,5,5); }
+          else if(qq===3 && th.prop==='rock'){ g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(sx+10,sy+18,8,4); } }
         function woodFloor(){ g.fillStyle=((ry)&1)?'#caa069':'#bd9560'; g.fillRect(sx,sy,32,32);
           g.fillStyle='rgba(90,60,30,.25)'; g.fillRect(sx,sy+15,32,2);
           g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(sx,sy+1,32,3); }
+        function baseTile(){ if(map.isHouse) woodFloor(); else if(map.isTown) townFloor(); else grassTile(); }
         if(t===1){
           if(map.isHouse){ g.fillStyle='#8a5f37'; g.fillRect(sx,sy,32,32);
             g.fillStyle='#744d2b'; g.fillRect(sx+2,sy+2,28,6); g.fillRect(sx+2,sy+12,28,6); g.fillRect(sx+2,sy+22,28,6); }
-          else { g.fillStyle='#5a6a4a'; g.fillRect(sx,sy,32,32);
-            g.fillStyle='#6f8059'; g.fillRect(sx+3,sy+3,26,8); } }
-        else if(t===10){ // 建物の足元（家オーバーレイで覆う）→ 草地に
-          grassTile(); }
-        else if(t===2){ g.fillStyle=((rx+ry)&1)?'#3f7a44':'#37703c'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#54a14f'; for(var b=0;b<4;b++) g.fillRect(sx+4+b*7,sy+17-(b%2)*4,4,13); }
+          else if(map.isTown){ g.fillStyle='#7d7a86'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='#6a6772'; g.fillRect(sx+3,sy+3,26,8); }
+          else { g.fillStyle=FT?FT.cliff:'#5a6a4a'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(sx+3,sy+3,26,7); } }
+        else if(t===10){ // 建物の足元＝普通のタイル（家はオーバーレイで前に描く）
+          baseTile(); }
+        else if(t===2){ var ga=FT?FT.grass1:'#3f7a44', gb=FT?FT.grass2:'#37703c';
+          g.fillStyle=((rx+ry)&1)?ga:gb; g.fillRect(sx,sy,32,32);
+          g.fillStyle=FT?FT.gblade:'#54a14f'; for(var b=0;b<4;b++) g.fillRect(sx+4+b*7,sy+17-(b%2)*4,4,13); }
         else if(t===4){ g.fillStyle=gateOpen()?'#7fc06a':'#b08a4a'; g.fillRect(sx,sy,32,32);
           g.fillStyle='#3a2a16'; g.fillRect(sx+4,sy+3,6,26); g.fillRect(sx+22,sy+3,6,26); g.fillRect(sx+4,sy+3,24,5);
           g.fillStyle='#fff'; g.font='15px Segoe UI'; g.textAlign='center';
@@ -978,7 +1006,7 @@ var Game=(function(){
             g.fillStyle='#e8e2d0'; g.fillRect(sx+4,sy+8,24,18);
             g.fillStyle='#c84d63'; g.fillRect(sx+4,sy+8,24,6);
             g.fillStyle='#fff'; g.fillRect(sx+6,sy+16,9,8); }
-          else { grassTile(); // 近未来の回復ステーション（自販機型）
+          else { townFloor(); // 近未来の回復ステーション（自販機型）
             var gl=0.45+0.35*Math.sin(performance.now()/360);
             g.fillStyle='rgba(90,220,255,'+(gl*0.5)+')';
             g.beginPath(); g.ellipse(sx+16,sy+30,16,6,0,0,7); g.fill();
@@ -992,12 +1020,12 @@ var Game=(function(){
             g.fillStyle='#7de3ff'; g.fillRect(sx+15,sy-1,2,4);      // アンテナ
             g.beginPath(); g.arc(sx+16,sy-2,2.5,0,7); g.fill(); } }
         else if(t===6){
-          if(map.isHouse) woodFloor(); else grassTile();
+          baseTile();
           g.fillStyle='#6b4a2a'; g.fillRect(sx+7,sy+6,18,22);
           g.fillStyle='#3a2614'; g.fillRect(sx+7,sy+6,18,22);
           g.fillStyle='#ffd86b'; g.font='11px Segoe UI'; g.textAlign='center';
           g.fillText(map.isHouse?'でる':map.isTown?'まち出口':'＜',sx+16,sy+20); g.textAlign='left'; }
-        else if(t===8){ g.fillStyle='#3f86d6'; g.fillRect(sx,sy,32,32);
+        else if(t===8){ g.fillStyle=FT?FT.water:'#3f86d6'; g.fillRect(sx,sy,32,32);
           g.fillStyle='rgba(255,255,255,.22)';
           var wv=Math.sin((rx+performance.now()/380))*2;
           g.fillRect(sx+3,sy+10+wv,26,3); g.fillRect(sx+5,sy+21-wv,22,3); }
@@ -1008,7 +1036,7 @@ var Game=(function(){
           g.fillStyle='#5a3f22'; g.fillRect(sx+13,sy+18,7,11);
           g.fillStyle='#fff'; g.font='9px Segoe UI'; g.textAlign='center';
           g.fillText('まち',sx+16,sy+27); g.textAlign='left'; }
-        else if(t===11||t===12||t===13){ grassTile();
+        else if(t===11||t===12||t===13){ townFloor();
           g.fillStyle='rgba(120,80,40,.35)'; g.fillRect(sx+6,sy+22,20,8); }
         else if(t===14){ woodFloor(); // 店カウンター
           g.fillStyle='#8a5a30'; g.fillRect(sx,sy+6,32,14);
@@ -1018,18 +1046,13 @@ var Game=(function(){
         else if(t===15){ woodFloor(); // 住人
           g.fillStyle='#5a8cff'; g.beginPath(); g.arc(sx+16,sy+12,7,0,7); g.fill();
           g.fillStyle='#3a64c8'; g.fillRect(sx+10,sy+18,12,12); }
-        else if(t===3){ // 床
+        else if(t===3){ // 床/道
           if(map.isHouse){ woodFloor(); }
-          else if(map.isTown){ var th=map.theme||{g1:'#86c87c',g2:'#7cbf72'};
-            g.fillStyle=((rx+ry)&1)?th.g1:th.g2; g.fillRect(sx,sy,32,32);
-            g.fillStyle='rgba(255,255,255,.08)'; g.fillRect(sx+3,sy+3,26,2);
-            var qq=(rx*5+ry*3)%6;
-            if(qq===0 && th.prop==='flower'){ g.fillStyle='#ff8fb4'; g.fillRect(sx+22,sy+20,4,4); }
-            else if(qq===1 && th.prop==='snow'){ g.fillStyle='rgba(255,255,255,.5)'; g.fillRect(sx+8,sy+22,7,4); }
-            else if(qq===2 && th.prop==='crystal'){ g.fillStyle='rgba(180,160,255,.35)'; g.fillRect(sx+18,sy+10,5,5); } }
-          else { g.fillStyle=((rx+ry)&1)?'#8a6a42':'#7e6038'; g.fillRect(sx,sy,32,32);
+          else if(map.isTown){ townFloor(); }
+          else { g.fillStyle=((rx+ry)&1)?(FT?FT.dirt1:'#8a6a42'):(FT?FT.dirt2:'#7e6038');
+            g.fillRect(sx,sy,32,32);
             g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(sx+6,sy+18,5,4); g.fillRect(sx+20,sy+8,4,4); } }
-        else { if(map.isHouse) woodFloor(); else grassTile(); }
+        else { baseTile(); }
       }
     }
     // 木（2マス分の大きな自作絵・行順で奥→手前に重ね描き）
@@ -1044,7 +1067,7 @@ var Game=(function(){
         g.lineTo(bx+3,byy-28); g.lineTo(bx+5,byy-2); g.closePath(); g.fill();
         g.strokeStyle='#4e3520'; g.lineWidth=2; g.stroke();
         var cy0=byy-44+ph;
-        var lf=(map.isTown&&map.theme)?map.theme.tree:'#3f8c43';
+        var lf=map.theme?map.theme.tree:'#3f8c43';
         function lt(hex,d){ var n=parseInt(hex.slice(1),16),
           R=Math.max(0,Math.min(255,(n>>16)+d)),G2=Math.max(0,Math.min(255,((n>>8)&255)+d)),
           B=Math.max(0,Math.min(255,(n&255)+d));
