@@ -382,102 +382,86 @@ var Mon=(function(){
 
 /* ---------- 5. ワールド/マップ生成 (§5) ---------- */
 var World=(function(){
-  var W=700,H=500,TS=32, MID=Math.floor(H/2);
-  var TW=44,TH=30;            // 街マップ
+  var W=40,H=26,TS=32, MID=13;
+  var TW=44,TH=30;
   var cache={};
   function isTown(a){ return (''+a).indexOf('TOWN_')===0; }
-  // タイル: 0床 1壁 2草(遭遇) 4前ゲート 5拠点 6戻り/出口 7木 8川 9街入口
+  // 0地面 1岩壁 2草(遭遇) 3道(土) 4前ゲート 5拠点 6戻り/出口 7木 8水 9街入口
   function gen(area){
     if(cache[area]) return cache[area];
-    if(isTown(area)) return (cache[area]=genTown(area));
-    return (cache[area]=genField(area));
+    return (cache[area] = isTown(area) ? genTown(area) : genField(area));
   }
   function genField(area){
-    var def=DB.AREAS[area]||{pal:'#1f3b22',name:area};
+    var def=DB.AREAS[area]||{pal:'#244a2c',name:area};
     var g=new Array(W*H);
-    for(var y=0;y<H;y++){ var row=y*W;
-      for(var x=0;x<W;x++) g[row+x]=(x===0||y===0||x===W-1||y===H-1)?1:0; }
-    function gt(x,y){ return (x<1||y<1||x>=W-1||y>=H-1)?1:g[y*W+x]; }
-    function set(x,y,v){ if(x>0&&y>0&&x<W-1&&y<H-1) g[y*W+x]=v; }
-    function rect(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) set(xx,yy,v); }
-    var startX=4, healX=7, backX=1, fwdX=W-2;
-    var townX=Math.floor(W*0.60), townY=Math.floor(H*0.40);
-    function protectedAt(x,y){
-      if(Math.abs(y-MID)<=2) return true;                 // 横断回廊
-      if(Math.abs(x-townX)<=2 && y>=Math.min(MID,townY)-2 && y<=Math.max(MID,townY)+2) return true;
-      if(x<healX+3) return true;
-      if(x>fwdX-4) return true;
-      if(Math.abs(x-townX)<=3 && Math.abs(y-townY)<=3) return true;
-      return false;
-    }
-    // 川（縦帯）＋橋
-    var rivers=[Math.floor(W*0.30), Math.floor(W*0.50), Math.floor(W*0.80)];
-    for(var ri=0;ri<rivers.length;ri++){ var rx=rivers[ri];
-      for(var ry=1;ry<H-1;ry++){ set(rx,ry,8); set(rx+1,ry,8); }
-      // 橋（回廊・町列）
-      rect(rx,MID-1,rx+1,MID+1,0);
-      rect(rx,townY-1,rx+1,townY+1,0);
-    }
-    // 川（横帯）＋橋（縦連結を通す）
-    var hr=[Math.floor(H*0.16), Math.floor(H*0.84)];
-    for(var hi=0;hi<hr.length;hi++){ var ry2=hr[hi];
-      for(var hx=1;hx<W-1;hx++){ set(hx,ry2,8); set(hx,ry2+1,8); }
-      rect(townX-1,ry2,townX+1,ry2+1,0);
-    }
-    // 草むら（広い区画を複数）
-    var gp=[[0.10,0.55,0.24,0.74],[0.34,0.10,0.48,0.30],[0.52,0.58,0.70,0.80],
-            [0.66,0.12,0.82,0.30],[0.84,0.55,0.97,0.78],[0.14,0.18,0.26,0.34]];
-    for(var p=0;p<gp.length;p++){ var a=gp[p];
-      var gx0=Math.floor(W*a[0]),gy0=Math.floor(H*a[1]),gx1=Math.floor(W*a[2]),gy1=Math.floor(H*a[3]);
-      for(var yy=gy0;yy<=gy1;yy++)for(var xx=gx0;xx<=gx1;xx++)
-        if(gt(xx,yy)===0 && !protectedAt(xx,yy)) set(xx,yy,2); }
-    // 木（点在クラスタ）— 経路を塞がない
-    var rseed=98765;
-    function rnd(){ rseed=(rseed*1103515245+12345)&0x7fffffff; return rseed/0x7fffffff; }
-    var clusters=Math.floor(W*H/2600);
-    for(var c=0;c<clusters;c++){
-      var bx=2+Math.floor(rnd()*(W-4)), by=2+Math.floor(rnd()*(H-4));
-      var n=3+Math.floor(rnd()*6);
-      for(var k=0;k<n;k++){ var tx=bx+Math.floor((rnd()-0.5)*8), ty=by+Math.floor((rnd()-0.5)*8);
-        if(gt(tx,ty)===0 && !protectedAt(tx,ty)) set(tx,ty,7); }
-    }
-    // 横断回廊・縦連結を確保（最後に上書き）
-    for(var cxr=1;cxr<W-1;cxr++) set(cxr,MID,0);
-    var c0=Math.min(MID,townY), c1=Math.max(MID,townY);
-    for(var cyr=c0;cyr<=c1;cyr++){ set(townX,cyr,0); set(townX+1,cyr,0); }
-    set(townX,townY,9);                          // 街の入口
-    set(townX,townY+1,0); set(townX,townY-1,0);
-    set(healX,MID,5);                             // 拠点
-    set(fwdX,MID,4);                              // 前ゲート
-    if(def.prev) set(backX,MID,6);                // 戻りゲート
-    // 落ちアイテム（回廊沿いに配置）
+    for(var y=0;y<H;y++)for(var x=0;x<W;x++)
+      g[y*W+x]=(x===0||y===0||x===W-1||y===H-1)?1:0;
+    function S(x,y,v){ if(x>0&&y>0&&x<W-1&&y<H-1) g[y*W+x]=v; }
+    function G(x,y){ return (x<0||y<0||x>=W||y>=H)?1:g[y*W+x]; }
+    function box(x0,y0,x1,y1,v,only){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++){
+      if(only==null||G(xx,yy)===only) S(xx,yy,v); } }
+    function blob(cx,cy,rx,ry,v){ for(var yy=cy-ry;yy<=cy+ry;yy++)for(var xx=cx-rx;xx<=cx+rx;xx++){
+      var dx=(xx-cx)/(rx||1), dy=(yy-cy)/(ry||1); if(dx*dx+dy*dy<=1 && G(xx,yy)===0) S(xx,yy,v); } }
+
+    var TX=19, TY=4, RX=27;
+    // 1) 森（意図的なクラスタ）で全体を緑に
+    var groves=[[6,4,4,3],[12,3,3,2],[33,5,4,3],[7,20,4,3],[31,19,5,4],
+                [20,21,4,3],[3,12,2,4],[36,12,2,5],[24,11,3,3]];
+    for(var i=0;i<groves.length;i++){ var gr=groves[i]; blob(gr[0],gr[1],gr[2],gr[3],7); }
+    // 内側に並木の縁取り
+    for(var x=1;x<W-1;x++){ S(x,1,7); S(x,H-2,7); }
+    for(var y=1;y<H-1;y++){ S(1,y,7); S(W-2,y,7); }
+
+    // 2) 川（縦・2マス幅）と湖
+    for(var ry=1;ry<H-1;ry++){ S(RX,ry,8); S(RX+1,ry,8); }
+    blob(11,19,4,3,8);          // 湖
+    blob(11,19,2,1,0);          // 湖の小島
+
+    // 3) 草むら（遭遇エリア）※水は侵さない（地面/木のみ草地化）
+    function meadow(x0,y0,x1,y1){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++){
+      var c=G(xx,yy); if(c===0||c===7) S(xx,yy,2); } }
+    meadow(4,3,16,8); meadow(22,3,35,8);
+    meadow(22,16,35,22); meadow(4,15,7,23); meadow(16,16,21,22);
+
+    // 4) 道（土）— 最後に敷いて確実に繋ぐ
+    box(2,MID,W-2,MID+1,3);            // 横断メイン
+    box(TX,TY+1,TX+1,MID,3);           // 街への分岐
+    box(12,15,12,MID,3); box(12,15,17,15,3); box(17,15,17,MID,3); // 湖をまわる散策路
+    box(RX,MID,RX+1,MID+1,3);          // 橋
+    box(2,MID-1,6,MID+1,3);            // 出発広場
+    box(TX-1,TY-1,TX+2,TY+2,3);        // 街前広場
+    box(W-5,MID-1,W-2,MID+1,3);        // ゲート前広場
+
+    // 5) 施設
+    S(4,MID,5);
+    S(W-2,MID,4); S(W-2,MID+1,4);
+    if(def.prev){ S(1,MID,6); S(1,MID+1,6); }
+    S(TX,TY,9);
+
+    // 6) 落ちアイテム（道沿い）
     var items=[], drops=def.drops||[];
     for(var di=0;di<drops.length;di++){
-      var ix=Math.floor(W*(0.16+0.11*di)), iy=MID+((di%2)?3:-3);
-      set(ix,iy,0); set(ix-1,iy,0); set(ix+1,iy,0); set(ix,iy-1,0); set(ix,iy+1,0);
-      items.push({x:ix,y:iy,key:drops[di][2],id:area+'_'+di});
+      var ix=7+Math.floor((W-12)*(di+1)/(drops.length+1)), iy=MID + (di%2?3:-3);
+      box(ix-1,iy-1,ix+1,iy+1,3); items.push({x:ix,y:iy,key:drops[di][2],id:area+'_'+di});
     }
     return {w:W,h:H,grid:g,isTown:false,pal:def.pal,name:def.name,
-      start:{x:startX,y:MID}, healAt:{x:healX,y:MID},
-      gate:{x:fwdX,y:MID}, backGate:{x:backX,y:MID}, town:{x:townX,y:townY}, items:items};
+      start:{x:4,y:MID}, healAt:{x:4,y:MID}, gate:{x:W-2,y:MID},
+      backGate:{x:1,y:MID}, town:{x:TX,y:TY}, items:items};
   }
   function genTown(area){
     var base=area.slice(5), bd=DB.AREAS[base]||{name:base};
     var g=new Array(TW*TH);
     for(var y=0;y<TH;y++)for(var x=0;x<TW;x++)
       g[y*TW+x]=(x===0||y===0||x===TW-1||y===TH-1)?1:0;
-    function set(x,y,v){ if(x>0&&y>0&&x<TW-1&&y<TH-1) g[y*TW+x]=v; }
-    function rect(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) set(xx,yy,v); }
-    // 建物（壁ブロック）＝装飾兼障害
-    rect(4,4,11,8,1); rect(16,4,27,8,1); rect(32,4,39,9,1);
-    rect(4,15,12,21,1); rect(31,15,39,22,1);
-    // 中央広場は空け、噴水(拠点5)を置く
-    set(7,12,5);
-    // ライバルは中央上
-    var rivalX=Math.floor(TW/2), rivalY=9;
-    // 出口（下方）
+    function S(x,y,v){ if(x>0&&y>0&&x<TW-1&&y<TH-1) g[y*TW+x]=v; }
+    function box(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) S(xx,yy,v); }
+    box(1,1,TW-2,TH-2,3);
+    box(4,4,11,8,1); box(16,4,27,8,1); box(32,4,39,9,1);
+    box(4,15,12,21,1); box(31,15,39,22,1);
+    S(7,12,5);
+    var rivalX=Math.floor(TW/2), rivalY=10;
     var exitX=Math.floor(TW/2), exitY=TH-2;
-    set(exitX,exitY,6); set(exitX,exitY-1,0); set(exitX,exitY-2,0);
+    S(exitX,exitY,6); S(exitX,exitY-1,3); S(exitX,exitY-2,3);
     return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:'#2c2a3e',
       name:bd.name+'の街', start:{x:exitX,y:exitY-2}, healAt:{x:7,y:12},
       rival:{x:rivalX,y:rivalY}, exitAt:{x:exitX,y:exitY}};
@@ -889,11 +873,6 @@ var Game=(function(){
         else if(t===6){ g.fillStyle='#3a6a8f'; g.fillRect(sx,sy,32,32);
           g.fillStyle='#cdd6ee'; g.font='18px Segoe UI'; g.textAlign='center';
           g.fillText(map.isTown?'出口':'＜',sx+16,sy+22); g.textAlign='left'; }
-        else if(t===7){ // 木
-          g.fillStyle='#274a2c'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#6b4a2a'; g.fillRect(sx+13,sy+18,6,12);
-          g.fillStyle='#3f8f44'; g.beginPath(); g.arc(sx+16,sy+13,12,0,7); g.fill();
-          g.fillStyle='#4fae54'; g.beginPath(); g.arc(sx+11,sy+11,7,0,7); g.arc(sx+21,sy+14,6,0,7); g.fill(); }
         else if(t===8){ // 川
           g.fillStyle='#2f6fb0'; g.fillRect(sx,sy,32,32);
           g.fillStyle='rgba(255,255,255,.18)';
@@ -919,6 +898,30 @@ var Game=(function(){
         }
       }
     }
+    // 木（2マス分の大きな自作絵・行順で奥→手前に重ね描き）
+    for(var tyy=r0; tyy<r0+23 && tyy<map.h; tyy++){
+      for(var txx=c0; txx<c0+31 && txx<map.w; txx++){
+        if(World.tile(map,txx,tyy)!==7) continue;
+        var bx=txx*32-camx+16, byy=tyy*32-camy+34;
+        var ph=((txx*13+tyy*7)%5), sw=Math.sin(performance.now()/700+txx*0.7)*1.4;
+        g.fillStyle='rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(bx,byy-3,15,5,0,0,7); g.fill();
+        g.fillStyle='#7c5430';
+        g.beginPath(); g.moveTo(bx-5,byy-2); g.lineTo(bx-3,byy-28);
+        g.lineTo(bx+3,byy-28); g.lineTo(bx+5,byy-2); g.closePath(); g.fill();
+        g.strokeStyle='#4e3520'; g.lineWidth=2; g.stroke();
+        var cy0=byy-44+ph;
+        g.fillStyle='#2f6b34'; g.beginPath();
+        g.arc(bx-12+sw,cy0+9,14,0,7); g.arc(bx+12+sw,cy0+9,14,0,7); g.arc(bx+sw,cy0+15,15,0,7); g.fill();
+        g.fillStyle='#3f8c43'; g.beginPath();
+        g.arc(bx-9+sw,cy0+2,12,0,7); g.arc(bx+10+sw,cy0+4,12,0,7); g.arc(bx+sw,cy0-6,15,0,7); g.fill();
+        g.fillStyle='#57a957'; g.beginPath();
+        g.arc(bx-4+sw,cy0-5,10,0,7); g.arc(bx+6+sw,cy0-1,9,0,7); g.fill();
+        g.strokeStyle='rgba(28,46,26,.45)'; g.lineWidth=2;
+        g.beginPath(); g.arc(bx+sw,cy0+5,20,0,7); g.stroke();
+        g.fillStyle='rgba(255,255,255,.13)'; g.beginPath(); g.arc(bx-6+sw,cy0-3,6,0,7); g.fill();
+      }
+    }
+    g.lineWidth=1;
     // 落ちているアイテム
     if(map.items) for(var mi=0;mi<map.items.length;mi++){ var di=map.items[mi];
       if(state.flags['itm_'+di.id]) continue;
