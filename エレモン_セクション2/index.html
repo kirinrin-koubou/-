@@ -871,7 +871,7 @@ var Game=(function(){
     var camx=Math.floor(p.px - 480 + 16), camy=Math.floor(p.py - 320 + 16);
     camx=Math.max(0,Math.min(camx, map.w*32-960));
     camy=Math.max(0,Math.min(camy, map.h*32-640));
-    g.fillStyle=map.pal||def.pal; g.fillRect(0,0,960,640);
+    g.fillStyle=map.isTown?(map.pal||'#2c2a3e'):'#3a6633'; g.fillRect(0,0,960,640);
     var c0=Math.floor(camx/32), r0=Math.floor(camy/32);
     for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
       for(var rx=c0; rx<c0+31 && rx<map.w; rx++){
@@ -905,7 +905,18 @@ var Game=(function(){
           g.fillStyle='#5a3f22'; g.fillRect(sx+12,sy+12,8,17);
           g.fillStyle='#fff'; g.font='10px Segoe UI'; g.textAlign='center';
           g.fillText('街',sx+16,sy+9); g.textAlign='left'; }
-        else { g.fillStyle = (rx+ry)%2? 'rgba(255,255,255,.02)':'rgba(0,0,0,.05)'; g.fillRect(sx,sy,32,32); }
+        else if(t===3){ // 道（土）／街は石畳
+          if(map.isTown){ g.fillStyle=((rx+ry)&1)?'#6f6a7e':'#646073'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='rgba(0,0,0,.10)'; g.fillRect(sx,sy+15,32,2); g.fillRect(sx+15,sy,2,32); }
+          else { g.fillStyle=((rx+ry)&1)?'#8a6a42':'#7e6038'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(sx+6,sy+18,5,4); g.fillRect(sx+20,sy+8,4,4); } }
+        else { // 地面：自然な緑のタイルでマップ全面を塗る
+          g.fillStyle = ((rx+ry)&1) ? '#42703a' : '#3a6633'; g.fillRect(sx,sy,32,32);
+          var gp=((rx*7+ry*13)%5);
+          if(gp===0){ g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(sx+5,sy+7,6,4); }
+          else if(gp===1){ g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(sx+19,sy+20,7,5); }
+          else if(gp===2){ g.fillStyle='#4f7d40'; g.fillRect(sx+12,sy+22,5,2); g.fillRect(sx+22,sy+9,4,2); }
+        }
       }
     }
     // 落ちているアイテム
