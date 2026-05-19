@@ -451,35 +451,60 @@ var World=(function(){
       start:{x:4,y:MID}, healAt:{x:4,y:MID}, gate:{x:W-2,y:MID},
       backGate:{x:1,y:MID}, town:{x:TX,y:TY}, items:items};
   }
+  var TOWN_THEME={
+    A1:{name:'草原',  g1:'#86c87c',g2:'#7cbf72',bg:'#a9dcb0',tree:'#3f8c43',prop:'flower',
+        hcol:'#f3c66a',hroof:'#d4694a'},
+    A2:{name:'森',    g1:'#5f9e57',g2:'#55963e',bg:'#7fae74',tree:'#2f6b34',prop:'pine',
+        hcol:'#c7a06a',hroof:'#3f7a44'},
+    A3:{name:'渓谷',  g1:'#cda05a',g2:'#c0934f',bg:'#d8b878',tree:'#8a6a3a',prop:'rock',
+        hcol:'#d98a5a',hroof:'#a8442f'},
+    A4:{name:'雪',    g1:'#dbe9f2',g2:'#cfe0ee',bg:'#e8f1f7',tree:'#8fb6c8',prop:'snow',
+        hcol:'#bcd6e6',hroof:'#5f86a8'},
+    T :{name:'天空',  g1:'#cdbfe6',g2:'#c2b4df',bg:'#ddd2ee',tree:'#9a86d0',prop:'crystal',
+        hcol:'#e3ecf7',hroof:'#6f9fd0'}
+  };
   function genTown(area){
     var base=area.slice(5), bd=DB.AREAS[base]||{name:base};
+    var th=TOWN_THEME[base]||TOWN_THEME.A1;
     var g=new Array(TW*TH);
     for(var y=0;y<TH;y++)for(var x=0;x<TW;x++)
       g[y*TW+x]=(x===0||y===0||x===TW-1||y===TH-1)?1:0;
     function S(x,y,v){ if(x>0&&y>0&&x<TW-1&&y<TH-1) g[y*TW+x]=v; }
     function box(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) S(xx,yy,v); }
-    box(1,1,TW-2,TH-2,3);                       // 明るい石畳の広場
-    // 家（footprint=10ブロック、ドアは入れる）
+    box(1,1,TW-2,TH-2,3);                       // 明るい広場
+    function tint(hex,d){ var n=parseInt(hex.slice(1),16),
+      r=Math.max(0,Math.min(255,(n>>16)+d)),gg=Math.max(0,Math.min(255,((n>>8)&255)+d)),
+      b=Math.max(0,Math.min(255,(n&255)+d));
+      return '#'+((1<<24)+(r<<16)+(gg<<8)+b).toString(16).slice(1); }
+    // 機能する家（入れる）
     var houses=[
-      {x:5, y:3, w:9, h:6, kind:'shop', door:11, col:'#f3b35a', roof:'#d4533a', name:'ショップ'},
-      {x:18,y:3, w:9, h:6, kind:'inn',  door:12, col:'#8fd0e6', roof:'#3f7fb0', name:'やどや'},
-      {x:31,y:3, w:8, h:6, kind:'home', door:13, col:'#bfe3a0', roof:'#5a9a48', name:'みんかの家'}
+      {x:4, y:3, w:9, h:6, kind:'shop', door:11, col:th.hcol, roof:th.hroof, name:'ショップ'},
+      {x:16,y:3, w:9, h:6, kind:'inn',  door:12, col:tint(th.hcol,18), roof:tint(th.hroof,16), name:'やどや'},
+      {x:29,y:3, w:8, h:6, kind:'home', door:13, col:tint(th.hcol,-22), roof:tint(th.hroof,-14), name:'みんかの家'}
     ];
+    // 関係のない民家（装飾・入れない）
+    var deco=[ {x:4,y:14,w:7,h:5},{x:33,y:14,w:7,h:5},
+               {x:4,y:22,w:6,h:5},{x:34,y:22,w:6,h:5},{x:13,y:23,w:6,h:4} ];
+    for(var dh=0;dh<deco.length;dh++){ var dd=deco[dh];
+      houses.push({x:dd.x,y:dd.y,w:dd.w,h:dd.h,kind:'deco',deco:true,
+        col:tint(th.hcol,(dh%2?-30:24)), roof:tint(th.hroof,(dh%2?20:-18)), name:'民家'}); }
     for(var i=0;i<houses.length;i++){ var hs=houses[i];
       box(hs.x,hs.y,hs.x+hs.w-1,hs.y+hs.h-1,10);
-      hs.dx=hs.x+(hs.w>>1); hs.dy=hs.y+hs.h-1;     // ドア位置
-      S(hs.dx,hs.dy,hs.door); S(hs.dx,hs.dy+1,3);  // ドア前は通行可
+      hs.dx=hs.x+(hs.w>>1); hs.dy=hs.y+hs.h-1;
+      if(!hs.deco){ S(hs.dx,hs.dy,hs.door); S(hs.dx,hs.dy+1,3); }
     }
-    // 装飾の木（明るい広場の縁に）
-    var deco=[[3,12],[3,16],[3,20],[40,12],[40,16],[40,20],[8,25],[36,25]];
-    for(var d=0;d<deco.length;d++) S(deco[d][0],deco[d][1],7);
-    S(Math.floor(TW/2),20,5);                     // 中央の泉（休憩＝回復）
+    // テーマ装飾プロップ（非ブロック・描画のみ）
+    var props=[];
+    var pp=[[14,13],[30,13],[8,20],[36,20],[18,26],[27,26],[22,12]];
+    for(var pi=0;pi<pp.length;pi++) props.push({x:pp[pi][0],y:pp[pi][1],kind:th.prop});
+    S(Math.floor(TW/2),20,5);                     // 回復ステーション（近未来）
     var rivalX=Math.floor(TW/2), rivalY=15;
     var exitX=Math.floor(TW/2), exitY=TH-2;
     S(exitX,exitY,6); S(exitX,exitY-1,3); S(exitX,exitY-2,3);
-    return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:'#cde6f0',
-      name:bd.name+'の街', start:{x:exitX,y:exitY-2}, healAt:{x:Math.floor(TW/2),y:20},
-      rival:{x:rivalX,y:rivalY}, exitAt:{x:exitX,y:exitY}, houses:houses};
+    return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:th.bg, theme:th,
+      name:bd.name+'の街（'+th.name+')', start:{x:exitX,y:exitY-2},
+      healAt:{x:Math.floor(TW/2),y:20}, rival:{x:rivalX,y:rivalY},
+      exitAt:{x:exitX,y:exitY}, houses:houses, props:props};
   }
   function genHouse(area){
     // HOUSE_<base>_<kind>
@@ -920,7 +945,7 @@ var Game=(function(){
     var camx=Math.floor(p.px - 480 + 16), camy=Math.floor(p.py - 320 + 16);
     camx=Math.max(0,Math.min(camx, map.w*32-960));
     camy=Math.max(0,Math.min(camy, map.h*32-640));
-    g.fillStyle = map.isHouse?'#c79b66' : map.isTown?'#a9dcb0' : '#3a6633';
+    g.fillStyle = map.isHouse?'#c79b66' : map.isTown?(map.pal||'#a9dcb0') : '#3a6633';
     g.fillRect(0,0,960,640);
     var c0=Math.floor(camx/32), r0=Math.floor(camy/32);
     for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
@@ -953,10 +978,19 @@ var Game=(function(){
             g.fillStyle='#e8e2d0'; g.fillRect(sx+4,sy+8,24,18);
             g.fillStyle='#c84d63'; g.fillRect(sx+4,sy+8,24,6);
             g.fillStyle='#fff'; g.fillRect(sx+6,sy+16,9,8); }
-          else { grassTile();
-            g.fillStyle='#5fa0d0'; g.beginPath(); g.arc(sx+16,sy+18,12,0,7); g.fill();
-            g.strokeStyle='#cfe9f5'; g.lineWidth=3; g.stroke(); g.lineWidth=1;
-            g.fillStyle='#bfe9ff'; g.beginPath(); g.arc(sx+16,sy+14,4,0,7); g.fill(); } }
+          else { grassTile(); // 近未来の回復ステーション（自販機型）
+            var gl=0.45+0.35*Math.sin(performance.now()/360);
+            g.fillStyle='rgba(90,220,255,'+(gl*0.5)+')';
+            g.beginPath(); g.ellipse(sx+16,sy+30,16,6,0,0,7); g.fill();
+            g.fillStyle='#cfd8e2'; g.fillRect(sx+5,sy+3,22,27);     // 本体
+            g.fillStyle='#9aa6b4'; g.fillRect(sx+5,sy+3,22,4);
+            g.fillStyle='#1b2433'; g.fillRect(sx+8,sy+7,16,12);     // 画面
+            g.fillStyle='rgba(120,230,255,'+gl+')'; g.fillRect(sx+9,sy+8,14,10);
+            g.fillStyle='#0c3a4a'; g.fillRect(sx+11,sy+11,9,2); g.fillRect(sx+11,sy+14,6,2);
+            g.fillStyle='#3fd0e6'; g.fillRect(sx+9,sy+21,14,3);     // 給付口
+            g.fillStyle='#ff5a6a'; g.beginPath(); g.arc(sx+21,sy+26,2,0,7); g.fill();
+            g.fillStyle='#7de3ff'; g.fillRect(sx+15,sy-1,2,4);      // アンテナ
+            g.beginPath(); g.arc(sx+16,sy-2,2.5,0,7); g.fill(); } }
         else if(t===6){
           if(map.isHouse) woodFloor(); else grassTile();
           g.fillStyle='#6b4a2a'; g.fillRect(sx+7,sy+6,18,22);
@@ -986,9 +1020,13 @@ var Game=(function(){
           g.fillStyle='#3a64c8'; g.fillRect(sx+10,sy+18,12,12); }
         else if(t===3){ // 床
           if(map.isHouse){ woodFloor(); }
-          else if(map.isTown){ g.fillStyle=((rx+ry)&1)?'#86c87c':'#7cbf72'; g.fillRect(sx,sy,32,32);
-            g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(sx+3,sy+3,26,2);
-            if(((rx*5+ry*3)%4)===0){ g.fillStyle='#ffe25a'; g.fillRect(sx+22,sy+20,4,4); } }
+          else if(map.isTown){ var th=map.theme||{g1:'#86c87c',g2:'#7cbf72'};
+            g.fillStyle=((rx+ry)&1)?th.g1:th.g2; g.fillRect(sx,sy,32,32);
+            g.fillStyle='rgba(255,255,255,.08)'; g.fillRect(sx+3,sy+3,26,2);
+            var qq=(rx*5+ry*3)%6;
+            if(qq===0 && th.prop==='flower'){ g.fillStyle='#ff8fb4'; g.fillRect(sx+22,sy+20,4,4); }
+            else if(qq===1 && th.prop==='snow'){ g.fillStyle='rgba(255,255,255,.5)'; g.fillRect(sx+8,sy+22,7,4); }
+            else if(qq===2 && th.prop==='crystal'){ g.fillStyle='rgba(180,160,255,.35)'; g.fillRect(sx+18,sy+10,5,5); } }
           else { g.fillStyle=((rx+ry)&1)?'#8a6a42':'#7e6038'; g.fillRect(sx,sy,32,32);
             g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(sx+6,sy+18,5,4); g.fillRect(sx+20,sy+8,4,4); } }
         else { if(map.isHouse) woodFloor(); else grassTile(); }
@@ -1006,11 +1044,16 @@ var Game=(function(){
         g.lineTo(bx+3,byy-28); g.lineTo(bx+5,byy-2); g.closePath(); g.fill();
         g.strokeStyle='#4e3520'; g.lineWidth=2; g.stroke();
         var cy0=byy-44+ph;
-        g.fillStyle='#2f6b34'; g.beginPath();
+        var lf=(map.isTown&&map.theme)?map.theme.tree:'#3f8c43';
+        function lt(hex,d){ var n=parseInt(hex.slice(1),16),
+          R=Math.max(0,Math.min(255,(n>>16)+d)),G2=Math.max(0,Math.min(255,((n>>8)&255)+d)),
+          B=Math.max(0,Math.min(255,(n&255)+d));
+          return 'rgb('+R+','+G2+','+B+')'; }
+        g.fillStyle=lt(lf,-26); g.beginPath();
         g.arc(bx-12+sw,cy0+9,14,0,7); g.arc(bx+12+sw,cy0+9,14,0,7); g.arc(bx+sw,cy0+15,15,0,7); g.fill();
-        g.fillStyle='#3f8c43'; g.beginPath();
+        g.fillStyle=lf; g.beginPath();
         g.arc(bx-9+sw,cy0+2,12,0,7); g.arc(bx+10+sw,cy0+4,12,0,7); g.arc(bx+sw,cy0-6,15,0,7); g.fill();
-        g.fillStyle='#57a957'; g.beginPath();
+        g.fillStyle=lt(lf,28); g.beginPath();
         g.arc(bx-4+sw,cy0-5,10,0,7); g.arc(bx+6+sw,cy0-1,9,0,7); g.fill();
         g.strokeStyle='rgba(28,46,26,.45)'; g.lineWidth=2;
         g.beginPath(); g.arc(bx+sw,cy0+5,20,0,7); g.stroke();
@@ -1041,16 +1084,51 @@ var Game=(function(){
       g.strokeRect(hx+14,hy+30,18,18); g.strokeRect(hx+hw-32,hy+30,18,18);
       g.beginPath(); g.moveTo(hx+23,hy+30); g.lineTo(hx+23,hy+48);
       g.moveTo(hx+14,hy+39); g.lineTo(hx+32,hy+39); g.stroke();
-      // ドア（足元中央）
+      // 煙突
+      g.fillStyle='rgba(0,0,0,.3)'; g.fillRect(hx+hw-22,hy-14,9,20);
       var dpx=hs.dx*32-camx, dpy=(hs.dy+1)*32-camy;
-      g.fillStyle='#6b4326'; g.fillRect(dpx+4,dpy-30,24,30);
-      g.fillStyle='#5a3a20'; g.fillRect(dpx+4,dpy-30,24,4);
-      g.fillStyle='#ffd86b'; g.beginPath(); g.arc(dpx+23,dpy-15,2.5,0,7); g.fill();
-      // 看板
-      g.fillStyle='#3a2614'; g.fillRect(dpx-2,dpy-46,36,14);
-      g.fillStyle='#ffe7b0'; g.font='11px Segoe UI'; g.textAlign='center';
-      g.fillText(hs.name,dpx+16,dpy-35); g.textAlign='left';
+      if(hs.deco){ // 関係のない民家：ドアだけ（入れない）
+        g.fillStyle='#6b4326'; g.fillRect(dpx+8,dpy-26,16,26);
+        g.strokeStyle='rgba(0,0,0,.3)'; g.lineWidth=2; g.strokeRect(dpx+8,dpy-26,16,26);
+        g.fillStyle='#ffd86b'; g.beginPath(); g.arc(dpx+21,dpy-13,2,0,7); g.fill();
+      } else {
+        // 入れるドア
+        g.fillStyle='#6b4326'; g.fillRect(dpx+4,dpy-30,24,30);
+        g.fillStyle='#5a3a20'; g.fillRect(dpx+4,dpy-30,24,4);
+        g.fillStyle='#ffd86b'; g.beginPath(); g.arc(dpx+23,dpy-15,2.5,0,7); g.fill();
+        // 看板
+        g.fillStyle='#3a2614'; g.fillRect(dpx-2,dpy-46,36,14);
+        g.fillStyle='#ffe7b0'; g.font='11px Segoe UI'; g.textAlign='center';
+        g.fillText(hs.name,dpx+16,dpy-35); g.textAlign='left';
+      }
       g.lineWidth=1;
+    }
+    // テーマ装飾プロップ（街のみ）
+    if(map.props) for(var pri=0;pri<map.props.length;pri++){ var pr=map.props[pri];
+      var px2=pr.x*32-camx+16, py2=pr.y*32-camy+30;
+      if(px2<-20||px2>980) continue;
+      if(pr.kind==='flower'){ var fc=['#ff8fb4','#ffe25a','#9ad0ff'];
+        for(var fi=0;fi<3;fi++){ g.fillStyle=fc[fi]; g.beginPath();
+          g.arc(px2-6+fi*7,py2-2-(fi%2)*5,3.5,0,7); g.fill(); }
+        g.fillStyle='#3f8c43'; g.fillRect(px2-1,py2,2,8); }
+      else if(pr.kind==='pine'){ g.fillStyle='#6b4a2a'; g.fillRect(px2-2,py2-2,4,8);
+        g.fillStyle='#2f6b34'; g.beginPath(); g.moveTo(px2-12,py2); g.lineTo(px2,py2-30);
+        g.lineTo(px2+12,py2); g.closePath(); g.fill();
+        g.fillStyle='#3f8c43'; g.beginPath(); g.moveTo(px2-9,py2-12); g.lineTo(px2,py2-34);
+        g.lineTo(px2+9,py2-12); g.closePath(); g.fill(); }
+      else if(pr.kind==='rock'){ g.fillStyle='#8a6a44'; g.beginPath();
+        g.ellipse(px2,py2-4,13,10,0,0,7); g.fill();
+        g.fillStyle='rgba(255,255,255,.12)'; g.beginPath(); g.ellipse(px2-4,py2-8,5,3,0,0,7); g.fill(); }
+      else if(pr.kind==='snow'){ g.fillStyle='#fff'; g.beginPath();
+        g.arc(px2,py2-2,9,0,7); g.arc(px2,py2-14,6,0,7); g.fill();
+        g.fillStyle='#333'; g.fillRect(px2-2,py2-15,1.5,1.5); g.fillRect(px2+1,py2-15,1.5,1.5);
+        g.fillStyle='#ff7a3c'; g.fillRect(px2,py2-12,4,1.5); }
+      else if(pr.kind==='crystal'){ var cg=0.5+0.4*Math.sin(performance.now()/420+pr.x);
+        g.fillStyle='rgba(150,120,255,'+(cg*0.5)+')'; g.beginPath(); g.ellipse(px2,py2+2,13,5,0,0,7); g.fill();
+        g.fillStyle='#b9a6ff'; g.beginPath(); g.moveTo(px2,py2-26); g.lineTo(px2-8,py2);
+        g.lineTo(px2+8,py2); g.closePath(); g.fill();
+        g.fillStyle='rgba(255,255,255,'+cg+')'; g.beginPath();
+        g.moveTo(px2,py2-26); g.lineTo(px2-3,py2-4); g.lineTo(px2+2,py2-4); g.closePath(); g.fill(); }
     }
     // 落ちているアイテム
     if(map.items) for(var mi=0;mi<map.items.length;mi++){ var di=map.items[mi];
