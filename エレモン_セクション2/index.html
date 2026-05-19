@@ -386,10 +386,13 @@ var World=(function(){
   var TW=44,TH=30;
   var cache={};
   function isTown(a){ return (''+a).indexOf('TOWN_')===0; }
-  // 0地面 1岩壁 2草(遭遇) 3道(土) 4前ゲート 5拠点 6戻り/出口 7木 8水 9街入口
+  function isHouse(a){ return (''+a).indexOf('HOUSE_')===0; }
+  // 0地面 1壁 2草 3道/床 4前ゲート 5宿/泉(回復) 6出口 7木 8水 9街入口
+  // 10建物 11店ドア 12宿ドア 13民家ドア 14店カウンター 15住人
   function gen(area){
     if(cache[area]) return cache[area];
-    return (cache[area] = isTown(area) ? genTown(area) : genField(area));
+    return (cache[area] = isHouse(area) ? genHouse(area)
+                        : isTown(area)  ? genTown(area) : genField(area));
   }
   function genField(area){
     var def=DB.AREAS[area]||{pal:'#244a2c',name:area};
@@ -455,19 +458,49 @@ var World=(function(){
       g[y*TW+x]=(x===0||y===0||x===TW-1||y===TH-1)?1:0;
     function S(x,y,v){ if(x>0&&y>0&&x<TW-1&&y<TH-1) g[y*TW+x]=v; }
     function box(x0,y0,x1,y1,v){ for(var yy=y0;yy<=y1;yy++)for(var xx=x0;xx<=x1;xx++) S(xx,yy,v); }
-    box(1,1,TW-2,TH-2,3);
-    box(4,4,11,8,1); box(16,4,27,8,1); box(32,4,39,9,1);
-    box(4,15,12,21,1); box(31,15,39,22,1);
-    S(7,12,5);
-    var rivalX=Math.floor(TW/2), rivalY=10;
+    box(1,1,TW-2,TH-2,3);                       // 明るい石畳の広場
+    // 家（footprint=10ブロック、ドアは入れる）
+    var houses=[
+      {x:5, y:3, w:9, h:6, kind:'shop', door:11, col:'#f3b35a', roof:'#d4533a', name:'ショップ'},
+      {x:18,y:3, w:9, h:6, kind:'inn',  door:12, col:'#8fd0e6', roof:'#3f7fb0', name:'やどや'},
+      {x:31,y:3, w:8, h:6, kind:'home', door:13, col:'#bfe3a0', roof:'#5a9a48', name:'みんかの家'}
+    ];
+    for(var i=0;i<houses.length;i++){ var hs=houses[i];
+      box(hs.x,hs.y,hs.x+hs.w-1,hs.y+hs.h-1,10);
+      hs.dx=hs.x+(hs.w>>1); hs.dy=hs.y+hs.h-1;     // ドア位置
+      S(hs.dx,hs.dy,hs.door); S(hs.dx,hs.dy+1,3);  // ドア前は通行可
+    }
+    // 装飾の木（明るい広場の縁に）
+    var deco=[[3,12],[3,16],[3,20],[40,12],[40,16],[40,20],[8,25],[36,25]];
+    for(var d=0;d<deco.length;d++) S(deco[d][0],deco[d][1],7);
+    S(Math.floor(TW/2),20,5);                     // 中央の泉（休憩＝回復）
+    var rivalX=Math.floor(TW/2), rivalY=15;
     var exitX=Math.floor(TW/2), exitY=TH-2;
     S(exitX,exitY,6); S(exitX,exitY-1,3); S(exitX,exitY-2,3);
-    return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:'#2c2a3e',
-      name:bd.name+'の街', start:{x:exitX,y:exitY-2}, healAt:{x:7,y:12},
-      rival:{x:rivalX,y:rivalY}, exitAt:{x:exitX,y:exitY}};
+    return {w:TW,h:TH,grid:g,isTown:true,base:base,pal:'#cde6f0',
+      name:bd.name+'の街', start:{x:exitX,y:exitY-2}, healAt:{x:Math.floor(TW/2),y:20},
+      rival:{x:rivalX,y:rivalY}, exitAt:{x:exitX,y:exitY}, houses:houses};
+  }
+  function genHouse(area){
+    // HOUSE_<base>_<kind>
+    var us=area.indexOf('_',6), base=area.slice(6,us), kind=area.slice(us+1);
+    var HW=17,HH=12;
+    var g=new Array(HW*HH);
+    for(var y=0;y<HH;y++)for(var x=0;x<HW;x++)
+      g[y*HW+x]=(x===0||y===0||x===HW-1||y===HH-1)?1:3;  // 壁＋木の床
+    function S(x,y,v){ if(x>=0&&y>=0&&x<HW&&y<HH) g[y*HW+x]=v; }
+    var ex=HW>>1, ey=HH-1;
+    S(ex,ey,6); S(ex,ey-1,3);                     // 出口（玄関マット）
+    var fx=HW>>1, fy=3;
+    if(kind==='shop'){ for(var cxx=4;cxx<=12;cxx++) S(cxx,4,10); S(fx,5,14); }      // カウンター＋応対位置
+    else if(kind==='inn'){ S(4,3,5); S(12,3,5); }                                   // ベッド2台＝回復
+    else { S(fx,3,15); }                                                            // 住人
+    return {w:HW,h:HH,grid:g,isHouse:true,kind:kind,base:base,pal:'#caa472',
+      name:(kind==='shop'?'ショップ':kind==='inn'?'やどや':'みんかの家'),
+      start:{x:ex,y:ey-1}, exitAt:{x:ex,y:ey}};
   }
   function tile(map,x,y){ if(x<0||y<0||x>=map.w||y>=map.h) return 1; return map.grid[y*map.w+x]; }
-  return {gen,tile,isTown,W,H,TS};
+  return {gen,tile,isTown,isHouse,W,H,TS};
 })();
 
 /* ---------- 6. ゲーム本体：状態・シーン・ループ (§14) ---------- */
@@ -720,19 +753,22 @@ var Game=(function(){
   function curMap(){ return World.gen(state.player.area); }
   function canWalk(map,x,y){
     var t=World.tile(map,x,y);
-    return t!==1 && t!==7 && t!==8; // 壁/木/川は通行不可
+    return t!==1 && t!==7 && t!==8 && t!==10; // 壁/木/川/建物は通行不可
   }
-  function baseArea(a){ return World.isTown(a)? a.slice(5) : a; }
+  function baseArea(a){
+    var m=World.gen(a); if(m && m.base) return m.base;
+    return World.isTown(a)? a.slice(5) : a;
+  }
   function areaTrainers(){
-    var a=state.player.area;
+    var a=state.player.area, mp=World.gen(a);
     if(World.isTown(a)){
-      var base=a.slice(5), rv=DB.TRAINERS[base] && DB.TRAINERS[base][0];
+      var base=mp.base, rv=DB.TRAINERS[base] && DB.TRAINERS[base][0];
       if(!rv) return [];
-      var mp=World.gen(a), o={}; for(var k in rv) o[k]=rv[k];
+      var o={}; for(var k in rv) o[k]=rv[k];
       o.x=mp.rival.x; o.y=mp.rival.y; o.rival=true;
       return [o];
     }
-    return []; // 野外にトレーナーは居ない（ライバルは街の中）
+    return []; // 野外/家にライバルは居ない（ライバルは街の広場）
   }
   function gateOpen(){
     var rv=DB.TRAINERS[baseArea(state.player.area)];
@@ -749,7 +785,7 @@ var Game=(function(){
       if(p.px===tx&&p.py===ty){ p.moving=false; onStep(); }
       return;
     }
-    if(edge.ok && World.tile(map,p.x,p.y)===5){ Audio.se('ok'); scene=SC.SHOP; shopInit(); return; }
+    if(edge.ok && World.tile(map,p.x,p.y)===14){ Audio.se('ok'); scene=SC.SHOP; shopInit(); return; }
     var dx=0,dy=0,f=p.facing;
     if(input.up){dy=-1;f='up';} else if(input.down){dy=1;f='down';}
     else if(input.left){dx=-1;f='left';} else if(input.right){dx=1;f='right';}
@@ -796,6 +832,35 @@ var Game=(function(){
           Save.save(state);
         }
       }
+    }
+    if(map.isHouse && t===6){ // 家を出る → 街へ
+      transition(function(){
+        var r=state._hret||{}, ta=r.area||('TOWN_'+map.base);
+        p.area=ta; var tm=World.gen(ta);
+        p.x=(r.x!=null?r.x:tm.start.x); p.y=(r.y!=null?r.y+1:tm.start.y);
+        if(World.tile(tm,p.x,p.y)!==3){ p.x=tm.start.x; p.y=tm.start.y; }
+        p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+        toast('家を 出た'); Save.save(state);
+      });
+      return;
+    }
+    if(map.isHouse && t===14){ Audio.se('ok'); scene=SC.SHOP; shopInit(); return; } // 店のカウンター
+    if(map.isHouse && t===15){ // 住人（一度きりの贈り物）
+      var fk='npc_'+map.base;
+      if(!state.flags[fk]){ state.flags[fk]=true; state.bag.potion=(state.bag.potion||0)+2;
+        Audio.se('lvup'); toast('住人：旅の おまもりに キズぐすりを 2こ どうぞ'); Save.save(state); }
+      else { toast('住人：いい たびを！'); }
+      return;
+    }
+    if(map.isTown && (t===11||t===12||t===13)){ // 家に入る
+      var hk=(t===11?'shop':t===12?'inn':'home');
+      transition(function(){
+        state._hret={area:p.area,x:p.x,y:p.y};
+        p.area='HOUSE_'+map.base+'_'+hk; var hm=World.gen(p.area);
+        p.x=hm.start.x; p.y=hm.start.y; p.px=p.x*32; p.py=p.y*32; p.moving=false; state.steps=0;
+        toast(hm.name+' に はいった'); Save.save(state);
+      });
+      return;
     }
     if(t===9){ // 街の入口 → 街へ
       transition(function(){
@@ -855,47 +920,78 @@ var Game=(function(){
     var camx=Math.floor(p.px - 480 + 16), camy=Math.floor(p.py - 320 + 16);
     camx=Math.max(0,Math.min(camx, map.w*32-960));
     camy=Math.max(0,Math.min(camy, map.h*32-640));
-    g.fillStyle=map.isTown?(map.pal||'#2c2a3e'):'#3a6633'; g.fillRect(0,0,960,640);
+    g.fillStyle = map.isHouse?'#c79b66' : map.isTown?'#a9dcb0' : '#3a6633';
+    g.fillRect(0,0,960,640);
     var c0=Math.floor(camx/32), r0=Math.floor(camy/32);
     for(var ry=r0; ry<r0+21 && ry<map.h; ry++){
       for(var rx=c0; rx<c0+31 && rx<map.w; rx++){
         var t=World.tile(map,rx,ry), sx=rx*32-camx, sy=ry*32-camy;
-        if(t===1){ g.fillStyle='#2a2f3e'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#363c4e'; g.fillRect(sx+2,sy+2,28,6); }
-        else if(t===2){ g.fillStyle='#2f5d33'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#3f7a44'; for(var b=0;b<4;b++) g.fillRect(sx+4+b*7,sy+18-(b%2)*4,4,12); }
-        else if(t===4){ g.fillStyle=gateOpen()?'#5a8f5a':'#7a5a3a'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#cdd6ee'; g.font='18px Segoe UI'; g.textAlign='center';
-          g.fillText(gateOpen()?'＞':'鍵',sx+16,sy+22); g.textAlign='left'; }
-        else if(t===5){ g.fillStyle='#2d63b0'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#7fd0ff'; g.fillRect(sx+6,sy+6,20,20);
-          g.fillStyle='#fff'; g.font='16px Segoe UI'; g.textAlign='center'; g.fillText('+',sx+16,sy+22); g.textAlign='left'; }
-        else if(t===6){ g.fillStyle='#3a6a8f'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#cdd6ee'; g.font='18px Segoe UI'; g.textAlign='center';
-          g.fillText(map.isTown?'出口':'＜',sx+16,sy+22); g.textAlign='left'; }
-        else if(t===8){ // 川
-          g.fillStyle='#2f6fb0'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='rgba(255,255,255,.18)';
-          var wv=Math.sin((rx+performance.now()/400))*2;
-          g.fillRect(sx+3,sy+10+wv,26,3); g.fillRect(sx+5,sy+20-wv,22,3); }
-        else if(t===9){ // 街の入口
-          g.fillStyle='#7a6a4a'; g.fillRect(sx,sy,32,32);
-          g.fillStyle='#caa46a'; g.fillRect(sx+3,sy+3,26,26);
-          g.fillStyle='#5a3f22'; g.fillRect(sx+12,sy+12,8,17);
-          g.fillStyle='#fff'; g.font='10px Segoe UI'; g.textAlign='center';
-          g.fillText('街',sx+16,sy+9); g.textAlign='left'; }
-        else if(t===3){ // 道（土）／街は石畳
-          if(map.isTown){ g.fillStyle=((rx+ry)&1)?'#6f6a7e':'#646073'; g.fillRect(sx,sy,32,32);
-            g.fillStyle='rgba(0,0,0,.10)'; g.fillRect(sx,sy+15,32,2); g.fillRect(sx+15,sy,2,32); }
+        function grassTile(){ g.fillStyle=((rx+ry)&1)?'#5fae57':'#56a44e'; g.fillRect(sx,sy,32,32);
+          var q=((rx*7+ry*13)%6);
+          if(q===0){ g.fillStyle='#73c267'; g.fillRect(sx+6,sy+8,3,7); g.fillRect(sx+10,sy+6,3,9); }
+          else if(q===1){ g.fillStyle='#ffe25a'; g.fillRect(sx+20,sy+18,4,4); }
+          else if(q===2){ g.fillStyle='#ff8fb4'; g.fillRect(sx+13,sy+22,4,4); }
+          else if(q===3){ g.fillStyle='rgba(255,255,255,.07)'; g.fillRect(sx+22,sy+9,6,4); } }
+        function woodFloor(){ g.fillStyle=((ry)&1)?'#caa069':'#bd9560'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='rgba(90,60,30,.25)'; g.fillRect(sx,sy+15,32,2);
+          g.fillStyle='rgba(255,255,255,.06)'; g.fillRect(sx,sy+1,32,3); }
+        if(t===1){
+          if(map.isHouse){ g.fillStyle='#8a5f37'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='#744d2b'; g.fillRect(sx+2,sy+2,28,6); g.fillRect(sx+2,sy+12,28,6); g.fillRect(sx+2,sy+22,28,6); }
+          else { g.fillStyle='#5a6a4a'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='#6f8059'; g.fillRect(sx+3,sy+3,26,8); } }
+        else if(t===10){ // 建物の足元（家オーバーレイで覆う）→ 草地に
+          grassTile(); }
+        else if(t===2){ g.fillStyle=((rx+ry)&1)?'#3f7a44':'#37703c'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#54a14f'; for(var b=0;b<4;b++) g.fillRect(sx+4+b*7,sy+17-(b%2)*4,4,13); }
+        else if(t===4){ g.fillStyle=gateOpen()?'#7fc06a':'#b08a4a'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='#3a2a16'; g.fillRect(sx+4,sy+3,6,26); g.fillRect(sx+22,sy+3,6,26); g.fillRect(sx+4,sy+3,24,5);
+          g.fillStyle='#fff'; g.font='15px Segoe UI'; g.textAlign='center';
+          g.fillText(gateOpen()?'OPEN':'鍵',sx+16,sy+24); g.textAlign='left'; }
+        else if(t===5){ // 泉(街)／ベッド(宿)
+          if(map.isHouse){ woodFloor();
+            g.fillStyle='#e8e2d0'; g.fillRect(sx+4,sy+8,24,18);
+            g.fillStyle='#c84d63'; g.fillRect(sx+4,sy+8,24,6);
+            g.fillStyle='#fff'; g.fillRect(sx+6,sy+16,9,8); }
+          else { grassTile();
+            g.fillStyle='#5fa0d0'; g.beginPath(); g.arc(sx+16,sy+18,12,0,7); g.fill();
+            g.strokeStyle='#cfe9f5'; g.lineWidth=3; g.stroke(); g.lineWidth=1;
+            g.fillStyle='#bfe9ff'; g.beginPath(); g.arc(sx+16,sy+14,4,0,7); g.fill(); } }
+        else if(t===6){
+          if(map.isHouse) woodFloor(); else grassTile();
+          g.fillStyle='#6b4a2a'; g.fillRect(sx+7,sy+6,18,22);
+          g.fillStyle='#3a2614'; g.fillRect(sx+7,sy+6,18,22);
+          g.fillStyle='#ffd86b'; g.font='11px Segoe UI'; g.textAlign='center';
+          g.fillText(map.isHouse?'でる':map.isTown?'まち出口':'＜',sx+16,sy+20); g.textAlign='left'; }
+        else if(t===8){ g.fillStyle='#3f86d6'; g.fillRect(sx,sy,32,32);
+          g.fillStyle='rgba(255,255,255,.22)';
+          var wv=Math.sin((rx+performance.now()/380))*2;
+          g.fillRect(sx+3,sy+10+wv,26,3); g.fillRect(sx+5,sy+21-wv,22,3); }
+        else if(t===9){ grassTile();
+          g.fillStyle='#d8b878'; g.fillRect(sx+4,sy+10,24,19);
+          g.fillStyle='#b8633a'; g.beginPath(); g.moveTo(sx+2,sy+12); g.lineTo(sx+16,sy+1);
+          g.lineTo(sx+30,sy+12); g.closePath(); g.fill();
+          g.fillStyle='#5a3f22'; g.fillRect(sx+13,sy+18,7,11);
+          g.fillStyle='#fff'; g.font='9px Segoe UI'; g.textAlign='center';
+          g.fillText('まち',sx+16,sy+27); g.textAlign='left'; }
+        else if(t===11||t===12||t===13){ grassTile();
+          g.fillStyle='rgba(120,80,40,.35)'; g.fillRect(sx+6,sy+22,20,8); }
+        else if(t===14){ woodFloor(); // 店カウンター
+          g.fillStyle='#8a5a30'; g.fillRect(sx,sy+6,32,14);
+          g.fillStyle='#b07a44'; g.fillRect(sx,sy+6,32,4);
+          g.fillStyle='#ffd86b'; g.font='12px Segoe UI'; g.textAlign='center';
+          g.fillText('SHOP',sx+16,sy+30); g.textAlign='left'; }
+        else if(t===15){ woodFloor(); // 住人
+          g.fillStyle='#5a8cff'; g.beginPath(); g.arc(sx+16,sy+12,7,0,7); g.fill();
+          g.fillStyle='#3a64c8'; g.fillRect(sx+10,sy+18,12,12); }
+        else if(t===3){ // 床
+          if(map.isHouse){ woodFloor(); }
+          else if(map.isTown){ g.fillStyle=((rx+ry)&1)?'#86c87c':'#7cbf72'; g.fillRect(sx,sy,32,32);
+            g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(sx+3,sy+3,26,2);
+            if(((rx*5+ry*3)%4)===0){ g.fillStyle='#ffe25a'; g.fillRect(sx+22,sy+20,4,4); } }
           else { g.fillStyle=((rx+ry)&1)?'#8a6a42':'#7e6038'; g.fillRect(sx,sy,32,32);
             g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(sx+6,sy+18,5,4); g.fillRect(sx+20,sy+8,4,4); } }
-        else { // 地面：自然な緑のタイルでマップ全面を塗る
-          g.fillStyle = ((rx+ry)&1) ? '#42703a' : '#3a6633'; g.fillRect(sx,sy,32,32);
-          var gp=((rx*7+ry*13)%5);
-          if(gp===0){ g.fillStyle='rgba(255,255,255,.05)'; g.fillRect(sx+5,sy+7,6,4); }
-          else if(gp===1){ g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(sx+19,sy+20,7,5); }
-          else if(gp===2){ g.fillStyle='#4f7d40'; g.fillRect(sx+12,sy+22,5,2); g.fillRect(sx+22,sy+9,4,2); }
-        }
+        else { if(map.isHouse) woodFloor(); else grassTile(); }
       }
     }
     // 木（2マス分の大きな自作絵・行順で奥→手前に重ね描き）
@@ -922,6 +1018,40 @@ var Game=(function(){
       }
     }
     g.lineWidth=1;
+    // 家（自作の明るいイラスト・街のみ）
+    if(map.houses) for(var hi=0;hi<map.houses.length;hi++){ var hs=map.houses[hi];
+      var hx=hs.x*32-camx, hy=hs.y*32-camy, hw=hs.w*32, hh=hs.h*32;
+      if(hx+hw<0||hx>960||hy+hh<0||hy>640) continue;
+      // 影
+      g.fillStyle='rgba(0,0,0,.16)'; g.fillRect(hx+8,hy+hh-6,hw-6,10);
+      // 壁
+      g.fillStyle=hs.col; g.fillRect(hx+4,hy+18,hw-8,hh-18);
+      g.strokeStyle='rgba(0,0,0,.25)'; g.lineWidth=2; g.strokeRect(hx+4,hy+18,hw-8,hh-18);
+      g.fillStyle='rgba(255,255,255,.16)'; g.fillRect(hx+4,hy+18,hw-8,6);
+      // 切妻屋根（上に張り出す）
+      g.fillStyle=hs.roof; g.beginPath();
+      g.moveTo(hx-2,hy+22); g.lineTo(hx+hw/2,hy-22); g.lineTo(hx+hw+2,hy+22); g.closePath(); g.fill();
+      g.strokeStyle='rgba(0,0,0,.28)'; g.lineWidth=2; g.stroke();
+      g.fillStyle='rgba(255,255,255,.14)'; g.beginPath();
+      g.moveTo(hx+hw/2,hy-22); g.lineTo(hx+hw/2,hy+22); g.lineTo(hx-2,hy+22); g.closePath(); g.fill();
+      // 窓
+      g.fillStyle='#bfe6ff';
+      g.fillRect(hx+14,hy+30,18,18); g.fillRect(hx+hw-32,hy+30,18,18);
+      g.strokeStyle='#5a3f22'; g.lineWidth=2;
+      g.strokeRect(hx+14,hy+30,18,18); g.strokeRect(hx+hw-32,hy+30,18,18);
+      g.beginPath(); g.moveTo(hx+23,hy+30); g.lineTo(hx+23,hy+48);
+      g.moveTo(hx+14,hy+39); g.lineTo(hx+32,hy+39); g.stroke();
+      // ドア（足元中央）
+      var dpx=hs.dx*32-camx, dpy=(hs.dy+1)*32-camy;
+      g.fillStyle='#6b4326'; g.fillRect(dpx+4,dpy-30,24,30);
+      g.fillStyle='#5a3a20'; g.fillRect(dpx+4,dpy-30,24,4);
+      g.fillStyle='#ffd86b'; g.beginPath(); g.arc(dpx+23,dpy-15,2.5,0,7); g.fill();
+      // 看板
+      g.fillStyle='#3a2614'; g.fillRect(dpx-2,dpy-46,36,14);
+      g.fillStyle='#ffe7b0'; g.font='11px Segoe UI'; g.textAlign='center';
+      g.fillText(hs.name,dpx+16,dpy-35); g.textAlign='left';
+      g.lineWidth=1;
+    }
     // 落ちているアイテム
     if(map.items) for(var mi=0;mi<map.items.length;mi++){ var di=map.items[mi];
       if(state.flags['itm_'+di.id]) continue;
