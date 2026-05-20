@@ -159,32 +159,82 @@
   .dangerBtn { padding: 12px 24px; background: linear-gradient(135deg, #c0392b, #8b1e1e); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
   .dangerBtn:hover { background: linear-gradient(135deg, #e74c3c, #c0392b); }
   .testSoundBtn { padding: 6px 14px; background: rgba(0,217,255,0.2); border: 1px solid #00d9ff; color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px; }
-  #virtualPad { position: absolute; bottom: 0; left: 0; right: 0; height: 180px; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; touch-action: none; user-select: none; z-index: 20; gap: 6px; box-sizing: border-box; }
-  #battleScreen.mobile-mode #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 180px); object-fit: contain; }
+  /* スマホモード：コントロールをキャンバス上にオーバーレイ */
+  #virtualPad {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    touch-action: none; user-select: none;
+    z-index: 20;
+  }
+  #battleScreen.mobile-mode #gameCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+  }
   #battleScreen.mobile-mode .controlsHint { display: none; }
-  #dpad { position: relative; width: 148px; height: 148px; flex-shrink: 0; }
-  .dpad-up, .dpad-down, .dpad-left, .dpad-right { position: absolute; width: 48px; height: 48px; }
-  .dpad-up    { top: 0;    left: 50px; }
-  .dpad-down  { bottom: 0; left: 50px; }
-  .dpad-left  { left: 0;   top: 50px; }
-  .dpad-right { right: 0;  top: 50px; }
-  #vpad-center { display: none; }
-  #vpad-right { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; align-items: flex-end; }
-  .vpad-row { display: flex; flex-direction: row; gap: 7px; justify-content: flex-end; }
-  .vbtn { width: 52px; height: 52px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); color: #fff; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; background: rgba(255,255,255,0.12); box-shadow: 0 2px 8px rgba(0,0,0,0.4); box-sizing: border-box; flex-shrink: 0; }
-  .vbtn:active { background: rgba(255,255,255,0.35); transform: scale(0.92); }
 
-  .vbtn-jab    { background: rgba(33,150,243,0.35);  border-color: #2196f3; }
-  .vbtn-smash  { background: rgba(244,67,54,0.35);   border-color: #f44336; }
-  .vbtn-trait  { background: rgba(156,39,176,0.35);  border-color: #9c27b0; font-size: 11px; }
-  .vbtn-shield { background: rgba(0,200,150,0.35);   border-color: #00c896; font-size: 20px; }
-  .vbtn-special{ background: rgba(255,152,0,0.35);   border-color: #ff9800; font-size: 11px; }
-  .vbtn-skill  { background: rgba(0,200,255,0.35);   border-color: #00e5ff; font-size: 10px; }
-  .vbtn-combo  { background: rgba(255,193,7,0.35);    border-color: #ffc107; font-size: 10px; font-weight: bold; }
+  /* Dパッド：左下に固定 */
+  #dpad {
+    position: absolute;
+    bottom: 16px; left: 10px;
+    width: 144px; height: 144px;
+    pointer-events: all;
+  }
   .dpad-up, .dpad-down, .dpad-left, .dpad-right {
-    background: rgba(255,255,255,0.1);
-    border-radius: 8px;
-    font-size: 20px;
+    position: absolute; width: 46px; height: 46px;
+    background: rgba(255,255,255,0.13);
+    border-radius: 8px; font-size: 20px;
+  }
+  .dpad-up    { top: 0;    left: 49px; }
+  .dpad-down  { bottom: 0; left: 49px; }
+  .dpad-left  { left: 0;   top: 49px; }
+  .dpad-right { right: 0;  top: 49px; }
+
+  /* 右側ボタン群：右下に固定 */
+  #vpad-center { display: none; }
+  #vpad-right {
+    position: absolute;
+    bottom: 12px; right: 8px;
+    display: flex; flex-direction: column;
+    gap: 6px; align-items: flex-end;
+    pointer-events: all;
+  }
+  .vpad-row { display: flex; flex-direction: row; gap: 6px; justify-content: flex-end; }
+
+  .vbtn {
+    width: 54px; height: 54px;
+    border-radius: 50%; border: 2px solid rgba(255,255,255,0.35);
+    color: #fff; font-weight: bold; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    background: rgba(255,255,255,0.12);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    box-sizing: border-box; flex-shrink: 0;
+  }
+  .vbtn:active { background: rgba(255,255,255,0.45); transform: scale(0.92); }
+
+  .vbtn-jab    { background: rgba(33,150,243,0.4);  border-color: #2196f3; }
+  .vbtn-smash  { background: rgba(244,67,54,0.4);   border-color: #f44336; }
+  .vbtn-trait  { background: rgba(156,39,176,0.4);  border-color: #9c27b0; font-size: 11px; }
+  .vbtn-shield { background: rgba(0,200,150,0.4);   border-color: #00c896; font-size: 20px; }
+  .vbtn-special{ background: rgba(255,152,0,0.4);   border-color: #ff9800; font-size: 11px; }
+  .vbtn-skill  { background: rgba(0,200,255,0.4);   border-color: #00e5ff; font-size: 10px; }
+  .vbtn-combo  { background: rgba(255,193,7,0.4);   border-color: #ffc107; font-size: 10px; font-weight: bold; }
+
+  /* 選択技ボタンは横長 */
+  #skillBtnRow .vbtn { width: 72px; border-radius: 8px; font-size: 9px; }
+
+  /* 横向き（ランドスケープ）対応 */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #dpad { bottom: 8px; left: 6px; width: 124px; height: 124px; }
+    .dpad-up, .dpad-down, .dpad-left, .dpad-right { width: 40px; height: 40px; font-size: 17px; }
+    .dpad-up    { top: 0;    left: 42px; }
+    .dpad-down  { bottom: 0; left: 42px; }
+    .dpad-left  { left: 0;   top: 42px; }
+    .dpad-right { right: 0;  top: 42px; }
+    #vpad-right { bottom: 6px; right: 6px; gap: 4px; }
+    .vbtn { width: 46px; height: 46px; font-size: 10px; }
+    #skillBtnRow .vbtn { width: 60px; font-size: 8px; }
   }
 
   .spinnerBtn { width: 38px; height: 24px; background: rgba(0,217,255,0.2); border: 1px solid #00d9ff; color: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; line-height: 1; user-select: none; }
@@ -11254,31 +11304,39 @@ function _initVpad() {
   }
 
   pad.addEventListener('mousedown', (e) => {
-    const btn = e.target.closest('[data-vkey],[data-vspecial]');
+    const btn = e.target.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
     _pressBtn(btn);
   });
   window.addEventListener('mouseup', _releaseBtn);
 
+  function _handleTouchPress(touch) {
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return;
+    const btn = el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
+    if (!btn) return;
+    if (btn.dataset.vspecial) {
+      _touchKeyMap[touch.identifier] = '__special__';
+      vSpecial();
+    } else if (btn.dataset.vskill) {
+      _touchKeyMap[touch.identifier] = '__skill__';
+      vSkill();
+    } else if (btn.dataset.vcombo) {
+      _touchKeyMap[touch.identifier] = '__combo__';
+      vCombo();
+    } else if (btn.dataset.vskillslot !== undefined) {
+      _touchKeyMap[touch.identifier] = '__skillslot_' + btn.dataset.vskillslot;
+      vSkillSlot(parseInt(btn.dataset.vskillslot));
+    } else {
+      const key = btn.dataset.vkey;
+      _touchKeyMap[touch.identifier] = key;
+      vkDown(key);
+    }
+    btn.style.background = 'rgba(255,255,255,0.4)';
+  }
+
   pad.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    for (const touch of e.changedTouches) {
-      const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!el) continue;
-      const btn = el.closest('[data-vkey],[data-vspecial]');
-      if (!btn) continue;
-      if (btn.dataset.vspecial) {
-        _touchKeyMap[touch.identifier] = '__special__';
-        vSpecial();
-      } else if (btn.dataset.vskill) {
-        _touchKeyMap[touch.identifier] = '__skill__';
-        vSkill();
-      } else {
-        const key = btn.dataset.vkey;
-        _touchKeyMap[touch.identifier] = key;
-        vkDown(key);
-      }
-      btn.style.background = 'rgba(255,255,255,0.4)';
-    }
+    for (const touch of e.changedTouches) _handleTouchPress(touch);
   }, { passive: false });
 
   const _endTouch = (e) => {
@@ -11287,10 +11345,11 @@ function _initVpad() {
       const key = _touchKeyMap[touch.identifier];
       if (key === '__special__') vSpecialEnd();
       else if (key === '__skill__') vSkillEnd();
-      else if (key) vkUp(key);
+      else if (key === '__combo__') vComboEnd();
+      else if (key && !key.startsWith('__skillslot_')) vkUp(key);
       delete _touchKeyMap[touch.identifier];
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const btn = el && el.closest('[data-vkey],[data-vspecial]');
+      const btn = el && el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
       if (btn) btn.style.background = '';
     }
   };
@@ -11301,15 +11360,25 @@ function _initVpad() {
     e.preventDefault();
     for (const touch of e.changedTouches) {
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const btn = el && el.closest('[data-vkey],[data-vspecial]');
+      const btn = el && el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
       const prevKey = _touchKeyMap[touch.identifier];
-      const newKey = btn ? (btn.dataset.vspecial ? '__special__' : btn.dataset.vskill ? '__skill__' : btn.dataset.vkey) : null;
+      let newKey = null;
+      if (btn) {
+        if (btn.dataset.vspecial) newKey = '__special__';
+        else if (btn.dataset.vskill) newKey = '__skill__';
+        else if (btn.dataset.vcombo) newKey = '__combo__';
+        else if (btn.dataset.vskillslot !== undefined) newKey = '__skillslot_' + btn.dataset.vskillslot;
+        else newKey = btn.dataset.vkey;
+      }
       if (newKey !== prevKey) {
         if (prevKey === '__special__') vSpecialEnd();
         else if (prevKey === '__skill__') vSkillEnd();
-        else if (prevKey) vkUp(prevKey);
+        else if (prevKey === '__combo__') vComboEnd();
+        else if (prevKey && !prevKey.startsWith('__skillslot_')) vkUp(prevKey);
         if (newKey === '__special__') vSpecial();
         else if (newKey === '__skill__') vSkill();
+        else if (newKey === '__combo__') vCombo();
+        else if (newKey && newKey.startsWith('__skillslot_')) vSkillSlot(parseInt(newKey.replace('__skillslot_','')));
         else if (newKey) vkDown(newKey);
         _touchKeyMap[touch.identifier] = newKey;
       }
