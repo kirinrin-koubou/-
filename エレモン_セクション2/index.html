@@ -320,13 +320,35 @@ var Mon=(function(){
     var sp=DB.SPECIES[sid], ms=[];
     for(var i=0;i<sp.learn.length;i++){ if(sp.learn[i][0]<=lv) ms.push(sp.learn[i][1]); }
     if(ms.length===0) ms.push(sp.learn[0][1]);
-    return ms.slice(-4);
+    return ms; // 4個に制限せず、覚えている全ての技を返す
+  }
+  function ensureActive(m){
+    if(!Array.isArray(m.active)) m.active=[];
+    // 既知でない技は除外
+    m.active=m.active.filter(function(id){ return m.moves.indexOf(id)>=0; });
+    // 空きを末尾(新しい)から自動で埋める
+    for(var i=m.moves.length-1;i>=0 && m.active.length<4;i--){
+      if(m.active.indexOf(m.moves[i])<0) m.active.push(m.moves[i]);
+    }
+  }
+  function setActive(m,arr){ // 任意の選択を設定（最大4）
+    var pick=[]; for(var i=0;i<arr.length&&pick.length<4;i++){
+      if(m.moves.indexOf(arr[i])>=0 && pick.indexOf(arr[i])<0) pick.push(arr[i]); }
+    m.active=pick; if(m.active.length===0) ensureActive(m);
+  }
+  function toggleActive(m,id){
+    if(m.moves.indexOf(id)<0) return false;
+    var k=m.active.indexOf(id);
+    if(k>=0){ if(m.active.length<=1) return false; m.active.splice(k,1); return true; }
+    if(m.active.length>=4) return false;
+    m.active.push(id); return true;
   }
   function create(sid,lv){
     sid=DB.SPECIES[sid]?sid:'sprig';
     lv=Math.max(1,Math.min(50,lv|0));
     var sp=DB.SPECIES[sid];
-    var m={sid:sid,lv:lv,exp:need(lv),moves:moveSetFor(sid,lv),nick:null};
+    var ms=moveSetFor(sid,lv);
+    var m={sid:sid,lv:lv,exp:need(lv),moves:ms.slice(),active:ms.slice(-4),nick:null};
     m.maxhp=statHP(sp.base.hp,lv); m.hp=m.maxhp;
     recalc(m); m.hp=m.maxhp;
     return m;
@@ -356,15 +378,19 @@ var Mon=(function(){
         if(sp.learn[i][0]===m.lv){
           var mv=sp.learn[i][1];
           if(m.moves.indexOf(mv)<0){
-            if(m.moves.length<4){ m.moves.push(mv); ev.push({t:'learn',mv:mv}); }
-            else { var old=m.moves.shift(); m.moves.push(mv); ev.push({t:'learn',mv:mv,replaced:old}); }
+            m.moves.push(mv);
+            if(!Array.isArray(m.active)) m.active=[];
+            if(m.active.length<4 && m.active.indexOf(mv)<0) m.active.push(mv);
+            ev.push({t:'learn',mv:mv});
           }
         }
       }
       if(sp.evolveLv && m.lv>=sp.evolveLv && DB.SPECIES[sp.evolveTo]){
         var from=sp.name; m.sid=sp.evolveTo; recalc(m);
         var ns=DB.SPECIES[m.sid];
-        for(var j=0;j<ns.learn.length;j++){ if(ns.learn[j][0]<=m.lv && m.moves.indexOf(ns.learn[j][1])<0 && m.moves.length<4) m.moves.push(ns.learn[j][1]); }
+        for(var j=0;j<ns.learn.length;j++){ if(ns.learn[j][0]<=m.lv && m.moves.indexOf(ns.learn[j][1])<0){
+          m.moves.push(ns.learn[j][1]);
+          if(m.active.length<4 && m.active.indexOf(ns.learn[j][1])<0) m.active.push(ns.learn[j][1]); } }
         ev.push({t:'evolve',from:from,to:ns.name});
         sp=ns;
       }
@@ -377,7 +403,7 @@ var Mon=(function(){
     var lo=need(m.lv), hi=need(m.lv+1);
     return Math.max(0,Math.min(1,(m.exp-lo)/(hi-lo||1)));
   }
-  return {create,recalc,name,type,gainExp,need,expRatio,moveSetFor};
+  return {create,recalc,name,type,gainExp,need,expRatio,moveSetFor,ensureActive,toggleActive,setActive};
 })();
 
 /* ---------- 5. ワールド/マップ生成 (§5) ---------- */
@@ -644,7 +670,8 @@ var Game=(function(){
       dex:d.dex, flags:d.flags, stats:d.stats, steps:0 };
     // 防御的補完
     if(!state.party.length) state.party=[Mon.create('sprig',5)];
-    state.party.forEach(function(m){ if(m.maxhp==null) Mon.recalc(m); if(m.hp==null)m.hp=m.maxhp; });
+    state.party.forEach(function(m){ if(m.maxhp==null) Mon.recalc(m); if(m.hp==null)m.hp=m.maxhp; Mon.ensureActive(m); });
+    if(Array.isArray(state.box)) state.box.forEach(function(m){ if(m.maxhp==null) Mon.recalc(m); Mon.ensureActive(m); });
     // マップ刷新に伴う安全化：必ず現エリアの開始地点へ
     if(!DB.AREAS[state.player.area] && !World.isTown(state.player.area)) state.player.area='A1';
     var sm=World.gen(state.player.area);
@@ -1243,19 +1270,20 @@ var Game=(function(){
   }
   function aiChoose(){
     var f=fMon(), p=pMon();
-    // HP低下＆回復技 §6
+    Mon.ensureActive(f);
+    var pool=f.active.length?f.active:f.moves;
     if(f.hp < f.maxhp*0.25){
-      for(var h=0;h<f.moves.length;h++) if(DB.MOVES[f.moves[h]].kind==='heal' && Math.random()<0.5) return f.moves[h];
+      for(var h=0;h<pool.length;h++) if(DB.MOVES[pool[h]].kind==='heal' && Math.random()<0.5) return pool[h];
     }
     if(Math.random()<0.8){
-      var best=f.moves[0], bv=-1;
-      for(var i=0;i<f.moves.length;i++){ var mv=DB.MOVES[f.moves[i]];
+      var best=pool[0], bv=-1;
+      for(var i=0;i<pool.length;i++){ var mv=DB.MOVES[pool[i]];
         if(mv.kind!=='atk'&&mv.kind!=='drain') continue;
         var v=mv.power * (mv.type===Mon.type(f)?1.5:1) * DB.eff(mv.type,Mon.type(p));
-        if(v>bv){ bv=v; best=f.moves[i]; } }
+        if(v>bv){ bv=v; best=pool[i]; } }
       return best;
     }
-    return f.moves[Math.floor(Math.random()*f.moves.length)];
+    return pool[Math.floor(Math.random()*pool.length)];
   }
   function tryCatch(ballMul){
     var f=fMon(), sp=DB.SPECIES[f.sid];
@@ -1460,7 +1488,8 @@ var Game=(function(){
       return;
     }
     if(B.phase==='move'){
-      var mv=pMon().moves;
+      Mon.ensureActive(pMon());
+      var mv=pMon().active;
       B.sub=gridMove(B.sub,mv.length,2);
       if(edge.cancel){ Audio.se('cancel'); B.phase='menu'; }
       if(edge.ok){ Audio.se('ok'); var chosen=mv[B.sub]; resolveTurn(chosen); }
@@ -1540,6 +1569,7 @@ var Game=(function(){
   function finishCatch(){
     var f=fMon();
     var caught=Mon.create(f.sid,f.lv); caught.hp=f.hp; caught.exp=f.exp; caught.moves=f.moves.slice();
+    caught.active=(f.active||[]).slice(); Mon.ensureActive(caught);
     caught.met={area:state.player.area, lv:f.lv, when:Date.now()};
     var firstTime=!state.dex[f.sid];
     state.dex[f.sid]=true; state.stats.caught=(state.stats.caught||0)+1;
@@ -1627,7 +1657,8 @@ var Game=(function(){
         (function(idx){ zone(cx,cy,260,42,function(){ B.sel=idx; edge.ok=true; }); })(L);
       }
     } else if(B.phase==='move'){
-      var mv=pMon().moves;
+      Mon.ensureActive(pMon());
+      var mv=pMon().active;
       for(var M=0;M<mv.length;M++){ var mo=DB.MOVES[mv[M]];
         var mx=44+(M%2)*450, my=500+Math.floor(M/2)*52;
         g.fillStyle=M===B.sub?'#3a64ff':'rgba(30,36,52,.9)';
@@ -1851,9 +1882,19 @@ var Game=(function(){
       }
       // ===== 強さを見る（3画面）=====
       if(menu.statsFor){
-        if(edge.left){ menu.statsFor.page=(menu.statsFor.page+2)%3; Audio.se('ok'); }
-        if(edge.right){ menu.statsFor.page=(menu.statsFor.page+1)%3; Audio.se('ok'); }
-        if(edge.ok){ menu.statsFor=null; Audio.se('cancel'); }
+        var sM2=boxMonOf(menu.statsFor.slot);
+        if(edge.left){ menu.statsFor.page=(menu.statsFor.page+2)%3; menu.statsFor.row=0; Audio.se('ok'); }
+        if(edge.right){ menu.statsFor.page=(menu.statsFor.page+1)%3; menu.statsFor.row=0; Audio.se('ok'); }
+        if(menu.statsFor.page===1 && sM2){
+          var n=sM2.moves.length;
+          if(menu.statsFor.row==null) menu.statsFor.row=0;
+          if(edge.up){ menu.statsFor.row=Math.max(0,menu.statsFor.row-1); Audio.se('ok'); }
+          if(edge.down){ menu.statsFor.row=Math.min(n-1,menu.statsFor.row+1); Audio.se('ok'); }
+          if(edge.ok){ var id=sM2.moves[menu.statsFor.row];
+            if(Mon.toggleActive(sM2,id)){ Audio.se('lvup'); Save.save(state); }
+            else { Audio.se('cancel'); toast('変更できない（最低1つ・最大4つ）'); }
+          }
+        } else if(edge.ok){ menu.statsFor=null; Audio.se('cancel'); }
         return;
       }
       // ===== アクションポップアップ =====
@@ -2084,17 +2125,30 @@ var Game=(function(){
             g.fillStyle='#4db6ff'; g.fillRect(px2+380,cpy+184,Math.floor(260*er),6);
             g.fillStyle='#9aa4c4'; g.font='12px Segoe UI'; g.fillText('EXP（次のレベルまで）',px2+380,cpy+204);
           } else if(menu.statsFor.page===1){
-            g.fillStyle='#7fc8ff'; g.font='bold 18px Segoe UI'; g.fillText('おぼえている わざ',px2+24,cpy+10);
-            for(var mi3=0;mi3<sMon.moves.length;mi3++){ var mv=DB.MOVES[sMon.moves[mi3]];
-              var ry3=cpy+30+mi3*70;
-              g.fillStyle='rgba(30,36,52,.92)'; g.fillRect(px2+24,ry3,pw2-48,60);
-              g.strokeStyle='#5a6488'; g.strokeRect(px2+24,ry3,pw2-48,60);
-              g.fillStyle='#fff'; g.font='18px Segoe UI'; g.fillText(mv.name,px2+40,ry3+24);
-              g.fillStyle=DB.TYPECOL[mv.type]; g.font='14px Segoe UI';
-              g.fillText('タイプ '+DB.TYPEJP[mv.type]+(settings.colorAssist?DB.TYPESYM[mv.type]:''),px2+40,ry3+46);
-              g.fillStyle='#cdd6ee'; g.font='14px Segoe UI';
-              g.fillText('威力 '+(mv.power||'-')+'   命中 '+(mv.acc||'-')+'   分類 '+(mv.kind||'-'),px2+260,ry3+34);
+            Mon.ensureActive(sMon);
+            g.fillStyle='#7fc8ff'; g.font='bold 18px Segoe UI';
+            g.fillText('わざ（Z でセット/解除・最大4つ）  セット中 '+sMon.active.length+'/4',px2+24,cpy+10);
+            var rowH=44, total=sMon.moves.length, vis=Math.min(8,total);
+            var sel=menu.statsFor.row||0;
+            var top=Math.max(0,Math.min(total-vis,sel-3));
+            for(var d2=0;d2<vis;d2++){ var mi3=top+d2, id=sMon.moves[mi3], mv=DB.MOVES[id];
+              var ry3=cpy+24+d2*rowH, isOn=sMon.active.indexOf(id)>=0, isSel=mi3===sel;
+              g.fillStyle=isSel?'#26304a':'rgba(30,36,52,.92)';
+              g.fillRect(px2+24,ry3,pw2-48,rowH-4);
+              g.strokeStyle=isSel?'#7fc8ff':(isOn?'#5a8cff':'#5a6488');
+              g.lineWidth=isOn?2:1; g.strokeRect(px2+24,ry3,pw2-48,rowH-4); g.lineWidth=1;
+              g.fillStyle='#fff'; g.font='17px Segoe UI'; g.fillText(mv.name,px2+44,ry3+25);
+              g.fillStyle=DB.TYPECOL[mv.type]; g.font='13px Segoe UI';
+              g.fillText(DB.TYPEJP[mv.type]+(settings.colorAssist?DB.TYPESYM[mv.type]:''),px2+200,ry3+25);
+              g.fillStyle='#cdd6ee'; g.font='13px Segoe UI';
+              g.fillText('威力 '+(mv.power||'-')+'  命中 '+(mv.acc||'-')+'  '+(mv.kind||'-'),px2+260,ry3+25);
+              if(isOn){ g.fillStyle='#5a8cff'; g.fillRect(px2+pw2-86,ry3+6,62,26);
+                g.fillStyle='#fff'; g.font='13px Segoe UI'; g.textAlign='center';
+                g.fillText('セット中',px2+pw2-55,ry3+24); g.textAlign='left'; }
+              (function(idx){ zone(px2+24,ry3,pw2-48,rowH-4,function(){ menu.statsFor.row=idx; edge.ok=true; }); })(mi3);
             }
+            if(total>vis){ g.fillStyle='#7f88a8'; g.font='12px Segoe UI';
+              g.fillText((sel+1)+' / '+total+'（↑↓ でスクロール）',px2+24,py2+ph2-32); }
           } else {
             g.fillStyle='#7fc8ff'; g.font='bold 18px Segoe UI'; g.fillText('じょうほう',px2+24,cpy+10);
             g.fillStyle='#fff'; g.font='16px Segoe UI';
