@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アニマルフレンズ ─ 企画書 / Game Design Document</title>
+<style>
+:root{
+  --green-deep:#2e7d32;
+  --green:#43a047;
+  --green-light:#81c784;
+  --green-pale:#e8f5e9;
+  --sky:#4fc3f7;
+  --sky-deep:#0288d1;
+  --sun:#ffd54f;
+  --sun-deep:#ffb300;
+  --earth:#8d6e63;
+  --earth-deep:#5d4037;
+  --pink:#f48fb1;
+  --cream:#fffdf6;
+  --ink:#33312e;
+  --ink-soft:#5b574f;
+  --paper:#fbf8f0;
+  --shadow:0 8px 28px rgba(60,80,40,.14);
+  --shadow-soft:0 3px 12px rgba(60,80,40,.10);
+  --radius:18px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Meiryo",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #d7f0ff 0%, transparent 55%),
+    radial-gradient(1000px 500px at -10% 10%, #fff7d6 0%, transparent 50%),
+    linear-gradient(180deg,#f6fbef 0%, #fbf8f0 30%, #fbf8f0 100%);
+  line-height:1.9;
+  letter-spacing:.02em;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{line-height:1.4;}
+a{color:var(--sky-deep);text-decoration:none;}
+a:hover{text-decoration:underline;}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px;}
+
+/* ====== ヒーロー ====== */
+.hero{
+  position:relative;
+  overflow:hidden;
+  color:#fff;
+  text-align:center;
+  padding:90px 20px 120px;
+  background:linear-gradient(160deg,#7ed0f5 0%, #a8e063 55%, #56ab2f 100%);
+}
+.hero .clouds span{
+  position:absolute;border-radius:50%;background:rgba(255,255,255,.85);
+  filter:blur(2px);animation:float 18s ease-in-out infinite;
+}
+.hero .c1{width:120px;height:42px;top:60px;left:10%;box-shadow:40px 8px 0 6px rgba(255,255,255,.85),80px -6px 0 -2px rgba(255,255,255,.85);}
+.hero .c2{width:90px;height:34px;top:120px;right:14%;animation-delay:-6s;box-shadow:34px 6px 0 4px rgba(255,255,255,.8);}
+.hero .c3{width:70px;height:28px;top:40px;right:34%;animation-delay:-11s;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+.hero .sun{position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle at 40% 40%,#fff3b0,#ffd54f 60%,#ffb300);box-shadow:0 0 80px rgba(255,200,60,.6);}
+.badge{display:inline-block;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.6);
+  padding:6px 18px;border-radius:999px;font-size:.85rem;letter-spacing:.3em;margin-bottom:22px;backdrop-filter:blur(4px);}
+.hero h1{font-size:clamp(2.6rem,7vw,5rem);margin:0;font-weight:900;
+  text-shadow:0 4px 0 rgba(0,80,30,.25),0 10px 30px rgba(0,60,20,.3);}
+.hero .sub{font-size:clamp(1rem,2.4vw,1.4rem);margin:18px auto 0;max-width:720px;font-weight:600;
+  text-shadow:0 2px 8px rgba(0,60,20,.35);}
+.hero .tags{margin-top:30px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.hero .tags span{background:rgba(255,255,255,.92);color:var(--green-deep);font-weight:800;
+  padding:7px 16px;border-radius:999px;font-size:.85rem;box-shadow:var(--shadow-soft);}
+.hill{position:absolute;bottom:-2px;left:0;width:100%;height:120px;}
+
+/* ====== メタ情報バー ====== */
+.meta{background:var(--green-deep);color:#eafbe7;}
+.meta .wrap{display:flex;flex-wrap:wrap;gap:8px 34px;padding:16px 22px;font-size:.9rem;justify-content:center;}
+.meta b{color:#fff;}
+
+/* ====== 目次 ====== */
+.toc{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:30px 36px;margin:-60px auto 50px;position:relative;z-index:5;}
+.toc h2{margin:0 0 18px;color:var(--green-deep);font-size:1.4rem;display:flex;align-items:center;gap:10px;}
+.toc ol{columns:2;column-gap:40px;margin:0;padding-left:20px;}
+.toc li{margin:7px 0;break-inside:avoid;}
+.toc a{color:var(--ink-soft);font-weight:600;}
+@media(max-width:680px){.toc ol{columns:1;}}
+
+/* ====== セクション ====== */
+section{margin:64px 0;}
+.sec-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:26px;border-bottom:3px dashed var(--green-light);padding-bottom:14px;}
+.sec-no{font-size:2.6rem;font-weight:900;color:var(--green-light);line-height:1;font-family:"Arial Black",sans-serif;}
+.sec-head h2{font-size:1.9rem;margin:0;color:var(--green-deep);}
+.sec-head .en{display:block;font-size:.8rem;letter-spacing:.25em;color:var(--earth);font-weight:700;}
+
+.lead{font-size:1.15rem;font-weight:600;color:var(--ink);background:linear-gradient(transparent 62%,#fff3b0 62%);display:inline;}
+p{margin:14px 0;}
+
+/* カード */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin:24px 0;}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-soft);padding:24px;border-top:6px solid var(--green-light);transition:transform .2s;}
+.card:hover{transform:translateY(-5px);}
+.card h3{margin:0 0 10px;color:var(--green-deep);font-size:1.2rem;}
+.card .ico{font-size:2.2rem;display:block;margin-bottom:8px;}
+
+.callout{background:var(--green-pale);border-left:8px solid var(--green);border-radius:12px;padding:18px 24px;margin:22px 0;}
+.callout.sky{background:#e1f5fe;border-color:var(--sky-deep);}
+.callout.sun{background:#fff8e1;border-color:var(--sun-deep);}
+.callout.pink{background:#fce4ec;border-color:var(--pink);}
+.callout b{color:var(--green-deep);}
+
+/* テーブル */
+table{width:100%;border-collapse:collapse;margin:22px 0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-soft);}
+th,td{padding:13px 16px;text-align:left;border-bottom:1px solid #eee;font-size:.95rem;}
+th{background:var(--green-deep);color:#fff;font-weight:700;letter-spacing:.05em;}
+tr:nth-child(even) td{background:#f7faf3;}
+tr:hover td{background:#eef7e7;}
+.tbl-note{font-size:.82rem;color:var(--ink-soft);margin-top:-12px;}
+
+/* キャラ図鑑 */
+.zoo{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;}
+.animal{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow-soft);overflow:hidden;border:1px solid #eee;}
+.animal .pic{height:130px;display:flex;align-items:center;justify-content:center;font-size:4rem;}
+.animal .body{padding:14px 16px;}
+.animal h4{margin:0 0 4px;color:var(--green-deep);}
+.animal .role{font-size:.78rem;color:#fff;background:var(--green);padding:2px 10px;border-radius:999px;display:inline-block;margin-bottom:8px;}
+.animal p{font-size:.85rem;margin:6px 0 0;color:var(--ink-soft);line-height:1.7;}
+
+/* ステップ */
+.steps{counter-reset:step;display:grid;gap:14px;}
+.step{background:#fff;border-radius:14px;box-shadow:var(--shadow-soft);padding:18px 22px 18px 64px;position:relative;}
+.step::before{counter-increment:step;content:counter(step);position:absolute;left:16px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;}
+.step h4{margin:0 0 4px;color:var(--green-deep);}
+.step p{margin:0;font-size:.9rem;color:var(--ink-soft);}
+
+/* タイムライン */
+.timeline{position:relative;margin:30px 0;padding-left:34px;}
+.timeline::before{content:"";position:absolute;left:10px;top:0;bottom:0;width:4px;background:var(--green-light);border-radius:2px;}
+.tl-item{position:relative;margin-bottom:26px;}
+.tl-item::before{content:"";position:absolute;left:-30px;top:4px;width:18px;height:18px;background:#fff;border:5px solid var(--green);border-radius:50%;}
+.tl-item h4{margin:0 0 4px;color:var(--green-deep);}
+.tl-phase{font-size:.78rem;color:var(--earth);font-weight:800;letter-spacing:.15em;}
+
+/* バー */
+.bar{background:#eee;border-radius:999px;height:22px;overflow:hidden;margin:6px 0;}
+.bar > span{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--green-light));color:#fff;font-size:.72rem;text-align:right;padding-right:10px;line-height:22px;font-weight:700;white-space:nowrap;}
+
+/* 引用・脚注 */
+blockquote{margin:22px 0;padding:18px 26px;background:#fff;border-left:6px solid var(--sun-deep);border-radius:10px;font-style:italic;color:var(--ink-soft);box-shadow:var(--shadow-soft);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+@media(max-width:680px){.grid2{grid-template-columns:1fr;}}
+
+/* フッター */
+footer{background:var(--green-deep);color:#dff5db;text-align:center;padding:50px 20px;margin-top:80px;}
+footer .big{font-size:1.6rem;font-weight:900;color:#fff;margin-bottom:8px;}
+
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
+.pill{background:#fff;border:2px solid var(--green-light);color:var(--green-deep);font-weight:700;padding:5px 14px;border-radius:999px;font-size:.85rem;}
+hr.soft{border:none;border-top:2px dotted var(--green-light);margin:40px 0;}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin:24px 0;}
+.kpi .box{background:linear-gradient(135deg,#fff,#f1f8e9);border-radius:16px;padding:20px;text-align:center;box-shadow:var(--shadow-soft);}
+.kpi .num{font-size:2.2rem;font-weight:900;color:var(--green);line-height:1;}
+.kpi .lbl{font-size:.82rem;color:var(--ink-soft);margin-top:6px;}
+.back-top{position:fixed;right:18px;bottom:18px;background:var(--green);color:#fff;width:48px;height:48px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:var(--shadow);z-index:20;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="sun"></div>
+  <div class="clouds"><span class="c1"></span><span class="c2"></span><span class="c3"></span></div>
+  <div class="badge">GAME DESIGN DOCUMENT</div>
+  <h1>アニマルフレンズ</h1>
+  <p class="sub">マス目の地形と自然を自由に変えながら、動物たちと一緒に暮らす。<br>ほのぼの3Dスローライフ・シミュレーション</p>
+  <div class="tags">
+    <span>🌳 箱庭クラフト</span><span>🐾 動物とのきずな</span><span>🏡 スローライフ</span><span>🌤️ 四季と時間</span><span>🤝 みんなで島づくり</span>
+  </div>
+  <svg class="hill" viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#fbf8f0" d="M0,64 C240,110 480,20 720,52 C960,84 1200,16 1440,60 L1440,120 L0,120 Z"></path></svg>
+</header>
+
+<div class="meta"><div class="wrap">
+  <span><b>タイトル：</b>アニマルフレンズ（仮）</span>
+  <span><b>ジャンル：</b>ほのぼの3D箱庭スローライフ</span>
+  <span><b>対応：</b>Switch / PC(Steam) / モバイル</span>
+  <span><b>対象：</b>全年齢（CERO A 想定）</span>
+  <span><b>文書バージョン：</b>v1.0</span>
+  <span><b>発行日：</b>2026年5月23日</span>
+</div></div>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>📖 目次</h2>
+  <ol>
+    <li><a href="#s1">企画コンセプト</a></li>
+    <li><a href="#s2">ゲーム概要とビジョン</a></li>
+    <li><a href="#s3">ターゲットと市場分析</a></li>
+    <li><a href="#s4">コアゲームループ</a></li>
+    <li><a href="#s5">地形・地形編集システム</a></li>
+    <li><a href="#s6">自然・生態系シミュレーション</a></li>
+    <li><a href="#s7">動物フレンズと交流システム</a></li>
+    <li><a href="#s8">キャラクター図鑑</a></li>
+    <li><a href="#s9">建築・クラフト・装飾</a></li>
+    <li><a href="#s10">四季・天候・時間サイクル</a></li>
+    <li><a href="#s11">経済・収集・図鑑要素</a></li>
+    <li><a href="#s12">進行・成長・やりこみ</a></li>
+    <li><a href="#s13">マルチプレイ・コミュニティ</a></li>
+    <li><a href="#s14">アート・サウンドの方向性</a></li>
+    <li><a href="#s15">UI / UX デザイン方針</a></li>
+    <li><a href="#s16">技術仕様とプラットフォーム</a></li>
+    <li><a href="#s17">アクセシビリティ・配慮設計</a></li>
+    <li><a href="#s18">マネタイズ戦略</a></li>
+    <li><a href="#s19">開発ロードマップ</a></li>
+    <li><a href="#s20">体制・予算・リスク</a></li>
+    <li><a href="#s21">KPI・成功指標</a></li>
+    <li><a href="#s22">将来展望・拡張計画</a></li>
+    <li><a href="#apxA">付録A：動物フレンズ全リスト</a></li>
+    <li><a href="#apxB">付録B：バイオーム詳細ガイド</a></li>
+    <li><a href="#apxC">付録C：用語集</a></li>
+    <li><a href="#apxD">付録D：想定Q&amp;A</a></li>
+    <li><a href="#apxE">付録E：サンプル・プレイ日記</a></li>
+    <li><a href="#apxF">付録F：機能実装チェックリスト</a></li>
+    <li><a href="#apxG">付録G：レシピ・素材リファレンス</a></li>
+    <li><a href="#apxH">付録H：ストーリー・世界設定</a></li>
+    <li><a href="#apxI">付録I：競合分析と差別化</a></li>
+    <li><a href="#apxJ">付録J：年間アクティビティ・カレンダー</a></li>
+    <li><a href="#apxK">付録K：オンボーディング詳細</a></li>
+    <li><a href="#apxL">付録L：マーケティング・PR戦略</a></li>
+    <li><a href="#apxM">付録M：性格別・会話サンプル集</a></li>
+    <li><a href="#apxN">付録N：島ランク・評価システム詳細</a></li>
+    <li><a href="#apxO">付録O：サウンドトラック構成案</a></li>
+    <li><a href="#apxP">付録P：技術検証（プロト）項目</a></li>
+    <li><a href="#apxQ">付録Q：エグゼクティブ・サマリー</a></li>
+  </ol>
+</nav>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <div class="sec-head"><div class="sec-no">01</div><div><span class="en">CONCEPT</span><h2>企画コンセプト</h2></div></div>
+  <p class="lead">「アニマルフレンズ」は、あつ森のようなマス目状の地形や自然を自由に変えながら、動物たちと一緒に暮らしていく、ほのぼの3Dシミュレーションゲームです。</p>
+  <p>プレイヤーは、自然いっぱいの不思議な島の<b>「管理人（しまもり）」</b>となり、川や森、花畑などを自分の手でつくりながら、さまざまな動物たちが住みやすい環境を整えていきます。整えた環境は、ただの背景ではありません。水辺をつくればカエルやカワセミがやってきて、花畑を育てればチョウやミツバチが舞い、深い森を残せば臆病なキツネがそっと顔を出す——<b>あなたの“地形づくり”が、そのまま“友だちづくり”になる</b>。それが本作のいちばんの魅力です。</p>
+
+  <div class="callout">
+    <b>ワンライン・ピッチ</b><br>
+    「地形を彫り、自然を育て、動物を招く。世界にひとつだけのいきものの楽園を、あなたの手で。」
+  </div>
+
+  <h3>🎯 3つの企画の柱</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">⛏️</span><h3>つくる楽しさ</h3><p>マス目（タイル）単位で地面を上げ下げし、川を流し、崖をつくり、橋を架ける。直感的な地形編集で、誰でも「自分だけの風景」を描けます。</p></div>
+    <div class="card"><span class="ico">🌱</span><h3>育てる楽しさ</h3><p>木を植え、花を咲かせ、土を肥やす。手をかけた自然は季節を越えて成長し、生態系として島に根づいていきます。</p></div>
+    <div class="card"><span class="ico">🐾</span><h3>出会う楽しさ</h3><p>環境が整うほど、新しい動物がやってくる。仲良くなれば名前を呼び合い、贈りものを交わし、一緒に暮らす“フレンズ”になります。</p></div>
+  </div>
+
+  <h3>💡 既存作との違い（差別化ポイント）</h3>
+  <p>箱庭スローライフ系の人気作は数多くありますが、本作は「<b>地形づくりと生態系が直結する</b>」という一点に企画の独自性を集中させます。多くの作品で地形編集は“見た目のカスタマイズ”にとどまりますが、本作では地形・水・植生・日照といった環境パラメータが内部でつながっており、<b>プレイヤーの造形がそのまま動物の来訪条件になる</b>仕組みです。「きれいな島」ではなく「いきものでにぎわう島」を目指す——そこにプレイヤーの創意と発見が生まれます。</p>
+
+  <table>
+    <tr><th>観点</th><th>一般的な箱庭スローライフ</th><th>アニマルフレンズ</th></tr>
+    <tr><td>地形編集の意味</td><td>主に景観・自己表現</td><td>景観に加え<b>生態系・動物来訪の条件</b></td></tr>
+    <tr><td>動物の登場</td><td>抽選・引っ越しが中心</td><td><b>環境を整えることで自然に来訪</b></td></tr>
+    <tr><td>自然要素</td><td>装飾としての樹木・花</td><td><b>成長・繁殖・連鎖する生態系</b></td></tr>
+    <tr><td>プレイの目的感</td><td>収集・自己表現</td><td>収集・自己表現＋<b>「楽園づくり」という大目標</b></td></tr>
+    <tr><td>感情の中心</td><td>所有の満足</td><td><b>共生のよろこび</b>（育てた環境に命が宿る）</td></tr>
+  </table>
+
+  <blockquote>「思いどおりに島を飾る」ゲームは多い。本作が描くのは、「思いをかけた島に、いきものが応えてくれる」ゲームである。</blockquote>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <div class="sec-head"><div class="sec-no">02</div><div><span class="en">OVERVIEW & VISION</span><h2>ゲーム概要とビジョン</h2></div></div>
+  <p class="lead">プレイヤーは不思議な島の管理人として、自然を整え、動物たちと心を通わせ、季節をめぐりながら“いきものの楽園”を育てていきます。</p>
+
+  <h3>🏝️ 舞台設定</h3>
+  <p>物語の舞台は、地図にも載っていない<b>「めぐりの島（仮）」</b>。かつて豊かな自然にあふれていたこの島は、長いあいだ人の手が離れ、すこし元気をなくしていました。ある日、ふしぎな手紙に導かれて島にたどり着いたプレイヤーは、島の世話役だった先代から「管理人」の役目を受け継ぎます。案内役は、おしゃべりなフクロウの長老<b>「ホロウじいさん」</b>と、元気いっぱいの子リス<b>「クリ」</b>。ふたりと一緒に、眠っていた島の自然を少しずつ呼び覚ましていきます。</p>
+
+  <div class="callout sky">
+    <b>世界観のトーン</b>：危機や戦闘のない、やさしくゆったりとした世界。失敗してもゲームオーバーはなく、季節は何度でもめぐります。プレイヤーの行動は「壊す」より「整える」「招く」を中心に設計します。
+  </div>
+
+  <h3>🌟 プロダクト・ビジョン</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🕊️</span><h3>やさしい世界</h3><p>急かされず、競わされず、誰も置いていかない。1日5分でも、何時間でも、それぞれのペースで楽しめる“心の休息地”を目指します。</p></div>
+    <div class="card"><span class="ico">🌍</span><h3>共生のメッセージ</h3><p>自然と動物を「整え、招き、見守る」体験を通じて、プレイヤーが自然と楽しみながら“いきものとの共生”を感じられる作品にします。</p></div>
+    <div class="card"><span class="ico">🎨</span><h3>創造の自由</h3><p>正解のない地形づくり。同じ島はふたつとなく、誰かに見せたくなる“あなたの作品”が生まれます。</p></div>
+  </div>
+
+  <h3>🎮 体験の一文要約（プレイヤー体験ステートメント）</h3>
+  <blockquote>「朝、まだ誰もいない島を歩く。昨日つくった小川のほとりに、初めてのカワセミがとまっている。名前をつけてあげようか——そんな小さな“はじめまして”が、毎日どこかで起きている島。」</blockquote>
+
+  <h3>📐 設計原則（デザイン・ピラー）</h3>
+  <table>
+    <tr><th>原則</th><th>意味するところ</th></tr>
+    <tr><td><b>① 失敗のないやさしさ</b></td><td>取り返しのつかない操作を極力なくす。地形は何度でもやり直せ、動物が去っても必ず戻ってこられる。</td></tr>
+    <tr><td><b>② 行動が世界に応える</b></td><td>プレイヤーの一手（植樹・造水・整地）に、世界が目に見えて反応する。因果が分かる気持ちよさ。</td></tr>
+    <tr><td><b>③ 発見のごほうび</b></td><td>「こうしたら新しい動物が来た！」という発見そのものを最大の報酬にする。</td></tr>
+    <tr><td><b>④ 自分のペースで</b></td><td>デイリー要素は“あればうれしい”程度に。義務感より、また来たくなる気持ちを優先。</td></tr>
+    <tr><td><b>⑤ みんなとゆるくつながる</b></td><td>競争ではなく、見せ合い・訪ね合いでつながる。ひとりでも、誰かとでも完結する。</td></tr>
+  </table>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <div class="sec-head"><div class="sec-no">03</div><div><span class="en">TARGET & MARKET</span><h2>ターゲットと市場分析</h2></div></div>
+  <p class="lead">「自分の世界をつくりたい」「動物やかわいいものに癒されたい」——その願いを持つ、はば広い層に届ける作品です。</p>
+
+  <h3>👥 ターゲット・ペルソナ</h3>
+  <div class="grid2">
+    <div class="card"><h3>🌸 ペルソナA：癒しを求める社会人「ミドリさん（28歳）」</h3><p>平日は仕事で疲れがち。寝る前の30分、スマホやSwitchでほっとできる時間がほしい。かわいい動物と、コツコツ進む箱庭づくりに惹かれる。SNSで島の写真をシェアするのが楽しみ。</p></div>
+    <div class="card"><h3>🎓 ペルソナB：創作好きの学生「ソウくん（16歳）」</h3><p>マイクラやサンドボックス系が好き。地形を凝って“映える”景観をつくり込みたい。配信・動画投稿にも興味があり、自分の作品を見せたい欲求が強い。</p></div>
+    <div class="card"><h3>👪 ペルソナC：親子で遊ぶ「タナカ家（親35歳＋子7歳）」</h3><p>暴力表現のない安心して遊べるゲームを探している。子どもが動物の世話をし、親が地形づくりを手伝う、といった協力プレイが理想。</p></div>
+    <div class="card"><h3>🐾 ペルソナD：どうぶつ系ベテラン「ハルカさん（34歳）」</h3><p>これまでも箱庭・どうぶつ系をやり込んできた層。図鑑コンプや細かなやり込み、長期運営でのアップデートを重視する。</p></div>
+  </div>
+
+  <h3>📊 想定市場と規模感</h3>
+  <p>箱庭・スローライフ・どうぶつ育成というジャンルは、ライト層からコア層まで取り込める数少ない領域であり、特にコロナ禍以降「おうち時間の癒し」需要として大きく伸長しました。性別・年齢を問わず受容されやすく、長期運営・追加コンテンツとの相性も極めて良好です。本作は「地形づくり×生態系」という新規性で、既存ファン層の乗り換え／併用と、サンドボックス系からの流入の両取りを狙います。</p>
+
+  <div class="kpi">
+    <div class="box"><div class="num">全年齢</div><div class="lbl">CERO A 想定／誰でも安心</div></div>
+    <div class="box"><div class="num">3</div><div class="lbl">対応プラットフォーム</div></div>
+    <div class="box"><div class="num">F/M</div><div class="lbl">性別を問わない受容性</div></div>
+    <div class="box"><div class="num">長期</div><div class="lbl">運営型タイトルとしての寿命</div></div>
+  </div>
+
+  <h3>🧭 ポジショニング</h3>
+  <p>「のんびり癒し」と「作り込みの自由」は、しばしばトレードオフになりがちです。前者に寄れば物足りず、後者に寄れば難しくなる。本作は<b>「やさしい入口・深い奥行き」</b>を両立させ、その中央に陣取ります。最初の一歩はチュートリアルで誰でも踏み出せ、奥にはマス単位の地形造形・生態系の最適化という、いくらでも凝れる遊びを用意します。</p>
+
+  <h3>⚔️ 競合と本作の立ち位置</h3>
+  <table>
+    <tr><th>軸</th><th>癒し・ほのぼの</th><th>作り込み・自由度</th><th>動物との関係性</th></tr>
+    <tr><td>どうぶつ系定番作</td><td>◎</td><td>○</td><td>◎</td></tr>
+    <tr><td>サンドボックス建築系</td><td>△</td><td>◎</td><td>△</td></tr>
+    <tr><td>農場・牧場シミュ系</td><td>○</td><td>○</td><td>○</td></tr>
+    <tr><td><b>アニマルフレンズ</b></td><td><b>◎</b></td><td><b>◎</b></td><td><b>◎（生態系で深化）</b></td></tr>
+  </table>
+  <p class="tbl-note">※ 本作の独自性は「動物との関係性」を“環境づくり”という能動的行為に結びつけた点にあります。</p>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <div class="sec-head"><div class="sec-no">04</div><div><span class="en">CORE GAME LOOP</span><h2>コアゲームループ</h2></div></div>
+  <p class="lead">「整える → 招く → きずなを深める → 広げる」。この心地よい循環が、本作のすべての遊びの土台です。</p>
+
+  <h3>🔁 ループ全体像</h3>
+  <div class="steps">
+    <div class="step"><h4>① 観察する</h4><p>島を歩き、どんな自然が足りないか、どんな動物が来たがっているかのヒント（足あと・気配・図鑑のリクエスト）を見つける。</p></div>
+    <div class="step"><h4>② 整える</h4><p>地形を編集し、川を引き、木や花を植え、環境を動物の好みに近づける。素材を集め、道具を使う。</p></div>
+    <div class="step"><h4>③ 招く（来訪）</h4><p>条件が満たされると新しい動物がやってくる。初めての出会いイベントが発生。</p></div>
+    <div class="step"><h4>④ きずなを深める</h4><p>会話・贈りもの・お手伝いを通じて仲良し度を上げ、フレンズになる。新しい依頼やレシピが解放。</p></div>
+    <div class="step"><h4>⑤ 広げる</h4><p>得た素材・知識で島の新エリアを開拓。より多様な環境が、さらに珍しい動物を呼ぶ。①へ戻る。</p></div>
+  </div>
+
+  <h3>⏱️ 時間スケール別のループ</h3>
+  <table>
+    <tr><th>スケール</th><th>主な行動</th><th>得られる満足</th></tr>
+    <tr><td><b>数分（マイクロ）</b></td><td>水やり、あいさつ回り、落ちものの採集、写真撮影</td><td>小さな達成・癒し</td></tr>
+    <tr><td><b>1プレイ（30〜60分）</b></td><td>新エリアの整地、川づくり、1〜2匹との交流進展</td><td>目に見える進歩</td></tr>
+    <tr><td><b>1週間</b></td><td>1つのバイオーム完成、季節イベント参加、図鑑更新</td><td>達成感・コレクション</td></tr>
+    <tr><td><b>1シーズン（約3ヶ月）</b></td><td>島全体のテーマづくり、レアな動物の誘致、大型イベント</td><td>創作の完成・自己表現</td></tr>
+  </table>
+
+  <h3>🎁 報酬設計の考え方</h3>
+  <p>本作の報酬は「数字を増やす」ことよりも、<b>「世界が豊かになるのを目撃する」</b>ことに重きを置きます。新しい動物の来訪、はじめての会話、花が一面に咲いた朝——こうした“情景の変化”そのものが報酬です。もちろん、収集・レシピ・装飾といった具体的報酬も並走させ、短期・中期・長期のモチベーションをバランスよく支えます。</p>
+  <div class="callout sun"><b>報酬の三層構造</b>：①情景報酬（環境の変化・新しい出会い）／②機能報酬（レシピ・道具・新エリア解放）／③表現報酬（装飾・スナップ・島の評価）。この3つを常に循環させます。</div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <div class="sec-head"><div class="sec-no">05</div><div><span class="en">TERRAIN EDITING</span><h2>地形・地形編集システム</h2></div></div>
+  <p class="lead">マス目（タイル）単位で地面を彫り、盛り、水を流す。直感的でやさしいのに、奥はどこまでも深い造形システム。</p>
+
+  <h3>🧱 グリッドの基本</h3>
+  <p>島は<b>1マス＝1m四方のタイル</b>で構成され、見た目は3Dでありながら、編集はマス目に沿って行えるため失敗しにくく直感的です。各タイルは「高さ（標高）」「種類（草・土・砂・石・水…）」「上に乗っているもの（木・花・家具…）」の情報を持ち、これらの組み合わせが景観と生態系を決定します。</p>
+
+  <h3>🛠️ 編集ツール一覧</h3>
+  <table>
+    <tr><th>ツール</th><th>できること</th><th>習得段階</th></tr>
+    <tr><td>🟫 整地ハンマー</td><td>地面の凹凸をならし、平らな土地をつくる</td><td>序盤</td></tr>
+    <tr><td>⛏️ 段差スコップ</td><td>タイルの高さを1段上げ下げし、丘や崖をつくる</td><td>序盤</td></tr>
+    <tr><td>💧 みずひきジョウロ</td><td>川・池・滝など水のタイルを敷設、流れの向きを設定</td><td>中盤</td></tr>
+    <tr><td>🌉 はしわたしキット</td><td>川や崖に橋・坂・階段を架けて行き来できるようにする</td><td>中盤</td></tr>
+    <tr><td>🪨 がんせきノミ</td><td>岩場・洞窟・石畳など硬質地形を造形</td><td>終盤</td></tr>
+    <tr><td>🎨 じめんパレット</td><td>タイルの表面（草・砂・タイル・小道など）を塗り替え</td><td>序盤〜</td></tr>
+    <tr><td>🌫️ きりわけマスク</td><td>範囲選択でまとめて編集・コピー・反転（上級者向け効率化）</td><td>やり込み</td></tr>
+  </table>
+
+  <h3>🏞️ 高低差と水の表現</h3>
+  <p>地形は最大<b>4段</b>までの高低差を持て、段差は崖・滝・段々畑など多彩な景観を生みます。水は「標高の高い水源から低い方へ流れる」という分かりやすいルールで挙動し、川の合流や滝つぼ、よどみといった表情を自然につくれます。水の流れは見た目だけでなく、後述の生態系（水生動物・水辺の植物）の条件にも直結します。</p>
+
+  <div class="callout">
+    <b>やさしさの工夫：プレビューとアンドゥ</b><br>
+    すべての編集は確定前にゴースト表示でプレビューでき、確定後も<b>連続アンドゥ／リドゥ</b>が可能。「ちょっと試して、気に入らなければ戻す」を気軽にできることが、創造性を後押しします。
+  </div>
+
+  <h3>🗺️ 地形が生む“バイオーム”</h3>
+  <p>タイルの種類・標高・水・植生の組み合わせは、ゆるやかに<b>バイオーム（生態区）</b>として認識されます。プレイヤーが意図的にバイオームをつくり込むことで、その環境を好む動物が来訪します。代表的なバイオームは以下のとおりです。</p>
+  <div class="pill-row">
+    <span class="pill">🌳 ふかい森</span><span class="pill">🌾 草原</span><span class="pill">💧 川辺・湿地</span><span class="pill">🏖️ 砂浜・海辺</span>
+    <span class="pill">🌸 花畑</span><span class="pill">⛰️ 岩山・高地</span><span class="pill">🍂 雑木林</span><span class="pill">🪷 池・沼</span><span class="pill">🌲 針葉樹林</span>
+  </div>
+
+  <h3>📏 操作性とアシスト</h3>
+  <table>
+    <tr><th>機能</th><th>内容</th></tr>
+    <tr><td>グリッドスナップ</td><td>編集が常にマスに吸着。ズレない・ゆがまない安心設計。</td></tr>
+    <tr><td>ブラシサイズ可変</td><td>1マスから9マス（3×3）まで一括編集。広い造成も快適。</td></tr>
+    <tr><td>標高ヒートマップ</td><td>高低差を色で可視化し、水はけや日照の設計を支援。</td></tr>
+    <tr><td>左右対称ミラー</td><td>シンメトリーな庭園・広場づくりをワンタッチで。</td></tr>
+    <tr><td>下書きモード</td><td>確定せずプランだけ引いておける“設計図”レイヤー。</td></tr>
+  </table>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <div class="sec-head"><div class="sec-no">06</div><div><span class="en">ECOSYSTEM</span><h2>自然・生態系シミュレーション</h2></div></div>
+  <p class="lead">植えて、育てて、つながる。本作の自然は“飾り”ではなく、季節を越えて成長し連鎖する、生きたシステムです。</p>
+
+  <h3>🌿 植生の成長サイクル</h3>
+  <p>木や花、草は植えた瞬間に完成するのではなく、<b>「芽 → 若木／つぼみ → 成木／開花 → 実り／結実 → 種の拡散」</b>という段階を季節とともに進みます。世話（水やり・施肥・間引き）の有無で成長速度や健康度が変わり、健康な植物ほど多くの実りと、より多くの動物を呼び込みます。</p>
+
+  <div class="steps">
+    <div class="step"><h4>芽生え</h4><p>種や苗を植える。日照・水分・土壌の条件が合うと発芽。</p></div>
+    <div class="step"><h4>成長</h4><p>季節を越えて若木・つぼみへ。世話で速度と健康度が変化。</p></div>
+    <div class="step"><h4>成熟・開花</h4><p>成木・満開に。景観価値が上がり、虫や小動物が訪れ始める。</p></div>
+    <div class="step"><h4>結実</h4><p>果実・種子をつける。採集して素材に、または動物のエサに。</p></div>
+    <div class="step"><h4>拡散・更新</h4><p>放置すると種が周囲に広がり、自然林化。間引きで管理も可能。</p></div>
+  </div>
+
+  <h3>🔗 “つながり”としての生態系</h3>
+  <p>本作の核心は、環境要素が<b>食物連鎖・共生関係としてゆるくつながっている</b>点です。たとえば——</p>
+  <div class="callout">
+    花畑をつくる → <b>チョウ・ミツバチ</b>が来る → 受粉で実りが増える → 木の実を求めて<b>小鳥・リス</b>が来る → そのにぎわいを慕って<b>キツネ</b>が森のはずれに現れる……。<br>
+    ひとつの行動が、次の命を呼ぶ。プレイヤーは“連鎖の起点”をデザインします。
+  </div>
+
+  <h3>💧 環境パラメータ</h3>
+  <p>各エリアは内部的に以下のパラメータを持ち、これらが動物の来訪条件・植物の生育・景観評価に影響します。プレイヤーに数値を直接見せすぎず、“島の様子”として感じ取れるようにUI化します。</p>
+  <table>
+    <tr><th>パラメータ</th><th>説明</th><th>上げる方法（例）</th></tr>
+    <tr><td>🌳 緑量（みどり）</td><td>樹木・草花の密度</td><td>植樹・花植え・自然林の保護</td></tr>
+    <tr><td>💧 水辺度</td><td>川・池など水環境の充実度</td><td>みずひきジョウロで造水</td></tr>
+    <tr><td>☀️ 日照</td><td>地形・木陰による日当たり</td><td>標高・配置・間引きで調整</td></tr>
+    <tr><td>🍃 土壌の豊かさ</td><td>植物の育ちやすさ</td><td>施肥・落ち葉・適切な手入れ</td></tr>
+    <tr><td>🦋 にぎわい度</td><td>虫・小動物の活性</td><td>蜜源植物・実のなる木の充実</td></tr>
+    <tr><td>🤫 静けさ</td><td>人の手の入りすぎていない自然度</td><td>過度な舗装を避ける／森を残す</td></tr>
+  </table>
+
+  <h3>🐛 小さな生きものたち</h3>
+  <p>大きな動物フレンズの前に、まず虫・魚・小鳥といった<b>小さな生きもの</b>が環境に応じて現れます。これらは図鑑要素であると同時に、大型動物来訪の“前ぶれ”であり、プレイヤーへの分かりやすいフィードバックになります。季節・天候・時間帯で出現が変わり、観察と採集の楽しみを生みます。</p>
+
+  <h3>♻️ バランスと持続可能性</h3>
+  <p>過度な開発（舗装しすぎ・伐採しすぎ）は「静けさ」を損ない、臆病な動物が遠ざかる原因になります。逆に、自然を残しつつ要所を整えると、多様な生きものでにぎわう豊かな島になります。<b>「開発と保全のバランス」</b>そのものが、やさしい形でゲームメカニクスに落とし込まれています（説教くさくならない範囲で、楽しく体感できる設計を徹底します）。</p>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <div class="sec-head"><div class="sec-no">07</div><div><span class="en">ANIMAL FRIENDS</span><h2>動物フレンズと交流システム</h2></div></div>
+  <p class="lead">来た動物と、ただ眺めるだけの関係では終わらせない。会話し、贈り、助け合い、本当の“フレンズ”になっていく。</p>
+
+  <h3>🐾 来訪から定住まで</h3>
+  <p>動物は環境条件を満たすと、まず<b>「来訪者（ビジター）」</b>として島を訪れます。プレイヤーが交流を重ねて仲良し度を高めると、やがて<b>「フレンズ」</b>として島に定住し、自分のすみか（巣・小屋）を構えます。さらに絆が深まると<b>「親友（ベストフレンズ）」</b>になり、特別な会話・依頼・お出かけイベントが解放されます。</p>
+  <div class="steps">
+    <div class="step"><h4>来訪者</h4><p>条件を満たすと出現。警戒心があり、近づくと逃げる動物も。そっと観察して好みを探る。</p></div>
+    <div class="step"><h4>顔なじみ</h4><p>あいさつ・エサ・贈りもので警戒が解け、会話できるように。名前をつけられる。</p></div>
+    <div class="step"><h4>フレンズ</h4><p>島に定住。すみかが建ち、日々の暮らしが始まる。お手伝いを頼まれる。</p></div>
+    <div class="step"><h4>親友</h4><p>深い信頼関係。秘密の話、合いことば、一緒の写真、特別なプレゼント交換。</p></div>
+  </div>
+
+  <h3>💬 交流アクション</h3>
+  <table>
+    <tr><th>アクション</th><th>内容</th><th>仲良し度への影響</th></tr>
+    <tr><td>あいさつ・会話</td><td>毎日のおしゃべり。性格に応じた多彩なセリフ。</td><td>＋小（毎日積み重ね）</td></tr>
+    <tr><td>エサやり</td><td>その動物の好物をあげる。好みは観察・図鑑で判明。</td><td>＋中（好物なら大）</td></tr>
+    <tr><td>贈りもの</td><td>採集品・クラフト品をプレゼント。趣味に合うと喜ぶ。</td><td>＋中〜大</td></tr>
+    <tr><td>お手伝い・依頼</td><td>動物のお願い（採集・運搬・捜索など）を達成。</td><td>＋大</td></tr>
+    <tr><td>一緒に遊ぶ</td><td>散歩・釣り・星見など、性格別のミニ交流。</td><td>＋中</td></tr>
+    <tr><td>写真をとる</td><td>仲良しスナップ。アルバムに記録され、思い出に。</td><td>＋小（記念）</td></tr>
+  </table>
+
+  <h3>🎭 性格システム</h3>
+  <p>各動物には<b>性格タイプ</b>があり、話し方・好物・喜ぶ贈りもの・頼んでくる依頼の傾向が変わります。これにより、同じ種類でも個体ごとに違った付き合い方が生まれ、愛着と再プレイ性が高まります。</p>
+  <div class="cards">
+    <div class="card"><span class="ico">😊</span><h3>のんびり屋</h3><p>マイペースで穏やか。お昼寝や日向ぼっこが好き。ゆったりした会話で癒してくれる。</p></div>
+    <div class="card"><span class="ico">⚡</span><h3>げんき者</h3><p>好奇心旺盛で行動的。一緒に探検したがる。テンポの速いやりとり。</p></div>
+    <div class="card"><span class="ico">📚</span><h3>もの知り</h3><p>自然や星に詳しい。図鑑のヒントや豆知識をくれる頼れる存在。</p></div>
+    <div class="card"><span class="ico">🎨</span><h3>おしゃれ</h3><p>景観や装飾にこだわる。素敵な島づくりをほめてくれる。流行に敏感。</p></div>
+    <div class="card"><span class="ico">🤗</span><h3>あまえんぼう</h3><p>さみしがり屋でかまってほしい。会いに行くととても喜ぶ。贈りもの好き。</p></div>
+    <div class="card"><span class="ico">🦉</span><h3>もの静か</h3><p>口数は少ないが心は深い。打ち解けるまで時間がかかる分、絆は特別。</p></div>
+  </div>
+
+  <h3>🤝 動物どうしの関係</h3>
+  <p>フレンズたちは、プレイヤーだけでなく<b>互いにも関係を持ちます</b>。仲の良い者どうしが一緒に遊んでいたり、内気な子を元気者が誘ったり。島に小さな“群れの物語”が生まれ、見ているだけで飽きない生活感を演出します。</p>
+  <div class="callout pink"><b>感情のフック</b>：去っていく動物も、無理に引き止めなくてOK。「旅に出るね、また会おう」と手紙を残し、条件が整えばいつか帰ってきます。“別れ”すらやさしい体験として設計します。</div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <div class="sec-head"><div class="sec-no">08</div><div><span class="en">CHARACTERS</span><h2>キャラクター図鑑</h2></div></div>
+  <p class="lead">島で出会える、個性ゆたかな動物フレンズたち。来訪条件は“あなたの島づくり”しだい。</p>
+
+  <h3>🌟 メインキャラクター</h3>
+  <div class="zoo">
+    <div class="animal"><div class="pic" style="background:linear-gradient(135deg,#d7ccc8,#8d6e63)">🦉</div><div class="body"><h4>ホロウじいさん</h4><span class="role">案内役・長老</span><p>島の歴史を知るフクロウの長老。夜にいろいろ教えてくれる、頼れるご意見番。「ホッホ」が口ぐせ。</p></div></div>
+    <div class="animal"><div class="pic" style="background:linear-gradient(135deg,#ffe0b2,#ff8a65)">🐿️</div><div class="body"><h4>クリ</h4><span class="role">相棒・元気者</span><p>いつもそばにいる子リスの相棒。好奇心のかたまりで、新発見を一緒に喜んでくれる。木の実が大好物。</p></div></div>
+    <div class="animal"><div class="pic" style="background:linear-gradient(135deg,#c8e6c9,#66bb6a)">🐸</div><div class="body"><h4>ケロ太</h4><span class="role">水辺の主</span><p>最初の川をつくると現れるカエル。水辺づくりの先生役で、釣りや水生生物に詳しい。</p></div></div>
+    <div class="animal"><div class="pic" style="background:linear-gradient(135deg,#f8bbd0,#ec407a)">🦊</div><div class="body"><h4>コハク</h4><span class="role">森のはずれの旅人</span><p>静かな森を残すと現れる、つつましいキツネ。打ち解けると、めずらしい品をそっと届けてくれる。</p></div></div>
+  </div>
+
+  <h3>🐾 来訪する動物フレンズ（抜粋）</h3>
+  <div class="zoo">
+    <div class="animal"><div class="pic" style="background:#fff3e0">🐰</div><div class="body"><h4>うさぎ</h4><span class="role">草原</span><p>花畑と草原を好む。にんじん系の贈りもので大喜び。のんびり屋が多い。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#e8f5e9">🐢</div><div class="body"><h4>かめ</h4><span class="role">池・湿地</span><p>静かな池辺に現れる長寿の賢者。もの知りで、植物のコツを教えてくれる。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#e1f5fe">🦆</div><div class="body"><h4>かも</h4><span class="role">川辺</span><p>流れのゆるい川に親子で来訪。にぎやかで、雨の日に元気になる。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#fffde7">🐝</div><div class="body"><h4>みつばち</h4><span class="role">花畑</span><p>蜜源の花が増えると来訪。受粉を助け、はちみつの恵みをもたらす。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#fce4ec">🦋</div><div class="body"><h4>ちょう</h4><span class="role">花畑</span><p>季節の花にあわせて種類が変化。にぎわい度を象徴する存在。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#efebe9">🦔</div><div class="body"><h4>はりねずみ</h4><span class="role">雑木林</span><p>落ち葉のたまった林を好む。夜行性で、もの静かな性格。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#e0f2f1">🦦</div><div class="body"><h4>かわうそ</h4><span class="role">川・滝</span><p>きれいな流れと滝つぼに来訪。遊び好きで、一緒にすべり台で遊べる。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#f1f8e9">🦌</div><div class="body"><h4>しか</h4><span class="role">深い森</span><p>広く静かな森を必要とする。気高く臆病。なつくと島の象徴に。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#e3f2fd">🐦</div><div class="body"><h4>カワセミ</h4><span class="role">川辺・宝石鳥</span><p>清流の指標。美しい青の羽。釣り場の近くにとまる。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#fff8e1">🐻</div><div class="body"><h4>こぐま</h4><span class="role">森・川</span><p>実のなる木と魚の多い川がそろうと来訪。大食いで甘いもの好き。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#ede7f6">🦇</div><div class="body"><h4>こうもり</h4><span class="role">岩山・洞窟</span><p>岩場に洞窟をつくると住みつく。夜のにぎわいを担当。</p></div></div>
+    <div class="animal"><div class="pic" style="background:#e0f7fa">🦢</div><div class="body"><h4>はくちょう</h4><span class="role">大きな池</span><p>広い水面の池が必要なレア客。冬の景色に気品を添える。</p></div></div>
+  </div>
+  <p class="tbl-note">※ 上記は一例。製品版では <b>50種以上</b> の動物と、季節・天候・地形限定の<b>レアフレンズ</b>を予定。種ごとに複数の性格・カラーバリエーションを用意します。</p>
+
+  <h3>📋 来訪条件マトリクス（例）</h3>
+  <table>
+    <tr><th>動物</th><th>必要バイオーム</th><th>主な条件</th><th>レア度</th></tr>
+    <tr><td>うさぎ</td><td>草原・花畑</td><td>緑量＋花の種類3以上</td><td>★</td></tr>
+    <tr><td>カワセミ</td><td>川辺</td><td>水辺度・高／清流（魚が生息）</td><td>★★</td></tr>
+    <tr><td>しか</td><td>深い森</td><td>静けさ・高／成木20本以上</td><td>★★★</td></tr>
+    <tr><td>はくちょう</td><td>大きな池</td><td>水面16マス以上＋静けさ</td><td>★★★★</td></tr>
+    <tr><td>コハク（キツネ）</td><td>森のはずれ</td><td>森を残しつつ整備の両立</td><td>★★★★</td></tr>
+  </table>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <div class="sec-head"><div class="sec-no">09</div><div><span class="en">BUILD & CRAFT</span><h2>建築・クラフト・装飾</h2></div></div>
+  <p class="lead">集めた素材で道具や家具をつくり、動物のすみかや自分のお家、島じゅうの広場を彩る。</p>
+
+  <h3>🔨 クラフトの流れ</h3>
+  <div class="steps">
+    <div class="step"><h4>素材を集める</h4><p>木材・石・実・花・水辺の素材などを採集。季節・バイオームで採れるものが変わる。</p></div>
+    <div class="step"><h4>レシピを得る</h4><p>動物との交流、図鑑達成、イベントでレシピを入手。</p></div>
+    <div class="step"><h4>作業台でつくる</h4><p>道具・家具・装飾・動物のすみか用パーツをクラフト。</p></div>
+    <div class="step"><h4>配置・飾る</h4><p>島に置いて景観を完成。動物の好みに合うと喜ばれる。</p></div>
+  </div>
+
+  <h3>🪵 素材カテゴリ</h3>
+  <table>
+    <tr><th>カテゴリ</th><th>例</th><th>主な入手元</th></tr>
+    <tr><td>木材系</td><td>枝・丸太・板・樹液</td><td>木の世話・伐採・落ちもの</td></tr>
+    <tr><td>石・鉱物系</td><td>石・鉄・きらめく原石</td><td>岩場・洞窟・川底</td></tr>
+    <tr><td>自然素材</td><td>花・木の実・きのこ・落ち葉</td><td>採集・季節の実り</td></tr>
+    <tr><td>水辺素材</td><td>貝・水草・流木</td><td>川・池・海辺</td></tr>
+    <tr><td>めずらしい素材</td><td>はちみつ・宝石・星のかけら</td><td>動物の贈りもの・イベント</td></tr>
+  </table>
+
+  <h3>🏠 つくれるもの</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🛠️</span><h3>道具</h3><p>地形編集ツールのアップグレード版、採集効率の上がる道具など。耐久より“快適さ”を強化する方針。</p></div>
+    <div class="card"><span class="ico">🪑</span><h3>家具・装飾</h3><p>ベンチ、灯篭、噴水、看板、季節のオブジェなど。屋外・屋内どちらも飾れる。</p></div>
+    <div class="card"><span class="ico">🏡</span><h3>動物のすみか</h3><p>巣箱・小屋・水辺の桟橋など。動物の好みに合わせると、より早く定住してくれる。</p></div>
+    <div class="card"><span class="ico">🌉</span><h3>島インフラ</h3><p>橋・坂・小道・広場。動物どうしの行き来や、にぎわいの“たまり場”をつくる。</p></div>
+  </div>
+
+  <h3>🎨 マイホームと内装</h3>
+  <p>プレイヤー自身のお家は、増築・模様替えが自由自在。壁紙・床・家具を組み合わせて、外と同じく“自分らしさ”を表現できます。お気に入りの配置は<b>レイアウト保存</b>でき、季節ごとに切り替える楽しみも。動物が遊びに来てくれることもあり、家の中にも生活感が宿ります。</p>
+
+  <h3>🧰 やさしいクラフト設計</h3>
+  <div class="callout"><b>道具は壊れない（基本）</b>：序盤のストレスを避けるため、道具の耐久消費はごく緩やか、もしくは無し（強化で実質無限）に。「素材切れで作業中断」のイライラを最小化し、創作に没頭できる体験を優先します。</div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="sec-head"><div class="sec-no">10</div><div><span class="en">SEASONS & TIME</span><h2>四季・天候・時間サイクル</h2></div></div>
+  <p class="lead">時間が流れ、季節がめぐる。同じ島が、朝と夜で、春と冬で、まるで違う表情を見せる。</p>
+
+  <h3>🕰️ 時間の流れ</h3>
+  <p>ゲーム内時間は<b>現実とゆるやかに連動</b>（実時間ベース、設定で短縮も可）。朝・昼・夕・夜で光と空気が変わり、活動する動物や採れるものも変化します。早起きには早起きの、夜更かしには夜更かしの出会いがあります。</p>
+  <table>
+    <tr><th>時間帯</th><th>雰囲気</th><th>主な見どころ</th></tr>
+    <tr><td>🌅 朝</td><td>澄んだ光・霧・朝露</td><td>早起きの小鳥、朝だけ咲く花</td></tr>
+    <tr><td>☀️ 昼</td><td>明るくにぎやか</td><td>多くの動物が活動、採集の最盛</td></tr>
+    <tr><td>🌇 夕</td><td>夕焼け・帰り支度</td><td>黄金色の景観、写真映え</td></tr>
+    <tr><td>🌙 夜</td><td>静けさ・星空・蛍</td><td>夜行性動物、星見、夜だけのイベント</td></tr>
+  </table>
+
+  <h3>🍂 四季の特色</h3>
+  <div class="cards">
+    <div class="card" style="border-top-color:#f48fb1"><span class="ico">🌸</span><h3>春</h3><p>花が一斉に咲き、虫やチョウが舞う。出会いの季節。芽吹きと植え替えの好機。</p></div>
+    <div class="card" style="border-top-color:#4fc3f7"><span class="ico">🌻</span><h3>夏</h3><p>緑が濃く、川遊びと夜のお祭り。蛍・花火・水辺の動物が活気づく。</p></div>
+    <div class="card" style="border-top-color:#ff8a65"><span class="ico">🍁</span><h3>秋</h3><p>実りと紅葉。収穫祭、きのこ狩り、落ち葉のたまる雑木林がにぎわう。</p></div>
+    <div class="card" style="border-top-color:#90caf9"><span class="ico">❄️</span><h3>冬</h3><p>雪化粧の島。あたたかなお家時間、雪あそび、冬限定のレア客。</p></div>
+  </div>
+
+  <h3>🌦️ 天候システム</h3>
+  <p>晴れ・くもり・雨・雪・霧・虹など、天候は景観と生態系に影響します。雨の日は水辺の動物が元気になり、植物が潤い、特定の生きものが出現。雨上がりの虹はレアイベントの合図に。天候は“運の要素”でありながら、プレイヤーの環境づくりとも連動します（水辺が多い島は霧が出やすい、など演出的リンク）。</p>
+
+  <h3>🎉 季節イベント</h3>
+  <table>
+    <tr><th>季節</th><th>イベント例</th><th>内容</th></tr>
+    <tr><td>春</td><td>はなまつり</td><td>花の品評・お花見・限定装飾の配布</td></tr>
+    <tr><td>夏</td><td>みなも祭り</td><td>夜店・花火・釣り大会、浴衣の着せ替え</td></tr>
+    <tr><td>秋</td><td>みのり祭</td><td>収穫量を競うやさしいコンテスト・きのこ図鑑</td></tr>
+    <tr><td>冬</td><td>ゆきあかり</td><td>イルミネーション・贈りもの交換・年越し</td></tr>
+  </table>
+  <p class="tbl-note">※ イベントは「競争で焦らせない」設計。参加するだけで楽しく、報酬は努力に比例しつつ取りこぼしを救済します。</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="sec-head"><div class="sec-no">11</div><div><span class="en">ECONOMY & COLLECTION</span><h2>経済・収集・図鑑要素</h2></div></div>
+  <p class="lead">集める、記録する、ちょっと稼ぐ。やり込み派の心をつかむ、ゆるやかで奥深いコレクション設計。</p>
+
+  <h3>📒 図鑑（コレクション）</h3>
+  <p>本作の収集の中心は<b>「いきもの図鑑」</b>です。動物・小鳥・虫・魚・植物・きのこなどを、初めて出会うたびに自動記録。図鑑には生息環境・季節・好物・豆知識が載り、次に何を呼べるかのヒントにもなります。コンプリートを目指すやり込み層に、明確で長期的な目標を提供します。</p>
+  <div class="pill-row">
+    <span class="pill">🐾 動物図鑑</span><span class="pill">🐦 鳥図鑑</span><span class="pill">🐟 さかな図鑑</span><span class="pill">🦋 むし図鑑</span><span class="pill">🌷 しょくぶつ図鑑</span><span class="pill">🍄 きのこ図鑑</span><span class="pill">📸 おもいでアルバム</span>
+  </div>
+
+  <h3>💰 やさしい経済</h3>
+  <p>島には素朴な通貨<b>「どんぐり（仮）」</b>があり、採集品の売却や依頼の達成で得られます。使い道はレシピ・素材・装飾の購入や、新エリア開拓の費用など。<b>お金は目的ではなく手段</b>——稼ぎを強要せず、遊んでいれば自然に貯まる程度のバランスにします。借金や厳しい支払い圧はありません。</p>
+  <table>
+    <tr><th>収入源</th><th>例</th><th>性質</th></tr>
+    <tr><td>採集品の売却</td><td>果実・魚・貝・鉱物</td><td>日常的・安定</td></tr>
+    <tr><td>クラフト品の販売</td><td>家具・装飾</td><td>手間に応じた中収入</td></tr>
+    <tr><td>依頼の報酬</td><td>動物・島のおつかい</td><td>イベント的・高め</td></tr>
+    <tr><td>島の評価ボーナス</td><td>にぎわい・景観の達成</td><td>長期目標への報酬</td></tr>
+  </table>
+
+  <h3>🏆 島の評価システム</h3>
+  <p>島全体の「にぎわい」「自然の豊かさ」「景観」を総合した<b>島ランク</b>を用意。ランクが上がると新エリア・新レシピ・レア動物の来訪チャンスが解放されます。評価は減点方式ではなく<b>加点方式</b>。あくまで“伸ばす楽しみ”として機能させ、プレッシャーを与えません。</p>
+  <div class="bar"><span style="width:90%">自然の豊かさ ★★★★☆</span></div>
+  <div class="bar"><span style="width:75%">にぎわい度 ★★★★☆</span></div>
+  <div class="bar"><span style="width:60%">景観・デザイン ★★★☆☆</span></div>
+
+  <h3>📸 スナップ・共有</h3>
+  <p>充実した<b>フォトモード</b>を搭載。アングル・時間・天候・フィルター・スタンプを選んで、島の美しい瞬間を切り取れます。撮った写真は島内のアルバムに保存され、SNS共有も簡単。これが自然な口コミ・拡散の起点になります。</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="sec-head"><div class="sec-no">12</div><div><span class="en">PROGRESSION</span><h2>進行・成長・やりこみ</h2></div></div>
+  <p class="lead">急がず、でも確実に前へ。やさしい入口から、底の見えないやり込みまで、なめらかにつながる成長曲線。</p>
+
+  <h3>🚪 序盤（はじまりの数時間）</h3>
+  <p>チュートリアルを兼ねた導入で、移動・採集・簡単な整地・最初の動物との出会いを体験。「川を1本つくったらカエルが来た」という<b>最初の小さな奇跡</b>を、プレイ開始30分以内に必ず届け、コアの面白さを早期に伝えます。</p>
+
+  <h3>🌿 中盤（仕組みが広がる）</h3>
+  <p>みずひきジョウロや橋などのツールが解放され、本格的なバイオームづくりが可能に。複数の動物が定住しはじめ、依頼・レシピ・イベントが連鎖的に増えていきます。プレイヤーは「次はどんな環境をつくろう」と自発的に計画を立てるようになります。</p>
+
+  <h3>🏔️ 終盤・やり込み</h3>
+  <p>岩山・洞窟・大きな池など高度な地形が解放され、レアな動物の誘致や図鑑コンプ、島全体のテーマ造形といった<b>自己目標の時代</b>に入ります。範囲編集・ミラー・下書きなど上級ツールで、作品としての完成度を追求できます。</p>
+
+  <h3>📈 成長の軸</h3>
+  <table>
+    <tr><th>成長軸</th><th>伸びるもの</th><th>解放されるもの</th></tr>
+    <tr><td>管理人ランク</td><td>島づくりの実績</td><td>新ツール・新エリア・店の拡張</td></tr>
+    <tr><td>図鑑達成率</td><td>出会った生きもの数</td><td>豆知識・称号・記念装飾</td></tr>
+    <tr><td>フレンズの絆</td><td>動物との仲良し度</td><td>限定会話・依頼・贈りもの</td></tr>
+    <tr><td>レシピ習得</td><td>つくれるものの数</td><td>装飾・道具・すみかの幅</td></tr>
+  </table>
+
+  <h3>🎯 取り返しのつく設計</h3>
+  <div class="callout sky"><b>「いつでも・なんでも」やり直せる</b>：地形は連続アンドゥ、模様替えは無制限、去った動物も帰ってくる。プレイヤーが「やっちゃった…」と落ち込む瞬間を、徹底して取り除きます。これが“ほのぼの”の正体です。</div>
+
+  <h3>🔁 リプレイ性</h3>
+  <p>同じ島でもテーマを変えて作り直す楽しみ、別の島を新規に始める楽しみ、フレンドの島を訪ねて刺激をもらう楽しみ。<b>「飽きたら終わり」ではなく「飽きたら作り変える」</b>——長く付き合えるサンドボックスとしての寿命を重視します。</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="sec-head"><div class="sec-no">13</div><div><span class="en">MULTIPLAYER</span><h2>マルチプレイ・コミュニティ</h2></div></div>
+  <p class="lead">ひとりでも完結する。でも、誰かと分かち合うともっと楽しい。競争のない、ゆるやかなつながり。</p>
+
+  <h3>🚪 島の行き来</h3>
+  <p>フレンドの島を<b>訪問</b>したり、自分の島へ<b>招待</b>したりできます。他人の島は刺激と発見の宝庫——「こんな川のつくり方が！」「この動物どうやって呼んだの？」という気づきが、自分の島づくりのヒントになります。訪問中は一緒に採集したり、贈りものを置いていったり、写真を撮ったりできます。</p>
+
+  <h3>🤝 協力プレイ</h3>
+  <table>
+    <tr><th>モード</th><th>内容</th></tr>
+    <tr><td>みんなで島づくり</td><td>同じ島に複数人で入り、地形編集や植樹を分担して大規模な造成を楽しむ。</td></tr>
+    <tr><td>おすそわけ訪問</td><td>採れた素材やレシピを友だちにプレゼント。助け合いの文化を醸成。</td></tr>
+    <tr><td>合同イベント</td><td>季節イベントを複数の島合同で開催。にぎわいを共有。</td></tr>
+  </table>
+
+  <h3>🌐 ゆるい共有文化</h3>
+  <p>競争ランキングではなく、<b>「見せ合い・ほめ合い」</b>を中心に設計します。島には<b>ドリームコード（合言葉）</b>のような仕組みを用意し、誰でも気軽に島を公開・見学可能。お気に入りの島には“いいね”ではなく、心のこもった<b>メッセージカード</b>を残せます。SNS連携でフォトを共有し、ゆるやかなコミュニティを育てます。</p>
+
+  <div class="callout pink"><b>安心・安全への配慮</b>：年少者も遊ぶため、テキストチャットは定型文・スタンプ中心に。フリーテキストはフィルタリングと制限を設け、見知らぬ相手とのトラブルを未然に防ぎます。訪問の許可制・ブロック機能も完備。</div>
+
+  <h3>📦 オフラインでも完全</h3>
+  <p>オンライン要素は<b>あくまで“プラスα”</b>。ネットにつながなくても、ゲームの本質（地形づくり・動物との暮らし・収集）は完全に楽しめます。常時接続を強制せず、自分のペースを尊重します。</p>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="sec-head"><div class="sec-no">14</div><div><span class="en">ART & SOUND</span><h2>アート・サウンドの方向性</h2></div></div>
+  <p class="lead">見て、聴いて、ほっとする。やわらかな3Dと、心ほどける音で“居たくなる島”をつくる。</p>
+
+  <h3>🎨 ビジュアル・コンセプト</h3>
+  <p>めざすのは<b>「絵本のような、まるくてやわらかい3D」</b>。デフォルメの効いた愛らしい動物、淡くあたたかい配色、丸みのあるシルエット。リアルさより<b>“かわいさ”と“読みやすさ”</b>を優先し、誰が見ても親しみを感じる画づくりを徹底します。マス目地形のかくばった印象は、緑や水のやわらかな表現でほどよく中和します。</p>
+  <div class="cards">
+    <div class="card"><span class="ico">🖍️</span><h3>カラーパレット</h3><p>新緑・空色・木漏れ日・花の色。彩度は中程度に抑え、長時間見ても疲れない“目にやさしい”配色。</p></div>
+    <div class="card"><span class="ico">🌫️</span><h3>ライティング</h3><p>時間と季節で大きく変わる光。朝霧、夕焼け、星空、雪あかり——光が情緒を運ぶ。</p></div>
+    <div class="card"><span class="ico">🧸</span><h3>キャラデザ</h3><p>頭身低め・目が大きい・動きがコミカル。表情とモーションで“感情”を雄弁に語る。</p></div>
+  </div>
+
+  <h3>🎬 アニメーション方針</h3>
+  <p>動物の<b>仕草こそ命</b>。あくび、伸び、毛づくろい、おしりをふる、雨宿り——“暮らしている感”を生む細かなアイドルモーションを大量に用意します。地形編集も、土がぽこっと盛り上がる、水がきらきら流れ出す、といった<b>気持ちのいい手ごたえ</b>を演出で支えます。</p>
+
+  <h3>🎵 サウンド・デザイン</h3>
+  <table>
+    <tr><th>要素</th><th>方向性</th></tr>
+    <tr><td>BGM</td><td>アコースティック中心の、やさしく耳に残らないほどに溶け込む音楽。時間帯・季節・天候で変化。</td></tr>
+    <tr><td>環境音</td><td>鳥のさえずり、川のせせらぎ、風、雨、虫の声。環境づくりの成果が“音”でも実感できる。</td></tr>
+    <tr><td>効果音</td><td>採集・編集・交流の“ぷに”っとした心地よいSE。耳ざわりにならない柔らかさ。</td></tr>
+    <tr><td>動物の声</td><td>言葉ではない、愛らしい“どうぶつ語”ボイス。性格で声色が変わる。</td></tr>
+  </table>
+
+  <blockquote>「目を閉じても、せせらぎと鳥の声で“今、自分の島がどれだけ豊かか”が分かる。」——それが本作の音のゴールです。</blockquote>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="sec-head"><div class="sec-no">15</div><div><span class="en">UI / UX</span><h2>UI / UX デザイン方針</h2></div></div>
+  <p class="lead">説明書がいらない、迷わない、疲れない。やさしさは、操作のすみずみに宿る。</p>
+
+  <h3>🖱️ 操作方法（対応入力）</h3>
+  <p>本作は<b>キーボード操作</b>と<b>マウスのクリック操作</b>を基本とし、直感的に遊べる設計です（家庭用機ではコントローラー／タッチにも最適化）。マウスで「指さして、クリックする」だけで多くの操作が完結し、初めての人でもすぐに馴染めます。</p>
+  <table>
+    <tr><th>操作</th><th>キーボード</th><th>マウス（クリック）</th></tr>
+    <tr><td>移動</td><td>W / A / S / D（または矢印キー）</td><td>行きたい場所をクリックして移動</td></tr>
+    <tr><td>視点・カメラ</td><td>Q / E で回転、ホイールでズーム</td><td>ドラッグでカメラ回転</td></tr>
+    <tr><td>地形編集</td><td>数字キーでツール切替</td><td>編集したいマスをクリック／ドラッグで連続編集</td></tr>
+    <tr><td>採集・調べる</td><td>スペース／Eキー</td><td>対象をクリック</td></tr>
+    <tr><td>動物と交流</td><td>Fキーで話しかける</td><td>動物をクリックでメニュー表示</td></tr>
+    <tr><td>メニュー・図鑑</td><td>Tab / Iキー</td><td>画面アイコンをクリック</td></tr>
+    <tr><td>カメラ（撮影）</td><td>Pキー</td><td>カメラアイコンをクリック</td></tr>
+  </table>
+  <p class="tbl-note">※ キー配置は<b>フルカスタマイズ可能</b>。マウスのみ／キーボードのみでも一通りの操作が完結するよう冗長性を持たせます。</p>
+
+  <h3>🧭 UXの原則</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">👀</span><h3>見れば分かる</h3><p>テキストに頼らず、アイコン・色・動きで意味を伝える。言語を越えて直感で操作できる。</p></div>
+    <div class="card"><span class="ico">🪶</span><h3>軽い手ざわり</h3><p>1アクションのステップ数を最小化。「やりたいこと」に最短で届く。</p></div>
+    <div class="card"><span class="ico">🛟</span><h3>いつでも安心</h3><p>確認プレビュー、アンドゥ、オートセーブ。失敗が怖くない。</p></div>
+    <div class="card"><span class="ico">🔕</span><h3>急かさない</h3><p>通知やデイリーの圧を抑え、戻ってきたくなる余白を残す。</p></div>
+  </div>
+
+  <h3>📱 画面構成</h3>
+  <p>常時表示は最小限（時刻・季節・所持ツールのみ）。情報は<b>必要なときだけ呼び出す</b>方針で、美しい島の景観を主役にします。地形編集モードに入ると、グリッドやヒートマップなどの補助表示が現れ、編集が終われば静かに消えます。</p>
+
+  <h3>♿ 親切設計</h3>
+  <p>初回はやさしいガイド付き、慣れたらヒントOFF可能。よく使う操作はショートカット化。間違えやすい操作は確認をはさみつつ、慣れた人にはスキップを許す——<b>初心者にもベテランにも“ちょうどいい”</b>UIを目指します。</p>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+  <div class="sec-head"><div class="sec-no">16</div><div><span class="en">TECH & PLATFORM</span><h2>技術仕様とプラットフォーム</h2></div></div>
+  <p class="lead">幅広い人に届けるため、軽く・安定して・きれいに動く。技術選定もまた“やさしさ”の一部。</p>
+
+  <h3>💻 対応プラットフォーム</h3>
+  <table>
+    <tr><th>プラットフォーム</th><th>位置づけ</th><th>主な入力</th></tr>
+    <tr><td>PC（Steam ほか）</td><td>主力。作り込み層・配信層に最適</td><td>キーボード＋マウス（クリック）</td></tr>
+    <tr><td>Nintendo Switch 等の家庭用機</td><td>ライト層・親子層に最適</td><td>コントローラー／タッチ</td></tr>
+    <tr><td>モバイル（iOS / Android）</td><td>すきま時間・新規層の入口</td><td>タッチ</td></tr>
+  </table>
+  <p class="tbl-note">※ 開発は PC（キーボード・クリック操作）を基準に進め、各機種へ最適化展開します。</p>
+
+  <h3>⚙️ 技術スタック（想定）</h3>
+  <table>
+    <tr><th>領域</th><th>採用候補</th><th>理由</th></tr>
+    <tr><td>ゲームエンジン</td><td>Unity または Unreal Engine</td><td>3D・マルチ展開・アセット資産・実績の豊富さ</td></tr>
+    <tr><td>地形システム</td><td>独自タイルボクセル基盤</td><td>マス目編集・高低差・水流の自作制御に最適</td></tr>
+    <tr><td>生態系シミュ</td><td>軽量ルールベースＡＩ＋スケジューラ</td><td>多数の動物・植物を低負荷で“それっぽく”動かす</td></tr>
+    <tr><td>ネットワーク</td><td>セッション型同期＋クラウドセーブ</td><td>気軽な訪問・協力と、安全なデータ保全</td></tr>
+    <tr><td>セーブデータ</td><td>ローカル＋クラウド二重化</td><td>大切な島を失わせない</td></tr>
+  </table>
+
+  <h3>🚀 パフォーマンス目標</h3>
+  <div class="kpi">
+    <div class="box"><div class="num">60fps</div><div class="lbl">PC・据置機での目標</div></div>
+    <div class="box"><div class="num">30fps+</div><div class="lbl">モバイル・携帯モード</div></div>
+    <div class="box"><div class="num">低スペ</div><div class="lbl">広い動作環境を確保</div></div>
+    <div class="box"><div class="num">短時間</div><div class="lbl">ロードのストレス最小化</div></div>
+  </div>
+
+  <h3>🧩 拡張性</h3>
+  <p>動物・植物・家具・イベントは<b>データ駆動</b>で追加できる構造にし、運営アップデートのコストを抑えます。将来的なユーザー投稿（島の共有データ・デザイン）も見据え、データ形式を整理しておきます。</p>
+
+  <h3>🔐 データとプライバシー</h3>
+  <p>クラウドセーブで端末故障や機種変更時もデータを引き継ぎ可能。個人情報は最小限の取得にとどめ、年少者保護の観点から各国の規制（年齢確認・保護者設定）に準拠します。</p>
+</section>
+
+<!-- ============ 17 ============ -->
+<section id="s17">
+  <div class="sec-head"><div class="sec-no">17</div><div><span class="en">ACCESSIBILITY</span><h2>アクセシビリティ・配慮設計</h2></div></div>
+  <p class="lead">「誰も置いていかない」を本気で。ハンデや環境にかかわらず、みんなが島の住人になれるように。</p>
+
+  <h3>👁️ 見やすさ</h3>
+  <table>
+    <tr><th>機能</th><th>内容</th></tr>
+    <tr><td>文字サイズ変更</td><td>UI・会話テキストの大きさを段階調整</td></tr>
+    <tr><td>色覚サポート</td><td>色だけに頼らない表現＋色覚モード（複数タイプ）</td></tr>
+    <tr><td>高コントラスト</td><td>重要情報を見分けやすくする表示モード</td></tr>
+    <tr><td>カメラ酔い対策</td><td>視点速度・揺れ・モーションブラーの調整／OFF</td></tr>
+  </table>
+
+  <h3>🖐️ 操作のしやすさ</h3>
+  <table>
+    <tr><th>機能</th><th>内容</th></tr>
+    <tr><td>キー／ボタン再割当</td><td>すべての操作を自由に配置変更</td></tr>
+    <tr><td>ワンクリック補助</td><td>長押し→トグル化、連打→ホールド化など</td></tr>
+    <tr><td>片手操作配慮</td><td>マウスのみ・キーボードのみでも遊べる冗長設計</td></tr>
+    <tr><td>操作速度の調整</td><td>移動・編集テンポを自分に合わせて変更可能</td></tr>
+  </table>
+
+  <h3>🔊 音と言語</h3>
+  <p>環境音・効果音・BGMの個別音量調整に対応。聴覚に頼らずプレイできるよう、重要な合図は<b>画面表示でも</b>伝えます。多言語対応（日本語・英語を初期、以降順次拡大）を予定し、テキストは平易な表現とふりがな表示オプションで、年少者・学習者にも親切に。</p>
+
+  <h3>🧘 こころへの配慮</h3>
+  <div class="callout"><b>“癒し”であるための設計</b>：急かす通知・取り返しのつかない失敗・他者との優劣を持ち込まないこと自体が、最大のアクセシビリティだと考えます。本作は、しんどい日にこそ開きたくなる“やさしい居場所”であり続けます。</div>
+</section>
+
+<!-- ============ 18 ============ -->
+<section id="s18">
+  <div class="sec-head"><div class="sec-no">18</div><div><span class="en">MONETIZATION</span><h2>マネタイズ戦略</h2></div></div>
+  <p class="lead">「やさしい世界観」を裏切らない、フェアで持続可能な収益設計。プレイ体験を絶対に損なわない。</p>
+
+  <h3>💳 基本方針</h3>
+  <div class="callout sun"><b>大原則：Pay to Win（課金で有利）を作らない。</b> 本作に“勝ち”はありません。課金は<b>「時間の節約」と「表現の幅」</b>に限定し、無課金でもゲームのすべての本質を楽しめる設計を死守します。</div>
+
+  <h3>📦 収益モデル（プラットフォーム別）</h3>
+  <table>
+    <tr><th>区分</th><th>モデル</th><th>内容</th></tr>
+    <tr><td>PC・据置機</td><td>買い切り（パッケージ／DL）</td><td>本編一括購入。以降の小規模アップデートは無料、大型は有料DLC。</td></tr>
+    <tr><td>モバイル</td><td>基本無料＋アプリ内課金</td><td>本質は無料開放。装飾・時短・シーズンパスを任意で。</td></tr>
+    <tr><td>共通</td><td>有料DLC・拡張</td><td>新エリア、新動物セット、季節テーマなど“足し算”の追加。</td></tr>
+  </table>
+
+  <h3>🛍️ 課金アイテムの考え方</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🎨</span><h3>表現の拡張</h3><p>追加の装飾・衣装・家具テーマ。“見た目”の楽しみであり、性能差は生まない。</p></div>
+    <div class="card"><span class="ico">⏩</span><h3>時間の短縮（任意）</h3><p>素材・成長の時短など。無課金でも待てば必ず手に入るものに限定。</p></div>
+    <div class="card"><span class="ico">🎟️</span><h3>シーズンパス</h3><p>無料報酬路線も併設。買わなくても季節を満喫でき、買えば彩りが増える。</p></div>
+    <div class="card"><span class="ico">📦</span><h3>拡張DLC</h3><p>大型の新コンテンツ。価格に見合うボリュームで“追加の冒険”を提供。</p></div>
+  </div>
+
+  <h3>🚫 やらないこと</h3>
+  <div class="pill-row">
+    <span class="pill">❌ ガチャで性能</span><span class="pill">❌ スタミナで足止め</span><span class="pill">❌ 課金しないと進めない</span><span class="pill">❌ 射幸心をあおる演出</span><span class="pill">❌ 子ども向けの誘導課金</span>
+  </div>
+  <p>世界観への信頼こそが最大の資産です。「このゲームは安心して遊ばせられる」という評判を、短期の売上より優先します。</p>
+
+  <h3>📈 長期収益の柱</h3>
+  <p>買い切り収益＋継続的なDLC・シーズン展開＋（モバイルの）良心的アプリ内課金の三本柱で、<b>長期運営型タイトル</b>として安定した収益基盤を築きます。グッズ・コラボ・サウンドトラックなどIP展開も将来の柱として視野に入れます。</p>
+</section>
+
+<!-- ============ 19 ============ -->
+<section id="s19">
+  <div class="sec-head"><div class="sec-no">19</div><div><span class="en">ROADMAP</span><h2>開発ロードマップ</h2></div></div>
+  <p class="lead">小さく作って確かめ、面白さの核を固めてから広げる。堅実な段階開発で“神は細部”を磨き上げる。</p>
+
+  <h3>🗓️ 開発フェーズ</h3>
+  <div class="timeline">
+    <div class="tl-item"><div class="tl-phase">PHASE 0 ／ 約2ヶ月</div><h4>コンセプト固め・プロト準備</h4><p>本企画書の精緻化、コア体験の定義、技術検証の準備。チーム編成と環境構築。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 1 ／ 約3〜4ヶ月</div><h4>プロトタイプ（コア検証）</h4><p>「川をつくる→カエルが来る」の最小ループを実装。地形編集と来訪のおもしろさを実証する。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 2 ／ 約4〜6ヶ月</div><h4>バーティカルスライス</h4><p>1つのバイオームを完成品質で作り、アート・音・UIの方向性を確定。社内・テスターで手応えを確認。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 3 ／ 約8〜10ヶ月</div><h4>アルファ（量産）</h4><p>全バイオーム・動物・季節・クラフトを一通り実装。図鑑・経済・進行を接続し、通しで遊べる状態に。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 4 ／ 約3〜4ヶ月</div><h4>ベータ（調整・テスト）</h4><p>クローズドβ→オープンβでバランス調整、最適化、バグ修正。マルチプレイの負荷検証。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 5 ／ 約2ヶ月</div><h4>ローンチ準備・リリース</h4><p>マスター提出、ストア審査、マーケ集中、ローンチ。Day1パッチ体制。</p></div>
+    <div class="tl-item"><div class="tl-phase">PHASE 6 ／ 継続</div><h4>ローンチ後運営</h4><p>季節イベント、追加動物、DLC、コミュニティ対応を継続的に展開。</p></div>
+  </div>
+
+  <h3>🎯 マイルストーンの判断基準</h3>
+  <table>
+    <tr><th>節目</th><th>“次へ進んでよい”の判断材料</th></tr>
+    <tr><td>プロト完了</td><td>テスターが「もう1匹呼びたい」と自発的に思えたか</td></tr>
+    <tr><td>スライス完了</td><td>1バイオームだけで30分以上夢中になれるか</td></tr>
+    <tr><td>アルファ完了</td><td>通しプレイで“だれる時間帯”がないか</td></tr>
+    <tr><td>ベータ完了</td><td>新規プレイヤーが説明なしで序盤を越えられるか</td></tr>
+  </table>
+
+  <div class="callout">合計の目安は<b>おおよそ2〜2.5年</b>。ただし「面白さの核（プロト〜スライス）」に時間を惜しまず、ここが弱ければ後工程に進まない判断を徹底します。</div>
+</section>
+
+<!-- ============ 20 ============ -->
+<section id="s20">
+  <div class="sec-head"><div class="sec-no">20</div><div><span class="en">TEAM / BUDGET / RISK</span><h2>体制・予算・リスク</h2></div></div>
+  <p class="lead">適正規模のチームで、ムリなく、でも妥協なく。想定リスクは先に洗い出し、備える。</p>
+
+  <h3>👷 想定チーム構成</h3>
+  <table>
+    <tr><th>役割</th><th>人数（目安）</th><th>主な担当</th></tr>
+    <tr><td>ディレクター／プランナー</td><td>2〜3</td><td>全体設計・ゲームデザイン・仕様</td></tr>
+    <tr><td>プログラマー</td><td>4〜6</td><td>地形・生態系・ネットワーク・最適化</td></tr>
+    <tr><td>アーティスト（3D／2D）</td><td>4〜6</td><td>キャラ・背景・UI・エフェクト</td></tr>
+    <tr><td>アニメーター</td><td>2</td><td>動物モーション・演出</td></tr>
+    <tr><td>サウンド</td><td>1〜2（外部委託可）</td><td>BGM・SE・環境音</td></tr>
+    <tr><td>QA／テスト</td><td>2〜（後半増員）</td><td>品質保証・バランス検証</td></tr>
+    <tr><td>運営／コミュニティ</td><td>1〜2</td><td>ローンチ後の運用・ユーザー対応</td></tr>
+  </table>
+  <p class="tbl-note">※ コア15〜20名規模を想定。フェーズに応じて柔軟に増減します。</p>
+
+  <h3>💴 予算の考え方</h3>
+  <p>開発費の中心は<b>人件費</b>。加えてエンジン／ミドルウェア、アセット、サーバー、ローカライズ、QA、マーケティングを見込みます。プロト〜スライス段階で投資を集中させ、面白さを確証してから量産投資に踏み切る<b>段階的資金投入</b>でリスクを抑えます。マーケ費はローンチ前後に厚く配分します。</p>
+  <div class="kpi">
+    <div class="box"><div class="num">~55%</div><div class="lbl">人件費</div></div>
+    <div class="box"><div class="num">~20%</div><div class="lbl">マーケ・PR</div></div>
+    <div class="box"><div class="num">~15%</div><div class="lbl">外注・アセット・音</div></div>
+    <div class="box"><div class="num">~10%</div><div class="lbl">インフラ・予備</div></div>
+  </div>
+  <p class="tbl-note">※ 比率はあくまで概算イメージ。詳細は別途予算計画書にて。</p>
+
+  <h3>⚠️ リスクと対策</h3>
+  <table>
+    <tr><th>リスク</th><th>影響</th><th>対策</th></tr>
+    <tr><td>競合の強さ（定番作の存在）</td><td>埋もれる可能性</td><td>「地形×生態系」の独自性に集中し、明確な差別化を打ち出す</td></tr>
+    <tr><td>“ほのぼの”ゆえの目的感の薄さ</td><td>中だるみ・離脱</td><td>情景報酬＋図鑑＋島ランクで自発的目標を多層に用意</td></tr>
+    <tr><td>生態系シミュの開発難度</td><td>工数増・負荷</td><td>軽量ルールベースで“それっぽさ”を優先、早期にプロト検証</td></tr>
+    <tr><td>マルチ・サーバー負荷</td><td>不具合・コスト</td><td>オフライン完結を基本に、オンラインは段階導入で検証</td></tr>
+    <tr><td>スコープの肥大化</td><td>遅延・破綻</td><td>コアを死守し、装飾的要素はDLC／ローンチ後に切り分け</td></tr>
+    <tr><td>マネタイズへの不信</td><td>評判低下</td><td>Pay to Win 排除を明文化・徹底し、信頼を最優先</td></tr>
+  </table>
+</section>
+
+<!-- ============ 21 ============ -->
+<section id="s21">
+  <div class="sec-head"><div class="sec-no">21</div><div><span class="en">KPI</span><h2>KPI・成功指標</h2></div></div>
+  <p class="lead">「癒し」を数字で測るのは難しい。だからこそ、定着・継続・愛着を多角的に見守る。</p>
+
+  <h3>📊 主要KPI</h3>
+  <table>
+    <tr><th>指標</th><th>見るもの</th><th>狙い</th></tr>
+    <tr><td>チュートリアル突破率</td><td>最初の動物に出会えた割合</td><td>“最初の奇跡”が届いているか</td></tr>
+    <tr><td>D1 / D7 / D30 継続率</td><td>翌日・1週間・1ヶ月の定着</td><td>“また来たくなる”を実現できているか</td></tr>
+    <tr><td>平均プレイ時間／セッション</td><td>1回の没入度</td><td>居心地のよさの指標</td></tr>
+    <tr><td>図鑑達成率の分布</td><td>収集の進み方</td><td>長期目標が機能しているか</td></tr>
+    <tr><td>フォト共有・島訪問数</td><td>口コミ・コミュニティ活性</td><td>自然拡散の強さ</td></tr>
+    <tr><td>課金転換率／ARPPU</td><td>健全な収益</td><td>体験を損なわず収益化できているか</td></tr>
+  </table>
+
+  <h3>🎯 ローンチ時の成功イメージ</h3>
+  <div class="kpi">
+    <div class="box"><div class="num">90%+</div><div class="lbl">チュートリアル突破率</div></div>
+    <div class="box"><div class="num">40%+</div><div class="lbl">D7 継続率（目標）</div></div>
+    <div class="box"><div class="num">高評価</div><div class="lbl">ストア評価・レビュー満足度</div></div>
+    <div class="box"><div class="num">SNS拡散</div><div class="lbl">フォト投稿の自走</div></div>
+  </div>
+  <p class="tbl-note">※ 数値は仮の目標値。テスト結果をもとに調整します。</p>
+
+  <h3>🔍 定性的な成功</h3>
+  <blockquote>「疲れた日に開いた」「動物が定住してくれて泣いた」「気づいたら2時間たってた」——こうした声が集まることを、数字以上の成功と位置づけます。</blockquote>
+
+  <h3>📡 改善サイクル</h3>
+  <p>ローンチ後は、プレイデータとコミュニティの声を両輪に、<b>2〜4週ごとの小改善＋季節ごとの大型更新</b>を回します。離脱ポイントの可視化、要望の優先度づけ、ABテストを通じて、“やさしさ”の質を継続的に高めます。</p>
+</section>
+
+<!-- ============ 22 ============ -->
+<section id="s22">
+  <div class="sec-head"><div class="sec-no">22</div><div><span class="en">FUTURE</span><h2>将来展望・拡張計画</h2></div></div>
+  <p class="lead">ローンチはゴールではなくスタート。島は、プレイヤーと一緒に何年もかけて育っていく。</p>
+
+  <h3>🌱 コンテンツ拡張</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🗺️</span><h3>新エリア・新バイオーム</h3><p>海・洞窟・高山・南国・雪国など、新たな環境と、それぞれに固有の動物を追加。</p></div>
+    <div class="card"><span class="ico">🐉</span><h3>レア・幻の動物</h3><p>厳しい条件で呼べる“幻のフレンズ”や、季節限定の特別な来客でやり込みを深化。</p></div>
+    <div class="card"><span class="ico">🎏</span><h3>季節・コラボイベント</h3><p>四季の行事を毎年アップデート。他IPとの心地よいコラボも。</p></div>
+    <div class="card"><span class="ico">🛠️</span><h3>クリエイト強化</h3><p>地形・装飾の表現拡張、ユーザー作の島・デザイン共有プラットフォーム。</p></div>
+  </div>
+
+  <h3>🤝 コミュニティの成長</h3>
+  <p>プレイヤーの作品（島・庭・物語）が次のプレイヤーを呼ぶ<b>共有エコシステム</b>を育てます。公式コンテスト、フォトギャラリー、人気の島ランキング（競争でなく“発見”のための）など、ユーザー創作を主役にする仕掛けを拡充します。</p>
+
+  <h3>🚀 IP・メディア展開</h3>
+  <table>
+    <tr><th>展開</th><th>内容</th></tr>
+    <tr><td>グッズ・ぬいぐるみ</td><td>愛されキャラを立体化。愛着を“手元”に。</td></tr>
+    <tr><td>サウンドトラック</td><td>癒しのBGM集。睡眠・作業用として日常に寄り添う。</td></tr>
+    <tr><td>絵本・コミック</td><td>島の動物たちの小さな物語を、別メディアで。</td></tr>
+    <tr><td>教育・福祉連携</td><td>“やさしい体験”を活かし、こころのケア・環境教育の文脈での活用も検討。</td></tr>
+  </table>
+
+  <h3>🌏 長期ビジョン</h3>
+  <blockquote>「アニマルフレンズ」を、一過性のヒットではなく、何年経っても“ただいま”と帰れる<b>シリーズ／プラットフォーム</b>へ。プレイヤーの人生の節目に寄り添い、世代を越えて受け継がれる“いきものの楽園”を目指します。</blockquote>
+
+  <hr class="soft">
+
+  <div class="callout sun" style="text-align:center;font-size:1.1rem;">
+    <b>あなたが変える地形が、誰かの“すみか”になる。</b><br>
+    小さな川の一本から、命あふれる島の物語が始まります。<br>
+    ——「アニマルフレンズ」企画書 おわり——
+  </div>
+</section>
+
+<!-- ============ APPENDIX A ============ -->
+<section id="apxA">
+  <div class="sec-head"><div class="sec-no">A</div><div><span class="en">APPENDIX A</span><h2>付録：動物フレンズ全リスト（50種）</h2></div></div>
+  <p class="lead">製品版で実装を予定している動物フレンズの全体像です。来訪条件・季節・性格傾向の一覧を示します。</p>
+  <p>※ レア度は ★（来やすい）〜★★★★★（最難関）。性格は代表例で、個体ごとにバリエーションがあります。来訪条件は調整中の暫定値です。</p>
+  <table>
+    <tr><th>No.</th><th>動物</th><th>バイオーム</th><th>主な来訪条件</th><th>季節</th><th>性格傾向</th><th>レア度</th></tr>
+    <tr><td>01</td><td>🐰 うさぎ</td><td>草原・花畑</td><td>緑量＋花3種以上</td><td>春・夏</td><td>のんびり屋</td><td>★</td></tr>
+    <tr><td>02</td><td>🐿️ りす</td><td>雑木林</td><td>実のなる木5本</td><td>秋</td><td>げんき者</td><td>★</td></tr>
+    <tr><td>03</td><td>🐸 かえる</td><td>川辺・湿地</td><td>水辺度・中</td><td>春・夏</td><td>もの知り</td><td>★</td></tr>
+    <tr><td>04</td><td>🐢 かめ</td><td>池</td><td>静かな池8マス</td><td>通年</td><td>もの知り</td><td>★★</td></tr>
+    <tr><td>05</td><td>🦆 かも</td><td>川辺</td><td>ゆるい流れの川</td><td>春・秋</td><td>のんびり屋</td><td>★</td></tr>
+    <tr><td>06</td><td>🐝 みつばち</td><td>花畑</td><td>蜜源の花5種</td><td>春・夏</td><td>げんき者</td><td>★</td></tr>
+    <tr><td>07</td><td>🦋 ちょう</td><td>花畑</td><td>花畑6マス</td><td>春・夏</td><td>おしゃれ</td><td>★</td></tr>
+    <tr><td>08</td><td>🦔 はりねずみ</td><td>雑木林</td><td>落ち葉の堆積</td><td>秋</td><td>もの静か</td><td>★★</td></tr>
+    <tr><td>09</td><td>🦦 かわうそ</td><td>川・滝</td><td>滝つぼ＋清流</td><td>夏</td><td>げんき者</td><td>★★</td></tr>
+    <tr><td>10</td><td>🦌 しか</td><td>深い森</td><td>静けさ・高／成木20本</td><td>秋・冬</td><td>もの静か</td><td>★★★</td></tr>
+    <tr><td>11</td><td>🐦 カワセミ</td><td>川辺</td><td>清流（魚生息）</td><td>夏</td><td>おしゃれ</td><td>★★</td></tr>
+    <tr><td>12</td><td>🐻 こぐま</td><td>森・川</td><td>実の木＋魚の多い川</td><td>秋</td><td>あまえんぼう</td><td>★★★</td></tr>
+    <tr><td>13</td><td>🦇 こうもり</td><td>洞窟</td><td>岩場に洞窟</td><td>通年（夜）</td><td>もの静か</td><td>★★★</td></tr>
+    <tr><td>14</td><td>🦢 はくちょう</td><td>大きな池</td><td>水面16マス＋静けさ</td><td>冬</td><td>おしゃれ</td><td>★★★★</td></tr>
+    <tr><td>15</td><td>🦊 きつね</td><td>森のはずれ</td><td>森を残しつつ整備</td><td>秋・冬</td><td>もの静か</td><td>★★★★</td></tr>
+    <tr><td>16</td><td>🐗 いのしし</td><td>深い森</td><td>どんぐりの木10本</td><td>秋</td><td>げんき者</td><td>★★</td></tr>
+    <tr><td>17</td><td>🦡 あなぐま</td><td>雑木林</td><td>土壌の豊かさ・高</td><td>通年</td><td>のんびり屋</td><td>★★</td></tr>
+    <tr><td>18</td><td>🐭 のねずみ</td><td>草原</td><td>草むら多め</td><td>通年</td><td>あまえんぼう</td><td>★</td></tr>
+    <tr><td>19</td><td>🦫 ビーバー</td><td>川</td><td>木材豊富＋川</td><td>春・夏</td><td>もの知り</td><td>★★★</td></tr>
+    <tr><td>20</td><td>🦉 ふくろう</td><td>深い森</td><td>大木＋静けさ</td><td>通年（夜）</td><td>もの知り</td><td>★★★</td></tr>
+    <tr><td>21</td><td>🐓 にわとり</td><td>草原・農地</td><td>畑エリア</td><td>通年</td><td>げんき者</td><td>★</td></tr>
+    <tr><td>22</td><td>🦃 しちめんちょう</td><td>草原</td><td>広い草原12マス</td><td>秋</td><td>おしゃれ</td><td>★★</td></tr>
+    <tr><td>23</td><td>🦚 くじゃく</td><td>花畑・庭園</td><td>景観評価・高</td><td>春</td><td>おしゃれ</td><td>★★★★</td></tr>
+    <tr><td>24</td><td>🦜 おうむ</td><td>南国（DLC）</td><td>ヤシ＋暖地</td><td>夏</td><td>げんき者</td><td>★★★</td></tr>
+    <tr><td>25</td><td>🐧 ぺんぎん</td><td>雪辺（DLC）</td><td>氷の水辺</td><td>冬</td><td>のんびり屋</td><td>★★★★</td></tr>
+    <tr><td>26</td><td>🦭 あざらし</td><td>海辺</td><td>砂浜＋岩場</td><td>冬</td><td>のんびり屋</td><td>★★★</td></tr>
+    <tr><td>27</td><td>🐠 さかな各種</td><td>水辺全般</td><td>水質・季節で変化</td><td>通年</td><td>—（図鑑）</td><td>★〜★★★</td></tr>
+    <tr><td>28</td><td>🦀 かに</td><td>海辺・川</td><td>岩のある水辺</td><td>夏</td><td>—（図鑑）</td><td>★</td></tr>
+    <tr><td>29</td><td>🐌 かたつむり</td><td>湿地</td><td>雨の日＋緑</td><td>梅雨</td><td>のんびり屋</td><td>★</td></tr>
+    <tr><td>30</td><td>🐞 てんとうむし</td><td>花畑</td><td>花＋草</td><td>春</td><td>—（図鑑）</td><td>★</td></tr>
+    <tr><td>31</td><td>🦗 こおろぎ</td><td>草原</td><td>秋の草むら</td><td>秋</td><td>—（図鑑）</td><td>★</td></tr>
+    <tr><td>32</td><td>✨ ほたる</td><td>清流・湿地</td><td>水質・高／夜</td><td>初夏</td><td>—（図鑑）</td><td>★★★</td></tr>
+    <tr><td>33</td><td>🐝 すずめばち</td><td>森</td><td>大木の樹液</td><td>夏</td><td>—（図鑑）</td><td>★★</td></tr>
+    <tr><td>34</td><td>🦅 たか</td><td>岩山・高地</td><td>標高4段の崖</td><td>通年</td><td>もの静か</td><td>★★★★</td></tr>
+    <tr><td>35</td><td>🦩 フラミンゴ</td><td>湿地（DLC）</td><td>浅瀬＋暖地</td><td>夏</td><td>おしゃれ</td><td>★★★★</td></tr>
+    <tr><td>36</td><td>🐺 おおかみ</td><td>深い森・高地</td><td>静けさ最大級</td><td>冬</td><td>もの静か</td><td>★★★★★</td></tr>
+    <tr><td>37</td><td>🐈 のらねこ</td><td>島全般</td><td>住人がにぎわう島</td><td>通年</td><td>あまえんぼう</td><td>★★</td></tr>
+    <tr><td>38</td><td>🐕 いぬ</td><td>島全般</td><td>管理人ランク・中</td><td>通年</td><td>げんき者</td><td>★★</td></tr>
+    <tr><td>39</td><td>🐑 ひつじ</td><td>草原</td><td>広い牧草地</td><td>春</td><td>のんびり屋</td><td>★★</td></tr>
+    <tr><td>40</td><td>🐐 やぎ</td><td>岩山</td><td>段差のある斜面</td><td>通年</td><td>げんき者</td><td>★★</td></tr>
+    <tr><td>41</td><td>🐄 うし</td><td>草原・農地</td><td>大牧草地16マス</td><td>春・夏</td><td>のんびり屋</td><td>★★★</td></tr>
+    <tr><td>42</td><td>🐎 うま</td><td>草原</td><td>広い平地＋柵</td><td>通年</td><td>げんき者</td><td>★★★</td></tr>
+    <tr><td>43</td><td>🦙 アルパカ</td><td>高地（DLC）</td><td>高原の草地</td><td>通年</td><td>おしゃれ</td><td>★★★★</td></tr>
+    <tr><td>44</td><td>🦔 もぐら</td><td>農地</td><td>耕した土壌</td><td>通年</td><td>もの静か</td><td>★★</td></tr>
+    <tr><td>45</td><td>🦎 とかげ</td><td>岩場・砂地</td><td>日照・高</td><td>夏</td><td>—（図鑑）</td><td>★★</td></tr>
+    <tr><td>46</td><td>🐢 すっぽん</td><td>沼</td><td>よどんだ水</td><td>夏</td><td>もの静か</td><td>★★★</td></tr>
+    <tr><td>47</td><td>🦢 おしどり</td><td>池</td><td>紅葉＋静かな池</td><td>秋</td><td>おしゃれ</td><td>★★★★</td></tr>
+    <tr><td>48</td><td>🕊️ はと</td><td>広場</td><td>にぎわい度・高</td><td>通年</td><td>のんびり屋</td><td>★</td></tr>
+    <tr><td>49</td><td>🦝 あらいぐま</td><td>川辺・林</td><td>川＋夜行</td><td>通年（夜）</td><td>あまえんぼう</td><td>★★</td></tr>
+    <tr><td>50</td><td>🐉 まぼろしの主</td><td>すべて</td><td>図鑑ほぼ完成＋特別条件</td><td>特別</td><td>謎</td><td>★★★★★</td></tr>
+  </table>
+  <p class="tbl-note">※ No.50「まぼろしの主」は、島が真に豊かな楽園になったときだけ姿を見せる、本作の象徴的な存在です。詳細は秘匿。</p>
+</section>
+
+<!-- ============ APPENDIX B ============ -->
+<section id="apxB">
+  <div class="sec-head"><div class="sec-no">B</div><div><span class="en">APPENDIX B</span><h2>付録：バイオーム詳細ガイド</h2></div></div>
+  <p class="lead">島づくりの基礎となる9つのバイオーム。それぞれの作り方と、呼べる生きものの傾向を解説します。</p>
+
+  <div class="grid2">
+    <div class="card"><h3>🌳 ふかい森</h3><p><b>作り方：</b>成木を密に植え、間引きを控え、舗装を避けて「静けさ」を高める。<br><b>呼べる：</b>しか、ふくろう、きつね、いのしし。<br><b>コツ：</b>広さと木の本数が条件。手を入れすぎないことが鍵。</p></div>
+    <div class="card"><h3>🌾 草原</h3><p><b>作り方：</b>平らな土地に草タイルを広げ、低木と野の花を点在させる。<br><b>呼べる：</b>うさぎ、のねずみ、ひつじ、うま。<br><b>コツ：</b>広い見晴らしが好まれる。</p></div>
+    <div class="card"><h3>💧 川辺・湿地</h3><p><b>作り方：</b>みずひきジョウロで流れをつくり、水辺の草を植える。<br><b>呼べる：</b>かえる、かも、かわうそ、カワセミ。<br><b>コツ：</b>清流ほど美しい鳥が来る。</p></div>
+    <div class="card"><h3>🏖️ 砂浜・海辺</h3><p><b>作り方：</b>島の縁を砂タイルにし、岩場と貝を配置。<br><b>呼べる：</b>かに、あざらし、海鳥。<br><b>コツ：</b>潮の満ち引き演出と相性◎。</p></div>
+    <div class="card"><h3>🌸 花畑</h3><p><b>作り方：</b>多種の花を彩りよく敷きつめ、蜜源を意識する。<br><b>呼べる：</b>みつばち、ちょう、てんとうむし、くじゃく。<br><b>コツ：</b>花の「種類数」が来訪を左右する。</p></div>
+    <div class="card"><h3>⛰️ 岩山・高地</h3><p><b>作り方：</b>段差スコップで4段の崖をつくり、岩タイルで仕上げる。<br><b>呼べる：</b>たか、やぎ、こうもり（洞窟）。<br><b>コツ：</b>高低差そのものが条件。</p></div>
+    <div class="card"><h3>🍂 雑木林</h3><p><b>作り方：</b>落葉樹を中庸の密度で植え、落ち葉を残す。<br><b>呼べる：</b>はりねずみ、あなぐま、りす。<br><b>コツ：</b>秋に最も活気づく。</p></div>
+    <div class="card"><h3>🪷 池・沼</h3><p><b>作り方：</b>広く深い水面をつくり、水草・睡蓮を浮かべる。<br><b>呼べる：</b>かめ、はくちょう、おしどり、すっぽん。<br><b>コツ：</b>水面の広さがレア客の鍵。</p></div>
+    <div class="card"><h3>🌲 針葉樹林</h3><p><b>作り方：</b>常緑の針葉樹を寒色系で配置、冬景色を意識。<br><b>呼べる：</b>冬のレア客、おおかみ（高難度）。<br><b>コツ：</b>冬の演出と組み合わせると幻想的。</p></div>
+  </div>
+
+  <h3>🧪 バイオームの「混ぜ方」</h3>
+  <p>真価は<b>バイオームの境界（エコトーン）</b>にあります。森と草原の境、川と花畑の接点——異なる環境が出会う場所では、両方の生きものが集まり、特別な来訪者が現れやすくなります。単一の環境を広げるより、<b>多様な環境を隣り合わせる</b>方が、にぎわい度は飛躍的に高まります。これが上級者の島づくりの極意です。</p>
+</section>
+
+<!-- ============ APPENDIX C ============ -->
+<section id="apxC">
+  <div class="sec-head"><div class="sec-no">C</div><div><span class="en">APPENDIX C</span><h2>付録：用語集</h2></div></div>
+  <p class="lead">本企画書および本作で用いる主な用語の定義をまとめます。</p>
+  <table>
+    <tr><th>用語</th><th>意味</th></tr>
+    <tr><td>管理人（しまもり）</td><td>プレイヤーの役割。島の自然を整え、動物を見守る世話役。</td></tr>
+    <tr><td>めぐりの島</td><td>本作の舞台となる、季節が何度もめぐる不思議な島。</td></tr>
+    <tr><td>タイル／マス</td><td>島を構成する1m四方の最小単位。地形編集の基本グリッド。</td></tr>
+    <tr><td>バイオーム</td><td>地形・植生・水などの組み合わせで生まれる生態区。</td></tr>
+    <tr><td>エコトーン</td><td>異なるバイオームが接する境界。多様な生きものが集う。</td></tr>
+    <tr><td>来訪者（ビジター）</td><td>条件を満たして島を訪れる、定住前の動物。</td></tr>
+    <tr><td>フレンズ</td><td>絆を深めて島に定住した動物。すみかを構える。</td></tr>
+    <tr><td>親友（ベストフレンズ）</td><td>最も信頼関係の深い動物。特別なイベントが解放。</td></tr>
+    <tr><td>仲良し度</td><td>動物との親密さを表す内部指標。交流で上昇。</td></tr>
+    <tr><td>環境パラメータ</td><td>緑量・水辺度・日照・静けさなど、来訪条件を決める要素。</td></tr>
+    <tr><td>にぎわい度</td><td>虫・小動物の活性を表す、島の活気の指標。</td></tr>
+    <tr><td>静けさ</td><td>人の手が入りすぎていない自然度。臆病な動物に重要。</td></tr>
+    <tr><td>島ランク</td><td>島全体の豊かさ・景観を総合した評価。加点方式。</td></tr>
+    <tr><td>どんぐり</td><td>島の素朴な通貨。採集・依頼で得て、買い物に使う。</td></tr>
+    <tr><td>レシピ</td><td>クラフトの設計図。交流・イベントで習得する。</td></tr>
+    <tr><td>みずひきジョウロ</td><td>川・池など水地形をつくる中盤の主要ツール。</td></tr>
+    <tr><td>下書きモード</td><td>確定せずに地形プランを引ける設計図レイヤー。</td></tr>
+    <tr><td>情景報酬</td><td>環境の変化や新しい出会いそのものを報酬とする設計思想。</td></tr>
+    <tr><td>ドリームコード</td><td>自分の島を他者に公開・見学してもらうための合言葉。</td></tr>
+  </table>
+</section>
+
+<!-- ============ APPENDIX D ============ -->
+<section id="apxD">
+  <div class="sec-head"><div class="sec-no">D</div><div><span class="en">APPENDIX D</span><h2>付録：想定Q&amp;A</h2></div></div>
+  <p class="lead">企画レビューやユーザーから想定される質問と、それへの回答をまとめます。</p>
+
+  <h3>🎮 ゲーム内容について</h3>
+  <blockquote><b>Q. 戦闘やゲームオーバーはありますか？</b><br>A. ありません。本作は「観察」「発見」「癒し」「環境づくり」を楽しむゲームで、敵もHPもありません。失敗しても季節は何度でもめぐり、やり直せます。</blockquote>
+  <blockquote><b>Q. 動物はどうやって増えますか？</b><br>A. 抽選やガチャではなく、<b>環境を整えること</b>で自然に来訪します。「花畑をつくる→チョウが来る」というように、あなたの島づくりが直接の招待状になります。</blockquote>
+  <blockquote><b>Q. 操作が難しそうですが、初心者でも遊べますか？</b><br>A. 基本は<b>キーボードとマウスのクリック</b>だけ。「行きたい所をクリック」「編集したいマスをクリック」と直感的で、説明書なしでも遊べるよう設計しています。家庭用機ではコントローラーやタッチにも対応します。</blockquote>
+  <blockquote><b>Q. 地形を間違えてつくってしまったら？</b><br>A. 連続アンドゥでいつでも戻せます。模様替えも無制限。「取り返しのつかない失敗」を作らないことが本作の約束です。</blockquote>
+
+  <h3>👨‍👩‍👧 安心・対象について</h3>
+  <blockquote><b>Q. 子どもに遊ばせても大丈夫ですか？</b><br>A. 全年齢対象（CERO A 想定）です。暴力表現はなく、オンラインのチャットも定型文・スタンプ中心で、安全に配慮しています。</blockquote>
+  <blockquote><b>Q. 課金しないと楽しめませんか？</b><br>A. いいえ。課金は装飾や時短など“あれば嬉しい”範囲に限定し、<b>無課金でもゲームの本質をすべて</b>楽しめます。性能で差がつく課金（Pay to Win）は一切行いません。</blockquote>
+
+  <h3>📡 オンライン・運営について</h3>
+  <blockquote><b>Q. ネットにつながないと遊べませんか？</b><br>A. オフラインだけで完全に楽しめます。フレンドの島訪問などオンライン要素は“プラスα”です。</blockquote>
+  <blockquote><b>Q. 発売後のアップデートはありますか？</b><br>A. 季節イベントや新しい動物・エリアを継続的に追加する、長期運営型タイトルを目指しています。</blockquote>
+</section>
+
+<!-- ============ APPENDIX E ============ -->
+<section id="apxE">
+  <div class="sec-head"><div class="sec-no">E</div><div><span class="en">APPENDIX E</span><h2>付録：サンプル・プレイ日記</h2></div></div>
+  <p class="lead">実際のプレイ体験を、ある管理人の一年の日記としてイメージしました。本作が届けたい“情景”の見本です。</p>
+
+  <h3>🌸 春・はじまりの季節</h3>
+  <p>島に着いた初日、ホロウじいさんに案内されて、まずは小さな川を一本ひいてみた。みずひきジョウロで土をなぞると、きらきらと水が流れ出す。その夜、川辺に小さな影。カエルの「ケロ太」だった。「やあ、いい水辺じゃないか」——はじめての友だち。うれしくて、しばらく川のそばに座っていた。</p>
+  <p>翌週、草地に野の花を植えてみると、数日でチョウが舞いはじめた。花の種類を増やすほど、種類の違うチョウが来る。図鑑がどんどん埋まっていく。気づけば、最初は寂しかった島に、小さな羽音が満ちていた。</p>
+
+  <h3>🌻 夏・にぎわいの季節</h3>
+  <p>川を上流までのばして、段差スコップで崖をつくり、滝にしてみた。滝つぼができた朝、水しぶきの中で遊ぶカワウソを見つけた。すべり台みたいに滝を滑って遊んでいて、見ているだけで笑ってしまう。夜には、清流のしるしだという蛍が、ぽつ、ぽつ、と灯りはじめた。</p>
+  <p>夏祭り「みなも祭り」では、フレンズたちと夜店をまわった。浴衣に着替えたうさぎが、花火を見上げて「きれいだねえ」とつぶやく。誰かと見る花火は、ひとりのときよりずっと大きく見えた。</p>
+
+  <h3>🍁 秋・みのりの季節</h3>
+  <p>雑木林の落ち葉を残しておいたら、はりねずみが住みついた。実のなる木を増やすと、こぐまがやってきて、甘い木の実をほおばっている。森を広く、静かに保っていた一角に、ある夕方、しかが立っていた。気高くて、少し臆病。近づきすぎないように、そっと見守る。この子が島にいてくれることが、なんだか誇らしい。</p>
+  <p>収穫祭「みのり祭」で、育てた果実を出品した。順位なんてどうでもよくて、フレンズたちが「おいしいね」と笑ってくれるのが、いちばんのごほうびだった。</p>
+
+  <h3>❄️ 冬・しずけさの季節</h3>
+  <p>島が雪化粧した。広い池の氷の上に、白鳥が舞い降りた朝の美しさは、忘れられない。お家の暖炉に火を入れて、窓の外を眺める時間が好きになった。フレンズたちは、寒い日でも会いに行くと、いつもよりちょっとうれしそうだ。</p>
+  <p>「ゆきあかり」の夜、島じゅうにイルミネーションを灯した。一年かけて整えた地形、呼び寄せた仲間たち、育てた森と川。最初は何もなかった島が、今はこんなにあたたかい。——そして気づく。次の春が来れば、また新しい出会いがあるのだと。島の物語は、何度でもめぐっていく。</p>
+
+  <blockquote>この日記のような“小さな幸せの連なり”を、すべてのプレイヤーに届けること。それが「アニマルフレンズ」開発のゴールです。</blockquote>
+</section>
+
+<!-- ============ APPENDIX F ============ -->
+<section id="apxF">
+  <div class="sec-head"><div class="sec-no">F</div><div><span class="en">APPENDIX F</span><h2>付録：機能実装チェックリスト</h2></div></div>
+  <p class="lead">開発スコープを俯瞰するための、主要機能の一覧です。優先度（必須／推奨／将来）で整理します。</p>
+  <table>
+    <tr><th>カテゴリ</th><th>機能</th><th>優先度</th></tr>
+    <tr><td>地形</td><td>タイル整地・段差・標高4段</td><td>必須</td></tr>
+    <tr><td>地形</td><td>水流・川・池・滝</td><td>必須</td></tr>
+    <tr><td>地形</td><td>橋・坂・階段</td><td>必須</td></tr>
+    <tr><td>地形</td><td>連続アンドゥ／リドゥ・プレビュー</td><td>必須</td></tr>
+    <tr><td>地形</td><td>範囲選択・ミラー・下書き</td><td>推奨</td></tr>
+    <tr><td>生態系</td><td>植物の成長サイクル</td><td>必須</td></tr>
+    <tr><td>生態系</td><td>環境パラメータ判定</td><td>必須</td></tr>
+    <tr><td>生態系</td><td>食物連鎖的な連鎖来訪</td><td>推奨</td></tr>
+    <tr><td>動物</td><td>来訪→定住→親友の段階</td><td>必須</td></tr>
+    <tr><td>動物</td><td>性格システム・個体差</td><td>必須</td></tr>
+    <tr><td>動物</td><td>交流（会話・贈与・依頼）</td><td>必須</td></tr>
+    <tr><td>動物</td><td>動物どうしの関係</td><td>推奨</td></tr>
+    <tr><td>動物</td><td>50種＋レア・幻の動物</td><td>必須／一部将来</td></tr>
+    <tr><td>クラフト</td><td>素材採集・レシピ・作業台</td><td>必須</td></tr>
+    <tr><td>クラフト</td><td>家具・装飾・すみか</td><td>必須</td></tr>
+    <tr><td>クラフト</td><td>マイホーム内装・レイアウト保存</td><td>推奨</td></tr>
+    <tr><td>時間</td><td>朝昼夕夜・実時間連動</td><td>必須</td></tr>
+    <tr><td>時間</td><td>四季・天候・季節イベント</td><td>必須</td></tr>
+    <tr><td>収集</td><td>各種図鑑・おもいでアルバム</td><td>必須</td></tr>
+    <tr><td>収集</td><td>島ランク・評価システム</td><td>必須</td></tr>
+    <tr><td>撮影</td><td>フォトモード・共有</td><td>推奨</td></tr>
+    <tr><td>マルチ</td><td>島の訪問・招待</td><td>推奨</td></tr>
+    <tr><td>マルチ</td><td>協力編集・おすそわけ</td><td>将来</td></tr>
+    <tr><td>システム</td><td>キー再割当・アクセシビリティ</td><td>必須</td></tr>
+    <tr><td>システム</td><td>クラウドセーブ</td><td>必須</td></tr>
+    <tr><td>運営</td><td>シーズン更新・DLC基盤</td><td>必須（運営）</td></tr>
+  </table>
+
+  <hr class="soft">
+  <h3>📝 文書管理情報</h3>
+  <table>
+    <tr><th>項目</th><th>内容</th></tr>
+    <tr><td>文書名</td><td>「アニマルフレンズ」企画書 / Game Design Document</td></tr>
+    <tr><td>バージョン</td><td>v1.0</td></tr>
+    <tr><td>発行日</td><td>2026年5月23日</td></tr>
+    <tr><td>区分</td><td>企画提案用ドキュメント（社外秘）</td></tr>
+    <tr><td>備考</td><td>記載の数値・条件・仕様は開発過程で調整される暫定値です。</td></tr>
+  </table>
+</section>
+
+<!-- ============ APPENDIX G ============ -->
+<section id="apxG">
+  <div class="sec-head"><div class="sec-no">G</div><div><span class="en">APPENDIX G</span><h2>付録：レシピ・素材リファレンス</h2></div></div>
+  <p class="lead">クラフトの具体的なイメージをつかむための、代表的なレシピと必要素材の一覧です（暫定）。</p>
+
+  <h3>🛠️ 道具レシピ</h3>
+  <table>
+    <tr><th>道具</th><th>必要素材</th><th>習得条件</th><th>効果</th></tr>
+    <tr><td>整地ハンマー（改）</td><td>丸太×3／石×2</td><td>管理人ランク2</td><td>整地範囲が3×3に拡大</td></tr>
+    <tr><td>みずひきジョウロ</td><td>板×4／鉄×1／水草×2</td><td>ケロ太と仲良し</td><td>水地形の敷設が可能に</td></tr>
+    <tr><td>はしわたしキット</td><td>丸太×6／板×4</td><td>ランク3</td><td>橋・坂・階段を架設</td></tr>
+    <tr><td>がんせきノミ</td><td>鉄×3／きらめく原石×1</td><td>ランク5</td><td>岩・洞窟・石畳の造形</td></tr>
+    <tr><td>採集かご（大）</td><td>枝×8／つる×3</td><td>図鑑20種</td><td>一度に運べる量が増加</td></tr>
+  </table>
+
+  <h3>🪑 家具・装飾レシピ</h3>
+  <table>
+    <tr><th>家具</th><th>必要素材</th><th>カテゴリ</th></tr>
+    <tr><td>木のベンチ</td><td>板×4／枝×2</td><td>くつろぎ</td></tr>
+    <tr><td>石の灯篭</td><td>石×6</td><td>和風・夜景</td></tr>
+    <tr><td>小さな噴水</td><td>石×8／鉄×2／水草×1</td><td>水景・広場</td></tr>
+    <tr><td>花のアーチ</td><td>枝×6／花×10</td><td>庭園・記念</td></tr>
+    <tr><td>巣箱（小鳥用）</td><td>板×3／木の実×2</td><td>動物のすみか</td></tr>
+    <tr><td>水辺の桟橋</td><td>丸太×5／板×3</td><td>動物のすみか・川辺</td></tr>
+    <tr><td>かがり火</td><td>石×4／枝×6</td><td>夜・お祭り</td></tr>
+    <tr><td>ハンモック</td><td>つる×4／布×2</td><td>夏・くつろぎ</td></tr>
+    <tr><td>雪だるま</td><td>雪玉×3</td><td>冬・季節限定</td></tr>
+    <tr><td>もみじの絨毯</td><td>落ち葉×12</td><td>秋・地面装飾</td></tr>
+  </table>
+
+  <h3>🍯 加工・特産品</h3>
+  <table>
+    <tr><th>品目</th><th>素材／入手</th><th>用途</th></tr>
+    <tr><td>はちみつ</td><td>みつばちのフレンズから</td><td>料理・贈りもの・販売</td></tr>
+    <tr><td>木の実ジャム</td><td>木の実×5／作業台</td><td>動物の好物・販売</td></tr>
+    <tr><td>押し花</td><td>花×3</td><td>装飾・図鑑</td></tr>
+    <tr><td>星のアクセサリー</td><td>星のかけら×2／きらめく原石×1</td><td>イベント・親友への贈りもの</td></tr>
+  </table>
+  <p class="tbl-note">※ 数値・素材構成はバランス調整中の暫定値であり、製品版で変更されます。</p>
+</section>
+
+<!-- ============ APPENDIX H ============ -->
+<section id="apxH">
+  <div class="sec-head"><div class="sec-no">H</div><div><span class="en">APPENDIX H</span><h2>付録：ストーリー・世界設定の深掘り</h2></div></div>
+  <p class="lead">ゲームプレイの背景にある、ささやかで心あたたまる物語の骨子です。</p>
+
+  <h3>📜 島の伝承</h3>
+  <p>「めぐりの島」には、古くからこんな言い伝えがあります。——<i>「この島は、世話をする者の心を映す。やさしく整えれば、いきものが集い、楽園となる。忘れられれば、静かに眠りにつく」</i>。かつてこの島には代々の管理人がいて、自然と動物の橋渡しをしてきました。しかし最後の管理人が島を去って久しく、島はうとうとと眠っていたのです。</p>
+
+  <h3>✉️ プロローグ</h3>
+  <p>ある日、プレイヤーのもとに差出人不明の一通の手紙が届きます。中にあったのは、見たこともない島の地図と、たった一言。<b>「あなたを待っています」</b>。導かれるように島に渡ると、出迎えてくれたのは年老いたフクロウ、ホロウじいさん。「おお、ようやく来てくれたか。新しい管理人さんよ」。こうして、眠れる島を再びいきものでにぎわう楽園へと甦らせる、静かな冒険が始まります。</p>
+
+  <h3>🌟 物語の進み方</h3>
+  <p>本作のストーリーは、プレイヤーを縛る一本道ではありません。島が豊かになるにつれて、ホロウじいさんが島の過去を少しずつ語り、フレンズたちがそれぞれの小さな物語を見せてくれます。<b>大きな筋書きより、無数の小さなエピソードの積み重ね</b>——それが本作の語り口です。クライマックスは、島が真の楽園となったときに姿を現す「まぼろしの主（No.50）」との出会い。それは終わりではなく、新たな季節のはじまりを告げます。</p>
+
+  <h3>🎭 主要キャラの背景</h3>
+  <table>
+    <tr><th>キャラ</th><th>背景設定</th></tr>
+    <tr><td>ホロウじいさん</td><td>歴代の管理人を見守ってきた長寿のフクロウ。島の記憶そのもの。厳しさの中にやさしさがある。</td></tr>
+    <tr><td>クリ</td><td>島で生まれた子リス。前の管理人を知らない世代で、新しい管理人＝プレイヤーと共に成長していく。プレイヤーの分身的存在。</td></tr>
+    <tr><td>ケロ太</td><td>水辺の知恵者。実は前の管理人と親しかった古株で、ときどき昔話を聞かせてくれる。</td></tr>
+    <tr><td>コハク</td><td>各地を旅してきたキツネ。多くを語らないが、島の“静けさ”を何より大切にしている。彼が住みつくことは、島が本物の自然を取り戻した証。</td></tr>
+  </table>
+
+  <h3>💚 作品が伝えたいこと</h3>
+  <blockquote>「手をかけたぶんだけ、世界はやさしく応えてくれる」。自然と、いきものと、そして自分自身のペースと——丁寧に向き合うことのよろこびを、説教ではなく“体験”として届けたい。それが「アニマルフレンズ」という作品の願いです。</blockquote>
+</section>
+
+<!-- ============ APPENDIX I ============ -->
+<section id="apxI">
+  <div class="sec-head"><div class="sec-no">I</div><div><span class="en">APPENDIX I</span><h2>付録：競合分析と差別化の深掘り</h2></div></div>
+  <p class="lead">類似ジャンルの強みと弱みを分析し、本作がどこで勝負するかを明確にします。</p>
+
+  <h3>🔬 ジャンル別の特徴整理</h3>
+  <table>
+    <tr><th>ジャンル</th><th>強み</th><th>弱み・物足りなさ</th><th>本作の取り込み方</th></tr>
+    <tr><td>どうぶつ系スローライフ</td><td>愛されキャラ・癒し・収集の中毒性</td><td>地形編集が景観止まり／目的感の薄さ</td><td>地形を生態系に直結させ“能動的な意味”を付与</td></tr>
+    <tr><td>サンドボックス建築</td><td>圧倒的な自由度・創作性・配信映え</td><td>とっつきにくさ／癒し要素の弱さ／生命感の不足</td><td>マス目で敷居を下げ、動物の生命感を加える</td></tr>
+    <tr><td>農場・牧場シミュ</td><td>育成の達成感・経済の手応え・キャラ恋愛</td><td>作業の単調さ／地形の固定／時間の縛り</td><td>“育てる”を生態系全体に拡張し、地形を可変に</td></tr>
+    <tr><td>ペット育成</td><td>個体への深い愛着・世話のよろこび</td><td>世界の広がりに乏しい／単調になりがち</td><td>多様な動物×環境づくりで広がりを確保</td></tr>
+  </table>
+
+  <h3>🎯 本作の“勝ち筋”</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🔗</span><h3>唯一の交差点</h3><p>「自由な地形編集」と「動物との深い関係」を、生態系というロジックで<b>因果としてつなげた</b>のは本作の独自領域。どちらか一方に強い既存作はあっても、両者を“結びつけた”作品は希少。</p></div>
+    <div class="card"><span class="ico">📸</span><h3>共有のしやすさ</h3><p>「映える島」「珍しい動物が来た」は、SNS時代に極めて拡散しやすい。作品自体が広告になる設計。</p></div>
+    <div class="card"><span class="ico">🕊️</span><h3>信頼の世界観</h3><p>非戦闘・全年齢・フェアな課金。「安心して薦められる」というブランド価値は、長期で効く強い堀になる。</p></div>
+  </div>
+
+  <h3>⚖️ 想定される批判と回答</h3>
+  <blockquote><b>「結局、既存の箱庭ゲームと似ているのでは？」</b><br>→ 表層のジャンルは近くても、コアの体験設計が異なります。本作の中心は「飾る」ではなく「招く」。プレイヤーの動機づけと達成感の源泉が、根本から違います。</blockquote>
+  <blockquote><b>「のんびり系は目的がなくて飽きやすいのでは？」</b><br>→ 図鑑・島ランク・レア動物誘致・テーマ造形という多層の自己目標を用意し、“情景報酬”で常に小さな発見を供給します。中だるみ対策はリスク項目として最優先で設計します。</blockquote>
+  <blockquote><b>「生態系シミュは重く・難しくならないか？」</b><br>→ 厳密な科学シミュではなく、プレイヤーが因果を理解できる範囲の“それっぽい”軽量ルールに割り切ります。早期プロトで体感を検証し、複雑さは徹底して抑えます。</blockquote>
+
+  <h3>🏁 結論</h3>
+  <p>レッドオーシャンに見えるジャンルの中で、本作は<b>「地形づくりが友だちづくりになる」</b>という、まだ誰も主役にしていない一点に資源を集中します。やさしさという普遍的な価値と、生態系という新しい仕組み。この組み合わせこそが、「アニマルフレンズ」を“また一つの箱庭ゲーム”で終わらせない理由です。</p>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section id="closing">
+  <div class="sec-head"><div class="sec-no">★</div><div><span class="en">CLOSING PITCH</span><h2>むすびに ── この企画に込めた思い</h2></div></div>
+  <p class="lead">最後に、私たちがこのゲームでプレイヤーに届けたいたった一つの体験を、あらためて。</p>
+  <p>世の中には、刺激的で、忙しくて、勝ち負けのあるゲームがたくさんあります。それらは素晴らしい。けれど、一日の終わりに、ただ静かに息をつける場所もまた、必要だと私たちは考えます。</p>
+  <p>「アニマルフレンズ」は、急がせません。競わせません。誰かと比べさせません。あなたが小川を一本ひけば、そこに小さな命が宿る。花を植えれば、羽音が満ちる。森を残せば、臆病な友だちがそっと顔を出す。<b>あなたの手のひらが、世界をやさしく変えていく</b>——その実感こそが、このゲームのすべてです。</p>
+  <p>地形を彫り、自然を育て、動物を招く。世界にひとつだけの“いきものの楽園”を、あなたの手で。<br>私たちは、この企画を、心からおすすめします。</p>
+  <div class="callout sun" style="text-align:center;">
+    <b>🐾 アニマルフレンズ 🌳</b><br>
+    やさしい島で、いきものと暮らす毎日を。
+  </div>
+</section>
+
+<!-- ============ APPENDIX J ============ -->
+<section id="apxJ">
+  <div class="sec-head"><div class="sec-no">J</div><div><span class="en">APPENDIX J</span><h2>付録：年間アクティビティ・カレンダー</h2></div></div>
+  <p class="lead">プレイヤーが一年を通して“いつ来ても何かある”状態をつくる、月別の見どころ設計です。</p>
+  <table>
+    <tr><th>月</th><th>季節</th><th>自然の見どころ</th><th>来訪しやすい動物</th><th>イベント／行事</th></tr>
+    <tr><td>3月</td><td>早春</td><td>つくし・梅・最初の芽吹き</td><td>うさぎ、かえる</td><td>めざめの祭り（島開き）</td></tr>
+    <tr><td>4月</td><td>春</td><td>桜・チューリップ・菜の花</td><td>ちょう、みつばち</td><td>はなまつり</td></tr>
+    <tr><td>5月</td><td>晩春</td><td>新緑・つつじ・若葉</td><td>かも、てんとうむし</td><td>新緑ウォーク</td></tr>
+    <tr><td>6月</td><td>梅雨</td><td>あじさい・雨・かたつむり</td><td>かたつむり、ほたる（初）</td><td>あめふりデー（雨限定品）</td></tr>
+    <tr><td>7月</td><td>初夏</td><td>ひまわり・蛍・清流</td><td>ほたる、カワセミ、かわうそ</td><td>ほたる観賞会</td></tr>
+    <tr><td>8月</td><td>盛夏</td><td>入道雲・川遊び・夜空</td><td>かに、とかげ、夏の魚</td><td>みなも祭り（夏祭り・花火）</td></tr>
+    <tr><td>9月</td><td>初秋</td><td>すすき・コスモス・赤とんぼ</td><td>こおろぎ、しちめんちょう</td><td>お月見の宴</td></tr>
+    <tr><td>10月</td><td>秋</td><td>紅葉・きのこ・どんぐり</td><td>りす、いのしし、はりねずみ</td><td>みのり祭（収穫祭）</td></tr>
+    <tr><td>11月</td><td>晩秋</td><td>落ち葉・冬支度・おしどり</td><td>しか、こぐま、おしどり</td><td>落ち葉アート展</td></tr>
+    <tr><td>12月</td><td>初冬</td><td>初雪・イルミネーション</td><td>はくちょう、冬の小鳥</td><td>ゆきあかり（イルミ・贈与）</td></tr>
+    <tr><td>1月</td><td>冬</td><td>雪景色・氷・静寂</td><td>ぺんぎん（DLC）、おおかみ</td><td>新春のあいさつ回り</td></tr>
+    <tr><td>2月</td><td>晩冬</td><td>梅のつぼみ・春の気配</td><td>あざらし、冬鳥</td><td>あったか茶会</td></tr>
+  </table>
+  <p class="tbl-note">※ 毎年の更新で、行事の内容や限定アイテムを追加・刷新し、常に新鮮さを保ちます。</p>
+
+  <h3>🗓️ 設計意図</h3>
+  <p>このカレンダーの目的は、プレイヤーに<b>「来月も見たい」「来年もここにいたい」</b>と思ってもらうことです。各月に“その時だけ”の自然・動物・行事を散りばめることで、自然な再訪動機を生みます。同時に、季節限定要素は<b>翌年に必ず再登場</b>させ、「逃したら二度と手に入らない」という焦りを与えない設計を貫きます。やさしさと継続性の両立です。</p>
+</section>
+
+<!-- ============ APPENDIX K ============ -->
+<section id="apxK">
+  <div class="sec-head"><div class="sec-no">K</div><div><span class="en">APPENDIX K</span><h2>付録：オンボーディング（チュートリアル）詳細</h2></div></div>
+  <p class="lead">最初の30分で「面白い！」と思ってもらうための、丁寧な導入フローを設計します。</p>
+
+  <h3>⏱️ 最初の30分・分刻みプラン</h3>
+  <div class="steps">
+    <div class="step"><h4>0〜5分：到着</h4><p>手紙のプロローグ→島に上陸→ホロウじいさんとクリの紹介。歩く・カメラを回す基本操作を、景色を楽しみながら自然に習得。</p></div>
+    <div class="step"><h4>5〜12分：はじめての採集</h4><p>落ちている枝や実をクリックで拾う。「集める楽しさ」と所持品の見方を体験。クリが軽妙にガイド。</p></div>
+    <div class="step"><h4>12〜20分：はじめての地形編集</h4><p>整地ハンマーで小さな広場をならし、みずひきジョウロ（チュートリアル特典）で短い小川をひく。水が流れ出す“気持ちよさ”をここで体感。</p></div>
+    <div class="step"><h4>20〜27分：最初の奇跡</h4><p>つくった川辺に、夜、ケロ太が来訪。<b>「自分の行動が命を呼んだ」</b>という本作の核を、序盤で必ず届ける。名前をつけ、初めての交流。</p></div>
+    <div class="step"><h4>27〜30分：自由の解放</h4><p>「あとはあなたの好きなように」とガイドが一歩引く。次の目標（花を植えてみよう、など）をやさしく提示し、本編へ送り出す。</p></div>
+  </div>
+
+  <h3>🎓 教え方の方針</h3>
+  <table>
+    <tr><th>原則</th><th>具体策</th></tr>
+    <tr><td>読ませず、やらせる</td><td>長文説明を避け、実際に操作させて体で覚えてもらう。</td></tr>
+    <tr><td>一度に一つ</td><td>新要素は1つずつ。情報の洪水を避ける。</td></tr>
+    <tr><td>すぐにごほうび</td><td>各ステップの直後に小さな成果（動物・アイテム・景観変化）を返す。</td></tr>
+    <tr><td>失敗させない</td><td>序盤は取り返しのつかない操作を物理的に発生させない。</td></tr>
+    <tr><td>いつでも復習</td><td>操作ガイドはメニューからいつでも再確認可能。スキップも自由。</td></tr>
+  </table>
+
+  <h3>📉 離脱対策</h3>
+  <p>新規プレイヤーの離脱は、ほとんどが<b>最初の数十分</b>で起きます。本作は「最初の奇跡（ケロ太来訪）」を遅くとも30分以内に必ず発生させ、コア体験の面白さを早期に証明します。チュートリアル突破率はKPIの最重要指標として、テストで徹底的に磨き込みます。</p>
+</section>
+
+<!-- ============ APPENDIX L ============ -->
+<section id="apxL">
+  <div class="sec-head"><div class="sec-no">L</div><div><span class="en">APPENDIX L</span><h2>付録：マーケティング・PR戦略</h2></div></div>
+  <p class="lead">「作品自体が広告になる」癒し系タイトルの強みを活かした、無理のない拡散戦略です。</p>
+
+  <h3>📣 コアメッセージ</h3>
+  <div class="callout"><b>キャッチコピー候補：</b><br>・「地形を彫れば、友だちが来る。」<br>・「あなたのつくる自然に、いきものが応える島。」<br>・「いそがない、きそわない。いきものと暮らす毎日。」</div>
+
+  <h3>🎯 フェーズ別PRプラン</h3>
+  <div class="timeline">
+    <div class="tl-item"><div class="tl-phase">ティザー期</div><h4>世界観の提示</h4><p>美しい島の景観・愛らしい動物のショート動画でSNSに種をまく。「どんなゲーム？」という好奇心を醸成。</p></div>
+    <div class="tl-item"><div class="tl-phase">告知期</div><h4>コアの面白さ訴求</h4><p>「川をつくる→動物が来る」のループを30秒で見せるゲームプレイ動画。差別化ポイントを明確に伝える。</p></div>
+    <div class="tl-item"><div class="tl-phase">βテスト期</div><h4>体験者の声で拡散</h4><p>クローズドβのフォト・クリップが自然にSNSへ。インフルエンサー・配信者に早期体験を提供。</p></div>
+    <div class="tl-item"><div class="tl-phase">ローンチ期</div><h4>話題の最大化</h4><p>ローンチトレーラー、ストアフィーチャー獲得、配信者の同時プレイ。フォトコンテスト開催で投稿を促進。</p></div>
+    <div class="tl-item"><div class="tl-phase">運営期</div><h4>季節ごとに再燃</h4><p>季節アップデートのたびに新ビジュアルで再話題化。長く愛されるブランドを育てる。</p></div>
+  </div>
+
+  <h3>📱 チャネル戦略</h3>
+  <table>
+    <tr><th>チャネル</th><th>役割</th><th>施策例</th></tr>
+    <tr><td>X / Instagram</td><td>ビジュアル拡散</td><td>美しい島のスクショ・GIF、ファン投稿のリポスト</td></tr>
+    <tr><td>YouTube / 配信</td><td>ゲームプレイ訴求</td><td>配信者の実況、開発こぼれ話、季節ダイジェスト</td></tr>
+    <tr><td>TikTok / Shorts</td><td>短尺バズ</td><td>「動物が来た瞬間」「ビフォーアフター造成」</td></tr>
+    <tr><td>公式コミュニティ</td><td>ファンの居場所</td><td>フォトギャラリー、要望募集、開発との対話</td></tr>
+  </table>
+
+  <h3>🤝 ファンを主役に</h3>
+  <p>癒し系タイトル最大の宣伝資産は、<b>プレイヤー自身の作品</b>です。フォトモード・島共有・コンテストを通じて「見せたくなる」設計を徹底し、ユーザーの投稿が新規プレイヤーを呼ぶ好循環を回します。広告費を投下するより、<b>“映える瞬間”を遊びの中に埋め込む</b>ことを最優先のマーケ施策と位置づけます。</p>
+
+  <hr class="soft">
+  <div class="callout sun" style="text-align:center;font-size:1.05rem;">
+    本企画書は以上です。ご精読ありがとうございました。<br>
+    <b>「アニマルフレンズ」</b>で、たくさんの人に“やさしい島の時間”を届けられることを願って。
+  </div>
+</section>
+
+<!-- ============ APPENDIX M ============ -->
+<section id="apxM">
+  <div class="sec-head"><div class="sec-no">M</div><div><span class="en">APPENDIX M</span><h2>付録：性格別・会話サンプル集</h2></div></div>
+  <p class="lead">動物の“生きている感”を支えるのは、性格に根ざした言葉です。トーンの方向性を会話例で示します。</p>
+
+  <h3>💬 朝のあいさつ（同じ場面・性格別）</h3>
+  <table>
+    <tr><th>性格</th><th>セリフ例</th></tr>
+    <tr><td>のんびり屋</td><td>「ふぁ……おはよ。今日もいい天気だねえ。お昼寝日和かも。」</td></tr>
+    <tr><td>げんき者</td><td>「おはよっ！ねえねえ、今日はどこ行く？早く早く！」</td></tr>
+    <tr><td>もの知り</td><td>「やあ、おはよう。今朝の霧は、川がきれいな証拠なんだよ。知ってた？」</td></tr>
+    <tr><td>おしゃれ</td><td>「おはよう。……あら、その小道、昨日より素敵になったわね。センスいいわ。」</td></tr>
+    <tr><td>あまえんぼう</td><td>「あっ、来てくれた！会いたかったよぉ。ねえ、今日はずっと一緒にいてくれる？」</td></tr>
+    <tr><td>もの静か</td><td>「……おはよう。（こくり、と小さくうなずく）」</td></tr>
+  </table>
+
+  <h3>🎁 贈りものを受け取ったとき</h3>
+  <table>
+    <tr><th>性格</th><th>好物だったとき</th><th>苦手だったとき</th></tr>
+    <tr><td>のんびり屋</td><td>「わあ……これ、好きなんだ。うれしいなあ。」</td><td>「ありがとう……（そっとしまう）気持ちがうれしいよ。」</td></tr>
+    <tr><td>げんき者</td><td>「やった〜！これ最高！大事にするね！！」</td><td>「お、おう、ありがと！……うん、まあ、気持ちが大事だよね！」</td></tr>
+    <tr><td>おしゃれ</td><td>「まあ素敵！わたしの趣味、よく分かってるじゃない。」</td><td>「……あら。気持ちはたしかに受け取ったわ。ふふ。」</td></tr>
+  </table>
+
+  <h3>🌧️ 天候・季節に応じた会話</h3>
+  <table>
+    <tr><th>場面</th><th>セリフ例</th></tr>
+    <tr><td>雨の日（かも）</td><td>「雨だ雨だ！こういう日はね、羽がつやつやになって最高なんだ！」</td></tr>
+    <tr><td>紅葉（しか）</td><td>「……森が赤く染まる季節は、心が静かになる。きみと見られて、よかった。」</td></tr>
+    <tr><td>初雪（こぐま）</td><td>「うう、寒い……でも、雪のおまんじゅう作るの、手伝ってくれる？」</td></tr>
+    <tr><td>夏祭り（うさぎ）</td><td>「浴衣、変じゃないかな?……花火、一緒に見てくれてありがとう。」</td></tr>
+  </table>
+
+  <h3>📝 セリフ設計の方針</h3>
+  <p>セリフは<b>「短く、やわらかく、ときどき心に残る」</b>を基準にします。説明的になりすぎず、それでいて性格と関係性がにじむ言葉を、状況（時間・天候・季節・仲良し度・直前の出来事）に応じて動的に出し分けます。同じ動物でも会うたびに少しずつ違う言葉をくれることで、“暮らしている実感”を育てます。テキストは多言語化を前提に、文化依存の表現を避けつつ温度感を保つ翻訳方針をとります。</p>
+</section>
+
+<!-- ============ APPENDIX N ============ -->
+<section id="apxN">
+  <div class="sec-head"><div class="sec-no">N</div><div><span class="en">APPENDIX N</span><h2>付録：島ランク・評価システム詳細</h2></div></div>
+  <p class="lead">プレイヤーの長期目標を支える「島ランク」の内部設計です。あくまで加点・励ましのための仕組みです。</p>
+
+  <h3>📊 評価の3軸</h3>
+  <table>
+    <tr><th>評価軸</th><th>測るもの</th><th>主な加点要素</th></tr>
+    <tr><td>🌳 自然の豊かさ</td><td>緑量・水辺・土壌・生態系の充実</td><td>植樹、造水、植物の健康度、バイオーム多様性</td></tr>
+    <tr><td>🦋 にぎわい</td><td>動物・小動物・虫の活性</td><td>来訪・定住数、図鑑達成、エコトーンの数</td></tr>
+    <tr><td>🎨 景観・デザイン</td><td>調和・装飾・整備の美しさ</td><td>装飾配置、小道・橋、テーマの統一感</td></tr>
+  </table>
+
+  <h3>🏅 ランクと解放要素</h3>
+  <table>
+    <tr><th>島ランク</th><th>到達の目安</th><th>解放されるもの</th></tr>
+    <tr><td>めばえ（★）</td><td>最初の動物が定住</td><td>みずひきジョウロ、基本レシピ</td></tr>
+    <tr><td>そよかぜ（★★）</td><td>3種以上のフレンズ／2バイオーム</td><td>橋・坂、家具レシピ拡張、店の品ぞろえ増</td></tr>
+    <tr><td>こもれび（★★★）</td><td>図鑑20種／4バイオーム</td><td>岩山ツール、新エリア開拓、季節装飾</td></tr>
+    <tr><td>みなぎり（★★★★）</td><td>図鑑35種／レア客来訪</td><td>上級編集ツール（範囲・ミラー）、特別レシピ</td></tr>
+    <tr><td>らくえん（★★★★★）</td><td>図鑑ほぼ完成／全軸が高水準</td><td>「まぼろしの主」来訪条件の開放、称号</td></tr>
+  </table>
+
+  <h3>🪶 “プレッシャーにしない”工夫</h3>
+  <div class="callout sky">
+    島ランクは<b>下がりません</b>（減点なし）。一度上げた評価は維持され、プレイヤーは安心して実験的な造成に挑めます。また、評価は「あなたの島は今こんなに素敵」というポジティブな言葉で提示し、達成できていない項目も“次の楽しみ”としてやさしく示します。スコアを競う相手はいません。比べるのは、昨日の自分の島だけです。
+  </div>
+
+  <h3>🎀 称号・記念</h3>
+  <p>各ランク到達や図鑑の節目には、強制力のない<b>「称号」</b>や記念の装飾品が贈られます。これらは自己満足のためのもので、他者へのマウントには使われません。プレイヤーが自分の歩みを振り返り、「ここまで島を育てたんだ」と微笑めるための、ささやかなしるしです。</p>
+
+  <hr class="soft">
+  <div class="callout" style="text-align:center;">
+    <b>すべての仕組みは、たった一つの目的のために。</b><br>
+    ——「あなたのペースで、いきものと暮らすしあわせを」。
+  </div>
+</section>
+
+<!-- ============ APPENDIX O ============ -->
+<section id="apxO">
+  <div class="sec-head"><div class="sec-no">O</div><div><span class="en">APPENDIX O</span><h2>付録：サウンドトラック構成案</h2></div></div>
+  <p class="lead">本作の“癒し”の半分は音が担います。時間・季節・場所で移ろう音楽の設計案です。</p>
+  <table>
+    <tr><th>曲名（仮）</th><th>使用場面</th><th>イメージ</th></tr>
+    <tr><td>めぐりの島へ</td><td>タイトル／プロローグ</td><td>やさしいピアノとストリングス。期待感と郷愁。</td></tr>
+    <tr><td>あさのしずく</td><td>朝（春）</td><td>木琴とフルート。澄んだ目覚め。</td></tr>
+    <tr><td>ひなたぼっこ</td><td>昼（春・夏）</td><td>軽やかなアコギ。のんびりした幸福感。</td></tr>
+    <tr><td>みなものうた</td><td>川辺・水辺</td><td>せせらぎと共鳴するハープ。</td></tr>
+    <tr><td>こもれびワルツ</td><td>森</td><td>3拍子の木管。木漏れ日の揺らぎ。</td></tr>
+    <tr><td>ゆうやけのかえりみち</td><td>夕方</td><td>あたたかなトランペットとピアノ。郷愁。</td></tr>
+    <tr><td>ほしぞらのとびら</td><td>夜</td><td>静かなチェレスタとシンセパッド。</td></tr>
+    <tr><td>あめのまどべ</td><td>雨天</td><td>雨音と溶けあうローズピアノ。</td></tr>
+    <tr><td>みなも祭り</td><td>夏祭り</td><td>和太鼓と笛の祭囃子。にぎやか。</td></tr>
+    <tr><td>みのりのうた</td><td>秋・収穫祭</td><td>マンドリンと温かい合奏。実りの喜び。</td></tr>
+    <tr><td>ゆきあかり</td><td>冬・イルミ</td><td>鈴とグロッケン。静謐で幻想的。</td></tr>
+    <tr><td>はじめまして</td><td>新しい動物の来訪</td><td>短いきらめきのジングル。発見の合図。</td></tr>
+    <tr><td>ともだちのテーマ</td><td>親友イベント</td><td>各キャラのモチーフを織り込んだ感動曲。</td></tr>
+    <tr><td>らくえん</td><td>島ランク最高到達</td><td>全テーマを統合した壮大で温かい大団円。</td></tr>
+  </table>
+
+  <h3>🎚️ 動的サウンドの仕組み</h3>
+  <p>BGMは固定再生ではなく、<b>場所・時間・天候・近くの動物</b>に応じてレイヤーを重ね・抜きする<b>動的ミキシング</b>を採用します。たとえば森に入ると木管のレイヤーが加わり、川に近づくとせせらぎとハープが立ち上がる。プレイヤーの移動そのものが、ひとつの音楽体験になります。環境音（鳥・水・風・虫）はゲームの状態と連動し、<b>島が豊かになるほど音もにぎやかに</b>なる——耳でも“成長”を実感できる設計です。</p>
+
+  <h3>🛌 “生活に寄り添う音楽”として</h3>
+  <p>本作のサウンドトラックは、ゲーム外でも価値を持つことを意識します。睡眠・作業・休息のBGMとして日常に溶け込み、サントラ単体での展開（配信・CD）も視野に入れます。「あのゲームの音楽を聴くと、ほっとする」——そんな存在を目指します。</p>
+</section>
+
+<!-- ============ APPENDIX P ============ -->
+<section id="apxP">
+  <div class="sec-head"><div class="sec-no">P</div><div><span class="en">APPENDIX P</span><h2>付録：技術検証（プロト）項目</h2></div></div>
+  <p class="lead">最初のプロトタイプで「本当に面白いか・本当に作れるか」を確かめるべき項目を列挙します。</p>
+
+  <h3>🔬 面白さの検証</h3>
+  <table>
+    <tr><th>検証項目</th><th>確かめたいこと</th><th>合格ライン</th></tr>
+    <tr><td>地形編集の手ざわり</td><td>マス目編集は“気持ちいい”か</td><td>テスターが目的なく10分以上いじり続ける</td></tr>
+    <tr><td>来訪の因果実感</td><td>「自分のせいで動物が来た」と感じるか</td><td>初来訪時に9割が因果を言語化できる</td></tr>
+    <tr><td>もう一匹欲求</td><td>次の動物を呼びたくなるか</td><td>自発的に次の環境づくりを始める</td></tr>
+    <tr><td>癒しの体感</td><td>遊んだ後に“ほっとした”か</td><td>事後アンケートでポジティブ感情が多数</td></tr>
+  </table>
+
+  <h3>⚙️ 実現性の検証</h3>
+  <table>
+    <tr><th>検証項目</th><th>リスク</th><th>確認方法</th></tr>
+    <tr><td>水流シミュの負荷</td><td>広い島で処理落ち</td><td>大規模水路での実機計測</td></tr>
+    <tr><td>多数動物のAI</td><td>同時多数で重くなる</td><td>50体同時行動の負荷試験</td></tr>
+    <tr><td>地形データ量</td><td>セーブ肥大・読込遅延</td><td>編集しつくした島での保存／読込計測</td></tr>
+    <tr><td>環境判定の精度</td><td>来訪条件が破綻しないか</td><td>極端な地形での条件判定テスト</td></tr>
+    <tr><td>マルチ同期</td><td>共同編集時のずれ</td><td>複数人同時編集の整合性検証</td></tr>
+  </table>
+
+  <h3>🚦 Go / No-Go の考え方</h3>
+  <p>プロト段階で<b>「面白さの検証」のどれか一つでも合格ラインに届かない</b>場合、量産に進む前に立ち止まり、コア設計を見直します。技術的な実現性は工夫で乗り越えられますが、コアの面白さが弱いまま量産に入ることが、この種のプロジェクトで最大の失敗要因だからです。<b>面白さの核に、何より誠実であること</b>——それを開発の最上位の規律とします。</p>
+
+  <hr class="soft">
+  <div class="callout sun" style="text-align:center;font-size:1.05rem;">
+    <b>🌳 これにて全付録、ならびに本企画書を終えます。🐾</b><br>
+    あなたの手のひらから、いきものの楽園が生まれますように。
+  </div>
+</section>
+
+<!-- ============ APPENDIX Q ============ -->
+<section id="apxQ">
+  <div class="sec-head"><div class="sec-no">Q</div><div><span class="en">APPENDIX Q</span><h2>付録：エグゼクティブ・サマリー</h2></div></div>
+  <p class="lead">本企画書の要点を、忙しい意思決定者のために1ページにまとめます。</p>
+
+  <h3>📌 一言で</h3>
+  <div class="callout"><b>「アニマルフレンズ」は、あつ森のようにマス目の地形と自然を自由に変えながら、動物たちと暮らすほのぼの3Dシミュレーション。プレイヤーは不思議な島の管理人として、川・森・花畑をつくり、動物が住みやすい環境を整えていく。<br>戦闘はなく、「観察・発見・癒し・環境づくり」を楽しむ、全年齢向けの作品です。</b></div>
+
+  <h3>🎯 なぜ勝てるか（3点）</h3>
+  <div class="cards">
+    <div class="card"><span class="ico">🔗</span><h3>新規性</h3><p>地形編集を生態系に直結。「島づくりがそのまま友だちづくり」になる、まだ誰も主役にしていない体験。</p></div>
+    <div class="card"><span class="ico">📸</span><h3>拡散力</h3><p>映える島・珍しい動物・フォトモード。作品自体がSNSで自走する広告になる。</p></div>
+    <div class="card"><span class="ico">🕊️</span><h3>信頼性</h3><p>非戦闘・全年齢・フェアな課金。「安心して薦められる」ブランド価値が長期の堀になる。</p></div>
+  </div>
+
+  <h3>🧱 製品の骨格</h3>
+  <table>
+    <tr><th>項目</th><th>内容</th></tr>
+    <tr><td>ジャンル</td><td>ほのぼの3D箱庭スローライフ・シミュレーション</td></tr>
+    <tr><td>コアループ</td><td>整える → 招く → きずなを深める → 広げる</td></tr>
+    <tr><td>主要システム</td><td>マス目地形編集／生態系シミュ／動物交流／四季・天候／クラフト／図鑑</td></tr>
+    <tr><td>動物</td><td>50種＋レア・幻の動物。性格・個体差あり</td></tr>
+    <tr><td>操作</td><td>キーボード＋マウス（クリック）基準。家庭用はコントローラー／タッチ</td></tr>
+    <tr><td>対応</td><td>PC（Steam）／Switch等／モバイル</td></tr>
+    <tr><td>対象</td><td>全年齢（CERO A 想定）</td></tr>
+    <tr><td>収益</td><td>買い切り＋良心的アプリ内課金＋DLC（Pay to Win なし）</td></tr>
+  </table>
+
+  <h3>📅 規模感</h3>
+  <table>
+    <tr><th>項目</th><th>目安</th></tr>
+    <tr><td>開発期間</td><td>おおよそ2〜2.5年（プロト〜スライスに重点投資）</td></tr>
+    <tr><td>チーム規模</td><td>コア15〜20名＋外部委託</td></tr>
+    <tr><td>収益モデル</td><td>長期運営型。買い切り＋シーズン／DLC＋IP展開</td></tr>
+    <tr><td>最重要KPI</td><td>チュートリアル突破率／D7継続率／フォト共有数</td></tr>
+  </table>
+
+  <h3>⚠️ 最大のリスクと備え</h3>
+  <p>最大のリスクは<b>「のんびり系ゆえの目的感の薄さ（中だるみ）」</b>と<b>「定番作との競合」</b>です。前者は情景報酬＋図鑑＋島ランク＋レア誘致の多層目標で、後者は「地形×生態系」という独自性への資源集中で対処します。そして何より、<b>プロト段階で“面白さの核”を厳格に検証</b>し、合格しなければ量産に進まない規律を貫きます。</p>
+
+  <h3>✅ 提案</h3>
+  <div class="callout sun"><b>まずは Phase 1（プロトタイプ）への着手をご提案します。</b> 「川を一本つくったらカエルが来た」——この最小ループの面白さを最短で実証し、本企画の核心が本物であることを、データと体験で証明します。そこから先の大きな投資判断は、その手応えを見てからで構いません。</div>
+
+  <h3>🌈 ビジョンの再確認</h3>
+  <p>私たちが本当につくりたいのは、単なる一本のゲームではありません。<b>「疲れたとき、ふと帰りたくなる場所」</b>です。プレイヤーが現実の喧騒から少しだけ離れ、自分のペースで自然と向き合い、いきものとの小さなきずなに心をほどく——そんな“やさしい居場所”を、ソフトウェアとして実現すること。それが「アニマルフレンズ」というプロジェクトの根っこにある願いです。</p>
+  <p>地形を彫るという能動的な行為が、命を招くという受動的なよろこびに変わる瞬間。プレイヤーは、つくり手であると同時に、見守り手になります。この「つくる」と「見守る」のあいだを行き来する心地よさこそ、他のどんなゲームでも味わえない、本作だけの体験です。</p>
+
+  <h3>🤝 最後に</h3>
+  <p>この企画書は、たくさんの仕様や数字を並べてきましたが、その一行一行の奥にあるのは、いつも同じ一つの問いです。——<b>「これは、プレイヤーにやさしいだろうか？」</b>。地形編集の手ざわりも、動物のセリフも、課金の方針も、すべてこの問いから設計されています。私たちは、この一貫した“やさしさ”こそが、本作を長く愛される作品にすると信じています。</p>
+  <p>どうか、この小さな島の物語を、一緒に育てさせてください。あなたの島に、最初のカエルが訪れる日を、私たちは心から楽しみにしています。</p>
+
+  <hr class="soft">
+  <p style="text-align:center;color:var(--ink-soft);">― 本企画書（全22章＋付録A〜Q）おわり ―<br>ご検討のほど、何卒よろしくお願いいたします。<br><br>🐾🌳💧🌸🦌🦊🦉🌳🐾</p>
+</section>
+
+<!-- CONTENT_ANCHOR -->
+
+</div>
+
+<footer>
+  <div class="big">🐾 アニマルフレンズ 🌳</div>
+  <p>あなたが変える地形、あなたが育てる自然、あなたを待つ友だち。<br>世界にひとつだけの“いきものの楽園”をつくろう。</p>
+  <p style="opacity:.7;font-size:.85rem;margin-top:20px;">© 2026 Animal Friends Project ／ Game Design Document v1.0 ／ 本書は企画提案用の社外秘ドキュメントです。</p>
+</footer>
+
+<a href="#" class="back-top" title="トップへ">↑</a>
+
+</body>
+</html>
