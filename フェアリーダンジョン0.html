@@ -70,6 +70,8 @@
   }
   .card:active { border-color: #6f8fff; }
   .card.sel { border-color: #ffd24a; box-shadow: 0 0 12px rgba(255,210,74,0.4); }
+  .av-wrap { text-align:center; margin: 2px 0 4px; }
+  .avatar { display:block; margin:0 auto; }
   .card .name { font-size: 14px; font-weight: bold; margin-bottom: 3px; }
   .card .meta { font-size: 11px; opacity: 0.85; line-height: 1.5; }
   .rar { position:absolute; top:6px; right:8px; font-weight:bold; font-size:13px; }
@@ -156,6 +158,7 @@
         <div class="panel-title">現在の状況</div>
         <div class="leader-card">
           <div style="font-size:12px;opacity:.7;">リーダー</div>
+          <div class="av-wrap" id="homeLeaderAv"></div>
           <div class="big" id="homeLeader">-</div>
           <div id="homeLeaderInfo" style="font-size:12px;opacity:.85;margin-top:4px;"></div>
         </div>
@@ -441,6 +444,8 @@ function renderHome(){
   const leader = charById(G.team[0]);
   if(leader){
     const st = statsOf(leader);
+    const av=document.getElementById("homeLeaderAv"); av.innerHTML="";
+    const big=makeAvatar(leader,96,true); av.appendChild(big);
     document.getElementById("homeLeader").textContent = leader.name;
     document.getElementById("homeLeaderInfo").innerHTML =
       `<span class="rar ${leader.rar}" style="position:static">${leader.rar}</span> ${ROLES[leader.role].jp} Lv${leader.level}<br>
@@ -511,12 +516,16 @@ function doGacha(times, cost){
     results.push(pull(rar));
   }
   save(); updateRes();
-  const cards = results.map(c=>`<div class="pull-card" style="border-color:${RAR[c.rar].c}">
+  const cards = results.map((c,i)=>`<div class="pull-card" data-i="${i}" style="border-color:${RAR[c.rar].c}">
     <div class="rar ${c.rar}" style="position:static;font-size:14px">${c.rar}</div>
+    <div class="av-wrap"></div>
     <div style="font-size:13px;font-weight:bold;margin:4px 0">${c.name}</div>
     <div style="font-size:11px;opacity:.85">${ROLES[c.role].jp}</div></div>`).join("");
   modal(`<h2>探検隊を発見！</h2><div class="gacha-result">${cards}</div>
     <button class="btn" onclick="closeModal();renderGacha();">OK</button>`);
+  document.querySelectorAll("#modalBody .pull-card").forEach(el=>{
+    el.querySelector(".av-wrap").appendChild(makeAvatar(results[+el.dataset.i],62));
+  });
 }
 function renderGacha(){
   updateRes();
@@ -534,10 +543,12 @@ function charCard(c, sel){
   const tag = {front:"tag-front",mid:"tag-mid",back:"tag-back"}[ln];
   const sp = c.spirit? spiritById(c.spirit):null;
   div.innerHTML=`<span class="rar ${c.rar}">${c.rar}</span>
+    <div class="av-wrap"></div>
     <div class="name">${c.name}</div>
     <div class="meta"><span class="role-tag ${tag}">${lnjp}</span>${ROLES[c.role].jp} Lv${c.level}<br>
     ATK${st.atk} DEF${st.def} HP${st.hp}<br>
     精霊：${sp?`<span style="color:${ELEMS[sp.el].c}">${sp.name}</span>`:"なし"}</div>`;
+  div.querySelector(".av-wrap").appendChild(makeAvatar(c,64));
   return div;
 }
 
@@ -616,10 +627,12 @@ function renderGrow(){
     const card=document.createElement("div"); card.className="card";
     const equippedBy = G.chars.find(c=>c.spirit===s.id);
     const evoCost = 120*(s.stage+1);
-    card.innerHTML=`<div class="name" style="color:${ELEMS[s.el].c}">${s.name}</div>
+    card.innerHTML=`<div class="av-wrap"></div>
+      <div class="name" style="color:${ELEMS[s.el].c}">${s.name}</div>
       <div class="meta">属性${ELEMS[s.el].jp}／${SPIRIT_STAGES[s.stage]}<br>
       +ATK${s.atk} +DEF${s.def} +HP${s.hp}<br>${s.extra}<br>
       装備中:${equippedBy?equippedBy.name:"なし"}</div>`;
+    card.querySelector(".av-wrap").appendChild(makeSpiritAvatar(s,56));
     const wrap=document.createElement("div"); wrap.style.display="flex"; wrap.style.gap="4px"; wrap.style.marginTop="8px";
     const eq=document.createElement("button"); eq.className="btn"; eq.style.flex="1"; eq.style.fontSize="11px"; eq.style.padding="7px";
     eq.textContent="装備"; eq.onclick=()=>chooseEquip(s);
@@ -707,8 +720,9 @@ function makeUnit(c, ally, idx, total){
     range: role.range, atkCd:0, atkSpd: role.atkSpd,
     el: st.el, extra: st.extra, heal: role.heal, buff: role.buff, evade: role.evade||0,
     ai: c.ai||{aggression:0.5,healPriority:0.3,targetBias:0.5,survival:0.5},
-    alive:true, isLeader: ally&&idx===0, radius: role.line==="front"?13:11,
+    alive:true, isLeader: ally&&idx===0, radius: role.line==="front"?14:12,
     target:null, dashCd:0, hitFlash:0, buffT:0,
+    phase: Math.random()*6.28, facing:1, blink:Math.random()*3,
   };
 }
 
@@ -738,9 +752,10 @@ function makeEnemy(name, el, depth, boss){
     vx:0, vy:0, hp, maxHp:hp,
     atk: boss? 18+depth*5 : 8+depth*3, def: boss?12+depth*3:4+depth*2,
     range: boss?320:220, fireCd: Math.random()*1.5,
-    color: ELEMS[el].c, radius: boss?28:15, alive:true, hitFlash:0,
+    color: ELEMS[el].c, radius: boss?30:16, alive:true, hitFlash:0,
     pattern: boss? (depth%3) : (Math.random()<0.5?"aim":"spread"),
     moveT: Math.random()*3, tx:0, ty:0, phase:0,
+    wob: Math.random()*6.28, blink: Math.random()*3,
   };
 }
 
@@ -1028,6 +1043,101 @@ function updateHUD(){
   document.getElementById("hudLeaderHp").style.width=(L.alive?Math.max(0,L.hp/L.maxHp*100):0)+"%";
 }
 
+//------- 可愛いイラスト描画ヘルパー -------
+function shade(hex,p){
+  const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p));
+  return `rgb(${r},${g},${b})`;
+}
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function star(c,x,y,r,col){ c.fillStyle=col; c.beginPath();
+  for(let i=0;i<8;i++){ const a=i/8*Math.PI*2-Math.PI/2; const rr2=i%2?r*0.45:r; const px=x+Math.cos(a)*rr2,py=y+Math.sin(a)*rr2; i?c.lineTo(px,py):c.moveTo(px,py);} c.closePath(); c.fill(); }
+
+// チビキャラ（味方）を描く
+function paintChibi(c,cx,cy,R,o){
+  o=o||{}; const dir=o.dir||1; const col=o.color||"#8ab"; const skin="#ffe6cf";
+  const flash=o.flash||0; const blinking=o.blink;
+  c.save(); c.translate(cx,cy);
+  c.fillStyle="rgba(0,0,0,0.22)"; c.beginPath(); c.ellipse(0,R*1.35,R*0.9,R*0.28,0,0,Math.PI*2); c.fill();
+  c.fillStyle=shade(col,-15); rr(c,-R*0.62,R*0.32,R*1.24,R*0.95,R*0.42); c.fill();
+  c.fillStyle=skin; c.beginPath(); c.arc(-R*0.62,R*0.78,R*0.2,0,Math.PI*2); c.arc(R*0.62,R*0.78,R*0.2,0,Math.PI*2); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(0,-R*0.22,R*1.06,0,Math.PI*2); c.fill();
+  c.fillStyle=skin; c.beginPath(); c.arc(0,-R*0.12,R*0.9,0,Math.PI*2); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(0,-R*0.22,R*1.06,Math.PI*1.04,Math.PI*1.96); c.lineTo(R*0.5,-R*0.5); c.lineTo(0,-R*0.2); c.lineTo(-R*0.5,-R*0.5); c.closePath(); c.fill();
+  c.strokeStyle=col; c.lineWidth=R*0.12; c.beginPath(); c.moveTo(0,-R*1.2); c.quadraticCurveTo(R*0.25,-R*1.5,R*0.1,-R*1.6); c.stroke();
+  c.fillStyle="rgba(255,140,160,0.55)"; c.beginPath(); c.arc(-R*0.42,R*0.02,R*0.17,0,Math.PI*2); c.arc(R*0.42,R*0.02,R*0.17,0,Math.PI*2); c.fill();
+  const ex=R*0.36+dir*R*0.04, ey=-R*0.12;
+  if(blinking!==undefined && (blinking%3)<0.12){
+    c.strokeStyle="#3a2533"; c.lineWidth=R*0.08; c.lineCap="round";
+    c.beginPath(); c.moveTo(-ex-R*0.14,ey); c.lineTo(-ex+R*0.14,ey); c.moveTo(ex-R*0.14,ey); c.lineTo(ex+R*0.14,ey); c.stroke();
+  }else{
+    c.fillStyle="#3a2533";
+    c.beginPath(); c.ellipse(-ex,ey,R*0.15,R*0.22,0,0,Math.PI*2); c.ellipse(ex,ey,R*0.15,R*0.22,0,0,Math.PI*2); c.fill();
+    c.fillStyle="#fff"; c.beginPath(); c.arc(-ex+R*0.05,ey-R*0.08,R*0.06,0,Math.PI*2); c.arc(ex+R*0.05,ey-R*0.08,R*0.06,0,Math.PI*2); c.fill();
+  }
+  c.strokeStyle="#a35"; c.lineWidth=R*0.06; c.lineCap="round"; c.beginPath();
+  c.arc(dir*R*0.04,R*0.14,R*0.12,0.15*Math.PI,0.85*Math.PI); c.stroke();
+  if(o.el){ star(c,R*0.85,-R*0.95,R*0.28,ELEMS[o.el].c); }
+  if(o.leader){ c.fillStyle="#ffd24a"; c.beginPath();
+    c.moveTo(-R*0.5,-R*1.05); c.lineTo(-R*0.5,-R*1.4); c.lineTo(-R*0.2,-R*1.15);
+    c.lineTo(0,-R*1.5); c.lineTo(R*0.2,-R*1.15); c.lineTo(R*0.5,-R*1.4); c.lineTo(R*0.5,-R*1.05); c.closePath(); c.fill();
+  }
+  if(flash>0){ c.globalAlpha=Math.min(0.7,flash*4); c.fillStyle="#fff"; c.beginPath(); c.arc(0,-R*0.12,R*1.1,0,Math.PI*2); c.fill(); c.globalAlpha=1; }
+  c.restore();
+}
+
+// 可愛い精霊（敵）を描く
+function paintSpirit(c,cx,cy,R,col,t,boss,flash,blink){
+  c.save(); c.translate(cx,cy);
+  const wob=Math.sin(t*3)*0.06;
+  c.fillStyle="rgba(0,0,0,0.22)"; c.beginPath(); c.ellipse(0,R*1.15,R*0.85,R*0.25,0,0,Math.PI*2); c.fill();
+  c.save(); c.scale(1+wob,1-wob);
+  const grad=c.createRadialGradient(-R*0.3,-R*0.4,R*0.2,0,0,R*1.2);
+  grad.addColorStop(0,shade(col,60)); grad.addColorStop(1,col);
+  c.fillStyle=grad; c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fill();
+  c.beginPath(); c.moveTo(-R*0.5,R*0.7); c.quadraticCurveTo(0,R*1.5,R*0.5,R*0.7); c.closePath(); c.fill();
+  c.restore();
+  c.fillStyle=col; c.beginPath(); c.arc(-R*1.0,R*0.1,R*0.22,0,Math.PI*2); c.arc(R*1.0,R*0.1,R*0.22,0,Math.PI*2); c.fill();
+  c.fillStyle="rgba(255,255,255,0.35)"; c.beginPath(); c.ellipse(0,R*0.25,R*0.5,R*0.4,0,0,Math.PI*2); c.fill();
+  c.fillStyle="rgba(255,120,140,0.5)"; c.beginPath(); c.arc(-R*0.5,R*0.05,R*0.16,0,Math.PI*2); c.arc(R*0.5,R*0.05,R*0.16,0,Math.PI*2); c.fill();
+  if(blink!==undefined && (blink%3.3)<0.13){
+    c.strokeStyle="#2a2030"; c.lineWidth=R*0.09; c.lineCap="round";
+    c.beginPath(); c.moveTo(-R*0.42,-R*0.1); c.lineTo(-R*0.18,-R*0.1); c.moveTo(R*0.18,-R*0.1); c.lineTo(R*0.42,-R*0.1); c.stroke();
+  }else{
+    c.fillStyle="#2a2030";
+    c.beginPath(); c.ellipse(-R*0.3,-R*0.1,R*0.16,R*0.22,0,0,Math.PI*2); c.ellipse(R*0.3,-R*0.1,R*0.16,R*0.22,0,0,Math.PI*2); c.fill();
+    c.fillStyle="#fff"; c.beginPath(); c.arc(-R*0.24,-R*0.18,R*0.07,0,Math.PI*2); c.arc(R*0.36,-R*0.18,R*0.07,0,Math.PI*2); c.fill();
+  }
+  c.strokeStyle="#2a2030"; c.lineWidth=R*0.07; c.lineCap="round"; c.beginPath();
+  if(boss){ c.arc(0,R*0.18,R*0.18,1.1*Math.PI,1.9*Math.PI); }
+  else { c.arc(0,R*0.1,R*0.12,0.1*Math.PI,0.9*Math.PI); }
+  c.stroke();
+  if(boss){
+    c.fillStyle=shade(col,-50);
+    c.beginPath(); c.moveTo(-R*0.6,-R*0.8); c.lineTo(-R*0.85,-R*1.4); c.lineTo(-R*0.35,-R*1.0); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(R*0.6,-R*0.8); c.lineTo(R*0.85,-R*1.4); c.lineTo(R*0.35,-R*1.0); c.closePath(); c.fill();
+    c.fillStyle="#ffd24a"; c.beginPath();
+    c.moveTo(-R*0.4,-R*0.9); c.lineTo(-R*0.4,-R*1.25); c.lineTo(-R*0.13,-R*1.0);
+    c.lineTo(0,-R*1.35); c.lineTo(R*0.13,-R*1.0); c.lineTo(R*0.4,-R*1.25); c.lineTo(R*0.4,-R*0.9); c.closePath(); c.fill();
+  }
+  if(flash>0){ c.globalAlpha=Math.min(0.7,flash*4); c.fillStyle="#fff"; c.beginPath(); c.arc(0,0,R*1.05,0,Math.PI*2); c.fill(); c.globalAlpha=1; }
+  c.restore();
+}
+
+function makeAvatar(c,size,leader){
+  size=size||60; const cn=document.createElement("canvas"); cn.width=size; cn.height=size; cn.className="avatar";
+  const x=cn.getContext("2d"); const st=statsOf(c);
+  paintChibi(x,size/2,size*0.46,size*0.24,{color:ROLES[c.role].color,el:st.el,dir:1,leader:!!leader});
+  return cn;
+}
+function makeSpiritAvatar(s,size){
+  size=size||50; const cn=document.createElement("canvas"); cn.width=size; cn.height=size; cn.className="avatar";
+  const x=cn.getContext("2d");
+  paintSpirit(x,size/2,size*0.46,size*0.3,ELEMS[s.el].c,0,s.stage>=2,0,1.5);
+  return cn;
+}
+
 //------- 描画 -------
 function render(){
   ctx.clearRect(0,0,W,H);
@@ -1058,31 +1168,28 @@ function render(){
   }
 }
 function drawUnit(u){
-  // リーダー強調
-  if(u.isLeader){ ctx.strokeStyle="#ffd24a"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(u.x,u.y,u.radius+5,0,Math.PI*2); ctx.stroke(); }
-  ctx.fillStyle = u.hitFlash>0?"#fff":u.color;
-  ctx.beginPath(); ctx.arc(u.x,u.y,u.radius,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle="rgba(0,0,0,0.4)"; ctx.lineWidth=1.5; ctx.stroke();
-  if(u.el){ ctx.fillStyle=ELEMS[u.el].c; ctx.beginPath(); ctx.arc(u.x,u.y-u.radius-3,2.5,0,Math.PI*2); ctx.fill(); }
-  // HPバー
-  const w=u.radius*2, ratio=Math.max(0,u.hp/u.maxHp);
-  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(u.x-w/2,u.y-u.radius-8,w,3);
-  ctx.fillStyle = ratio>0.4?"#3fd07a":"#ff5a5a"; ctx.fillRect(u.x-w/2,u.y-u.radius-8,w*ratio,3);
+  const bob=Math.sin(B.time*5+u.phase)*1.6;
+  // 向き：近くの敵を向く
+  let dir=u.facing||1; const t=nearestEnemy(u);
+  if(t) dir=t.x<u.x?-1:1; else if(Math.abs(u.vx)>5) dir=u.vx<0?-1:1;
+  u.facing=dir;
+  if(u.isLeader){ // 足元リング
+    ctx.strokeStyle="rgba(255,210,74,0.7)"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(u.x,u.y+u.radius*1.4,u.radius*1.0,u.radius*0.35,0,0,Math.PI*2); ctx.stroke();
+  }
+  paintChibi(ctx,u.x,u.y-2+bob,u.radius,{color:u.color,el:u.el,dir,leader:u.isLeader,flash:u.hitFlash,blink:B.time+u.blink});
+  const w=u.radius*2, ratio=Math.max(0,u.hp/u.maxHp), by=u.y-u.radius*2.0+bob;
+  ctx.fillStyle="rgba(0,0,0,0.55)"; rr(ctx,u.x-w/2,by,w,4,2); ctx.fill();
+  ctx.fillStyle = ratio>0.4?"#5fe08a":"#ff6a6a"; rr(ctx,u.x-w/2,by,w*ratio,4,2); ctx.fill();
 }
 function drawEnemy(e){
-  ctx.save(); ctx.translate(e.x,e.y);
-  ctx.fillStyle=e.hitFlash>0?"#fff":e.color;
-  ctx.beginPath();
-  const sides=e.boss?6:4, rot=B.time*(e.boss?0.4:0.8);
-  for(let i=0;i<sides;i++){ const a=rot+i/sides*Math.PI*2; const r=e.radius; const x=Math.cos(a)*r,y=Math.sin(a)*r; i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=2; ctx.stroke();
-  ctx.restore();
-  // HP
-  const w=e.radius*2.4, ratio=Math.max(0,e.hp/e.maxHp);
-  ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(e.x-w/2,e.y-e.radius-10,w,4);
-  ctx.fillStyle="#ff5a5a"; ctx.fillRect(e.x-w/2,e.y-e.radius-10,w*ratio,4);
-  if(e.boss){ ctx.fillStyle="#fff"; ctx.font="11px sans-serif"; ctx.textAlign="center"; ctx.fillText(e.name,e.x,e.y-e.radius-14); }
+  const bob=Math.sin(B.time*2.4+e.wob)*3;
+  paintSpirit(ctx,e.x,e.y+bob,e.radius,e.color,B.time+e.wob,e.boss,e.hitFlash,B.time+e.blink);
+  const w=e.radius*2.2, ratio=Math.max(0,e.hp/e.maxHp), by=e.y-e.radius*1.7+bob;
+  ctx.fillStyle="rgba(0,0,0,0.6)"; rr(ctx,e.x-w/2,by,w,4,2); ctx.fill();
+  ctx.fillStyle="#ff6a6a"; rr(ctx,e.x-w/2,by,w*ratio,4,2); ctx.fill();
+  if(e.boss){ ctx.fillStyle="#fff"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+    ctx.strokeStyle="rgba(0,0,0,0.6)"; ctx.lineWidth=3; ctx.strokeText(e.name,e.x,by-6); ctx.fillText(e.name,e.x,by-6); ctx.textAlign="left"; }
 }
 
 //------- 戦闘終了 -------
