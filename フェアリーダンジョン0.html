@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>フェアリーダンジョン0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0a0c1a; color: #e8ecff;
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    user-select: none;
+  }
+  #app { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  canvas { display: block; position: absolute; top: 0; left: 0; }
+
+  .screen {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    background: radial-gradient(circle at 50% 20%, #1a1f44, #0a0c1a 70%);
+    z-index: 10;
+  }
+  .screen.active { display: flex; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: rgba(20,24,55,0.85);
+    border-bottom: 1px solid #3a4488; flex-wrap: wrap;
+  }
+  .topbar .title { font-size: 18px; font-weight: bold; color: #9fd0ff; letter-spacing: 1px; }
+  .res { display: flex; align-items: center; gap: 4px; font-size: 14px; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 14px; }
+  .res .ic { font-size: 16px; }
+  .spacer { flex: 1; }
+
+  .content { flex: 1; overflow-y: auto; padding: 14px; -webkit-overflow-scrolling: touch; }
+
+  .btn {
+    border: none; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(180deg, #3d57c4, #2a3a8c);
+    color: #fff; font-size: 15px; font-weight: bold;
+    padding: 12px 16px; transition: transform .05s, filter .15s;
+    box-shadow: 0 2px 0 #1a2358; font-family: inherit;
+  }
+  .btn:active { transform: translateY(2px); box-shadow: none; }
+  .btn.sec { background: linear-gradient(180deg, #4a5070, #343a52); box-shadow: 0 2px 0 #22263a; }
+  .btn.danger { background: linear-gradient(180deg, #c44a4a, #8c2a2a); box-shadow: 0 2px 0 #581a1a; }
+  .btn.gold { background: linear-gradient(180deg, #e0b04a, #b8862a); box-shadow: 0 2px 0 #5a4012; color:#231400; }
+  .btn:disabled { filter: grayscale(0.7) brightness(0.6); cursor: default; }
+
+  /* HOME */
+  #home .content { display: flex; gap: 14px; }
+  #home .left { flex: 1.4; display: flex; flex-direction: column; gap: 12px; }
+  #home .right { flex: 1; background: rgba(15,18,45,0.7); border:1px solid #2c3470; border-radius: 14px; padding: 14px; overflow-y:auto;}
+  .menu-btn {
+    display: flex; align-items: center; gap: 14px; text-align: left;
+    padding: 18px; font-size: 17px;
+  }
+  .menu-btn .emoji { font-size: 30px; }
+  .menu-btn small { display:block; font-weight: normal; font-size: 12px; opacity:0.8; margin-top:3px;}
+  .panel-title { font-size: 14px; color:#9fd0ff; border-bottom: 1px solid #2c3470; padding-bottom:6px; margin-bottom: 10px; }
+  .leader-card { text-align:center; padding: 10px; background: rgba(0,0,0,0.25); border-radius: 10px; margin-bottom: 12px;}
+  .leader-card .big { font-size: 22px; font-weight:bold; }
+
+  /* lists / cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 10px; }
+  .card {
+    background: rgba(20,26,60,0.85); border: 2px solid #2c3470; border-radius: 12px;
+    padding: 10px; position: relative; cursor: pointer; transition: border-color .15s;
+  }
+  .card:active { border-color: #6f8fff; }
+  .card.sel { border-color: #ffd24a; box-shadow: 0 0 12px rgba(255,210,74,0.4); }
+  .av-wrap { text-align:center; margin: 2px 0 4px; }
+  .avatar { display:block; margin:0 auto; }
+  .card .name { font-size: 14px; font-weight: bold; margin-bottom: 3px; }
+  .card .meta { font-size: 11px; opacity: 0.85; line-height: 1.5; }
+  .rar { position:absolute; top:6px; right:8px; font-weight:bold; font-size:13px; }
+  .rar.C{color:#aab;} .rar.R{color:#6fd}; .rar.SR{color:#c9f;} .rar.SSR{color:#ffd24a;}
+  .role-tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:8px; margin-right:4px; }
+  .tag-front{background:#7a3a3a;} .tag-mid{background:#7a6a3a;} .tag-back{background:#3a5a7a;}
+
+  .sectitle { font-size: 16px; color:#9fd0ff; margin: 4px 0 10px; font-weight:bold;}
+  .row { display:flex; gap:10px; flex-wrap: wrap; align-items:center; margin-bottom:12px;}
+
+  /* battle HUD */
+  #battleHUD { position:absolute; inset:0; z-index: 20; display:none; pointer-events:none; }
+  #battleHUD.active { display:block; }
+  .hud-top { position:absolute; top:8px; left:8px; right:8px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none;}
+  .hud-box { background: rgba(8,10,25,0.7); border:1px solid #3a4488; border-radius:10px; padding:6px 10px; font-size:13px; }
+  .cmd-bar { position:absolute; bottom:10px; right:10px; display:flex; flex-direction:column; gap:6px; pointer-events:auto;}
+  .cmd-bar .row2 { display:flex; gap:6px; }
+  .cmd-btn { font-size:12px; padding:8px 6px; min-width:62px; }
+  .joy-zone { position:absolute; bottom:0; left:0; width:45%; height:55%; pointer-events:auto; }
+  #joyBase { position:absolute; width:120px; height:120px; border-radius:50%; border:2px solid rgba(160,190,255,0.4); background:rgba(40,50,100,0.25); display:none; }
+  #joyKnob { position:absolute; width:54px; height:54px; border-radius:50%; background:rgba(120,150,255,0.6); border:2px solid #cdd; transform:translate(-50%,-50%); }
+  .skill-btns { position:absolute; bottom:90px; right:10px; display:flex; gap:8px; pointer-events:auto;}
+  .big-btn { width:64px; height:64px; border-radius:50%; font-size:13px; }
+
+  .overlay {
+    position:absolute; inset:0; z-index:40; display:none;
+    align-items:center; justify-content:center; background:rgba(4,6,18,0.82);
+  }
+  .overlay.active{ display:flex; }
+  .modal { background:linear-gradient(180deg,#1c2250,#12153a); border:2px solid #3a4488; border-radius:16px; padding:24px; max-width:90%; width:420px; text-align:center; max-height:86%; overflow-y:auto;}
+  .modal h2 { color:#ffd24a; margin-bottom:14px; font-size:22px;}
+  .modal p { line-height:1.7; margin-bottom:14px; font-size:14px;}
+
+  .gacha-result { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:14px 0;}
+  .pull-card { width:96px; padding:10px 6px; border-radius:10px; border:2px solid; background:rgba(0,0,0,0.3); }
+  .toast { position:absolute; top:14px; left:50%; transform:translateX(-50%); background:rgba(20,40,90,0.95); border:1px solid #6f8fff; padding:10px 18px; border-radius:20px; z-index:60; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none;}
+  .toast.show{ opacity:1; }
+
+  .slot-list { display:flex; flex-direction:column; gap:6px;}
+  .slot {
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
+    background:rgba(20,26,60,0.7); border:1px solid #2c3470; cursor:pointer;
+  }
+  .slot.sel { border-color:#ffd24a; }
+  .slot .pos { font-size:11px; padding:2px 6px; border-radius:6px; min-width:34px; text-align:center;}
+  .slot .nm { flex:1; font-size:13px; }
+  .slot .sp { font-size:11px; opacity:0.85; }
+  .hpbar { height:5px; background:#400; border-radius:3px; overflow:hidden; margin-top:3px;}
+  .hpbar > i { display:block; height:100%; background:linear-gradient(90deg,#3fd07a,#9fff8f); }
+
+  .hint { font-size:12px; opacity:0.7; line-height:1.6; margin-top:8px;}
+  .star { color:#ffd24a; }
+  .seg { display:flex; border:1px solid #3a4488; border-radius:10px; overflow:hidden;}
+  .seg button { flex:1; background:transparent; color:#cdd; border:none; padding:8px 4px; font-size:13px; font-family:inherit;}
+  .seg button.on { background:#3d57c4; color:#fff; font-weight:bold;}
+  @media (max-width:600px){
+    #home .content{ flex-direction:column; }
+    .menu-btn{ padding:14px; font-size:15px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <!-- ===== HOME ===== -->
+  <div id="home" class="screen active">
+    <div class="topbar">
+      <span class="title">⚔ フェアリーダンジョン0</span>
+      <span class="spacer"></span>
+      <span class="res"><span class="ic">🪙</span><span id="resCoin">0</span></span>
+      <span class="res"><span class="ic">💎</span><span id="resGem">0</span></span>
+      <span class="res"><span class="ic">🏰</span>B<span id="resDepth">1</span></span>
+    </div>
+    <div class="content">
+      <div class="left">
+        <button class="btn menu-btn" data-go="dungeon"><span class="emoji">🗺️</span><span>ダンジョン探索<small>暴走精霊と戦い、聖霊を鎮める</small></span></button>
+        <button class="btn menu-btn sec" data-go="gacha"><span class="emoji">🔮</span><span>探検隊探し（ガチャ）<small>新たな仲間を仲間にする</small></span></button>
+        <button class="btn menu-btn sec" data-go="team"><span class="emoji">🛡️</span><span>隊員編成<small>20人小隊・陣形・精霊装備</small></span></button>
+        <button class="btn menu-btn sec" data-go="grow"><span class="emoji">⬆️</span><span>キャラ・精霊強化<small>レベルアップと精霊進化</small></span></button>
+        <button class="btn menu-btn gold" data-go="vault"><span class="emoji">💠</span><span>宝物庫<small>高難易度・腕が試される特殊戦</small></span></button>
+      </div>
+      <div class="right">
+        <div class="panel-title">現在の状況</div>
+        <div class="leader-card">
+          <div style="font-size:12px;opacity:.7;">リーダー</div>
+          <div class="av-wrap" id="homeLeaderAv"></div>
+          <div class="big" id="homeLeader">-</div>
+          <div id="homeLeaderInfo" style="font-size:12px;opacity:.85;margin-top:4px;"></div>
+        </div>
+        <div style="font-size:13px;line-height:1.9;">
+          <div>小隊人数：<b id="homeSquad">0</b> / 20</div>
+          <div>所持キャラ：<b id="homeChars">0</b></div>
+          <div>所持精霊：<b id="homeSpirits">0</b></div>
+          <div>陣形：<b id="homeForm">円形陣形</b></div>
+          <div>到達階層：<b>B<span id="homeDepth2">1</span></b></div>
+        </div>
+        <div class="hint">右上の資源と編成を確認しながら、左のメニューから挑戦しよう。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DUNGEON SELECT ===== -->
+  <div id="dungeon" class="screen">
+    <div class="topbar"><button class="btn sec" data-go="home">← 戻る</button><span class="title">🗺️ ダンジョン探索</span></div>
+    <div class="content" id="dungeonList"></div>
+  </div>
+
+  <!-- ===== GACHA ===== -->
+  <div id="gacha" class="screen">
+    <div class="topbar"><button class="btn sec" data-go="home">← 戻る</button><span class="title">🔮 探検隊探し</span><span class="spacer"></span>
+      <span class="res"><span class="ic">💎</span><span id="gachaGem">0</span></span></div>
+    <div class="content">
+      <p class="hint">レアリティ C / R / SR / SSR。高レアほど固有スキルと隊列適性が強化される。</p>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn gold" id="pull1">単発（💎30）</button>
+        <button class="btn gold" id="pull10">10連（💎270）</button>
+      </div>
+      <div class="sectitle">排出確率</div>
+      <div class="hint">SSR 3% / SR 12% / R 35% / C 50%　10連はSR以上1体確定</div>
+      <div class="sectitle" style="margin-top:18px;">所持キャラクター</div>
+      <div class="grid" id="gachaOwned"></div>
+    </div>
+  </div>
+
+  <!-- ===== TEAM ===== -->
+  <div id="team" class="screen">
+    <div class="topbar"><button class="btn sec" data-go="home">← 戻る</button><span class="title">🛡️ 隊員編成</span></div>
+    <div class="content">
+      <div class="sectitle">陣形</div>
+      <div class="seg" id="formSeg">
+        <button data-form="circle" class="on">円形陣形</button>
+        <button data-form="defense">防御陣形</button>
+        <button data-form="assault">突撃陣形</button>
+      </div>
+      <div class="hint" id="formDesc"></div>
+
+      <div class="sectitle" style="margin-top:16px;">小隊（最大20人・先頭がリーダー）</div>
+      <div class="slot-list" id="teamSlots"></div>
+
+      <div class="sectitle" style="margin-top:16px;">控え／編成変更</div>
+      <div class="hint">スロットを選んでから、下のキャラをタップで配置。リーダーは小隊の先頭。</div>
+      <div class="grid" id="teamBench" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ===== GROW ===== -->
+  <div id="grow" class="screen">
+    <div class="topbar"><button class="btn sec" data-go="home">← 戻る</button><span class="title">⬆️ 強化</span><span class="spacer"></span>
+      <span class="res"><span class="ic">🪙</span><span id="growCoin">0</span></span></div>
+    <div class="content">
+      <div class="seg" id="growSeg">
+        <button data-tab="char" class="on">キャラ育成</button>
+        <button data-tab="spirit">精霊（装備・進化）</button>
+      </div>
+      <div id="growChar">
+        <div class="sectitle">キャラクターのレベルアップ（🪙消費）</div>
+        <div class="grid" id="growCharList"></div>
+      </div>
+      <div id="growSpirit" style="display:none;">
+        <div class="sectitle">精霊：キャラへ装備・進化（小精霊→…→厄災級）</div>
+        <div class="hint">精霊は1キャラに1体装備。装備で能力アップ＋追加判定が付く。進化で能力強化。</div>
+        <div class="grid" id="growSpiritList" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BATTLE HUD ===== -->
+  <div id="battleHUD">
+    <div class="hud-top">
+      <div class="hud-box">
+        <div id="hudFloor">B1 - WAVE 1</div>
+        <div style="margin-top:3px;">味方 <span id="hudAlly">0</span>/<span id="hudAllyMax">0</span>　敵 <span id="hudEnemy">0</span></div>
+      </div>
+      <div class="hud-box" style="text-align:right;">
+        <div>リーダー HP</div>
+        <div class="hpbar" style="width:130px;"><i id="hudLeaderHp" style="width:100%"></i></div>
+        <div style="margin-top:3px;">指揮:<span id="hudCmd">通常</span></div>
+      </div>
+    </div>
+
+    <div class="joy-zone" id="joyZone">
+      <div id="joyBase"><div id="joyKnob"></div></div>
+    </div>
+
+    <div class="skill-btns">
+      <button class="btn big-btn" id="btnDash">回避<br>DASH</button>
+    </div>
+
+    <div class="cmd-bar">
+      <div class="row2">
+        <button class="btn sec cmd-btn" data-cmd="gather">集合</button>
+        <button class="btn sec cmd-btn" data-cmd="scatter">散開</button>
+        <button class="btn danger cmd-btn" data-cmd="attack">総攻撃</button>
+      </div>
+      <div class="row2">
+        <button class="btn sec cmd-btn" data-cmd="defense">防御陣</button>
+        <button class="btn sec cmd-btn" data-cmd="heal">回復優先</button>
+        <button class="btn sec cmd-btn" data-cmd="retreat">撤退</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- overlays -->
+  <div class="overlay" id="overlay"><div class="modal" id="modalBody"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+//=================================================================
+// データ定義
+//=================================================================
+const ROLES = {
+  attacker:  {jp:"アタッカー",   color:"#ff6b6b", line:"front", atk:1.4, def:0.9, hp:0.95, range:170, atkSpd:0.85},
+  defender:  {jp:"ディフェンダー", color:"#5b8cff", line:"front", atk:0.8, def:1.6, hp:1.6,  range:120, atkSpd:1.1},
+  supporter: {jp:"サポーター",   color:"#5bffb0", line:"back",  atk:0.6, def:1.0, hp:1.0,  range:200, atkSpd:1.0, heal:true},
+  tactician: {jp:"タクティシャン", color:"#d18cff", line:"mid",   atk:1.0, def:1.0, hp:1.0,  range:210, atkSpd:0.9, buff:true},
+  avoidance: {jp:"アヴォイダンス", color:"#ffd24a", line:"mid",   atk:1.15,def:0.7, hp:0.8,  range:160, atkSpd:0.7, evade:0.3},
+};
+const ELEMS = {
+  fire:{jp:"火",c:"#ff7a3c"}, water:{jp:"水",c:"#4cc4ff"}, wind:{jp:"風",c:"#7cff9a"},
+  thunder:{jp:"雷",c:"#ffe24c"}, light:{jp:"光",c:"#fff4c4"}, dark:{jp:"闇",c:"#b07cff"}
+};
+const RAR = {C:{c:"#aab",mul:1.0},R:{c:"#6fd0ff",mul:1.25},SR:{c:"#c98cff",mul:1.6},SSR:{c:"#ffd24a",mul:2.1}};
+
+// キャラテンプレ（ガチャプール）
+const CHAR_POOL = [
+  {n:"見習い剣士リオ", r:"C", role:"attacker"},
+  {n:"門番ガロ",     r:"C", role:"defender"},
+  {n:"癒し手ミナ",   r:"C", role:"supporter"},
+  {n:"斥候フィン",   r:"C", role:"avoidance"},
+  {n:"伝令役セラ",   r:"C", role:"tactician"},
+  {n:"双剣のアキ",   r:"R", role:"attacker"},
+  {n:"鉄壁ボルド",   r:"R", role:"defender"},
+  {n:"巡礼者ノア",   r:"R", role:"supporter"},
+  {n:"風脚レイア",   r:"R", role:"avoidance"},
+  {n:"軍師クロウ",   r:"R", role:"tactician"},
+  {n:"紅蓮姫イグナ", r:"SR", role:"attacker"},
+  {n:"大盾エクスガル",r:"SR", role:"defender"},
+  {n:"星詠みルナ",   r:"SR", role:"supporter"},
+  {n:"幻影シャドウ", r:"SR", role:"avoidance"},
+  {n:"竜将ヴァルガ", r:"SSR", role:"attacker"},
+  {n:"聖盾ジャンヌ", r:"SSR", role:"defender"},
+  {n:"大賢者ソフィア",r:"SSR", role:"tactician"},
+];
+
+// 精霊テンプレ（戦闘報酬で入手）
+const SPIRIT_POOL = [
+  {n:"火の小精霊",   el:"fire",   stage:0, atk:6, def:2, hp:0, extra:"攻撃に小炎上ダメージ"},
+  {n:"水の小精霊",   el:"water",  stage:0, atk:2, def:6, hp:20, extra:"被ダメージ軽減"},
+  {n:"風の小精霊",   el:"wind",   stage:0, atk:4, def:2, hp:0, extra:"移動速度上昇"},
+  {n:"雷の小精霊",   el:"thunder",stage:0, atk:8, def:0, hp:0, extra:"攻撃速度上昇"},
+  {n:"光の小精霊",   el:"light",  stage:0, atk:3, def:3, hp:15, extra:"周囲を微回復"},
+  {n:"闇の小精霊",   el:"dark",   stage:0, atk:7, def:1, hp:5, extra:"クリティカル付与"},
+];
+const SPIRIT_STAGES = ["小精霊","中精霊","上位精霊","厄災級"];
+
+// ダンジョン
+const DUNGEONS = [
+  {id:1, n:"始まりの森", depth:1, waves:2, boss:"暴走する樹霊", el:"wind"},
+  {id:2, n:"凍てつく回廊", depth:2, waves:3, boss:"氷結の精霊", el:"water"},
+  {id:3, n:"灼熱の坑道", depth:3, waves:3, boss:"焔の暴君", el:"fire"},
+  {id:4, n:"雷鳴の尖塔", depth:4, waves:4, boss:"雷帝スパーク", el:"thunder"},
+  {id:5, n:"虚無の深淵", depth:5, waves:4, boss:"厄災・闇の聖霊", el:"dark"},
+];
+const VAULTS = [
+  {id:101, n:"宝物庫：少数精鋭戦", depth:6, waves:3, boss:"番人ゴーレム", el:"light", rule:"squadLimit", ruleVal:6, desc:"使用キャラ6人まで"},
+  {id:102, n:"宝物庫：サバイバル", depth:7, waves:4, boss:"不死の祭祀", el:"dark", rule:"noHeal", desc:"回復一切なし"},
+  {id:103, n:"宝物庫：ボスラッシュ", depth:8, waves:5, boss:"連戦の覇者", el:"fire", rule:"bossRush", desc:"全ウェーブがボス級"},
+];
+
+//=================================================================
+// セーブデータ
+//=================================================================
+const SAVE_KEY = "fairyDungeon0_save_v1";
+let G = null;
+let nextId = 1;
+function newChar(tpl){
+  const role = ROLES[tpl.role];
+  const mul = RAR[tpl.r].mul;
+  return {
+    id: nextId++, name: tpl.n, role: tpl.role, rar: tpl.r, level: 1,
+    baseAtk: Math.round((10*role.atk)*mul),
+    baseDef: Math.round((6*role.def)*mul),
+    baseHp:  Math.round((100*role.hp)*mul),
+    spirit: null, // 装備中の精霊id
+    ai: { aggression: 0.4+Math.random()*0.5, healPriority: role.heal?0.9:0.2+Math.random()*0.3,
+          targetBias: Math.random(), survival: 0.3+Math.random()*0.5 }
+  };
+}
+function newSpirit(tpl){
+  return {id: nextId++, name: tpl.n, el: tpl.el, stage: tpl.stage,
+          atk: tpl.atk, def: tpl.def, hp: tpl.hp, extra: tpl.extra, baseName: tpl.n};
+}
+function defaultSave(){
+  const chars = [];
+  // 初期メンバー：各ロール1体ずつ＋αで序盤から20人埋まるよう配布
+  const starters = ["見習い剣士リオ","門番ガロ","癒し手ミナ","斥候フィン","伝令役セラ",
+                    "双剣のアキ","鉄壁ボルド","巡礼者ノア","風脚レイア","軍師クロウ"];
+  starters.forEach(nm=>{ const t=CHAR_POOL.find(c=>c.n===nm); chars.push(newChar(t)); });
+  // 残りはCを複製して人数確保
+  for(let i=0;i<10;i++){ const t=CHAR_POOL[i%5]; chars.push(newChar(t)); }
+  const spirits = [ newSpirit(SPIRIT_POOL[0]), newSpirit(SPIRIT_POOL[2]) ];
+  return {
+    coin: 800, gem: 300, depth: 1, cleared: [],
+    chars, spirits,
+    team: chars.slice(0,20).map(c=>c.id), // リーダーは team[0]
+    formation: "circle",
+  };
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(raw){ G = JSON.parse(raw); nextId = 1 + Math.max(0,...G.chars.map(c=>c.id),...G.spirits.map(s=>s.id)); return; }
+  }catch(e){}
+  G = defaultSave();
+  save();
+}
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(G)); }catch(e){} }
+function charById(id){ return G.chars.find(c=>c.id===id); }
+function spiritById(id){ return G.spirits.find(s=>s.id===id); }
+
+// 計算済みステータス（レベル＋精霊込み）
+function statsOf(c){
+  const lvMul = 1 + (c.level-1)*0.12;
+  let atk = c.baseAtk*lvMul, def = c.baseDef*lvMul, hp = c.baseHp*lvMul;
+  let el = null, extra = null;
+  if(c.spirit){ const s = spiritById(c.spirit); if(s){
+    const sm = 1 + s.stage*0.6;
+    atk += s.atk*sm; def += s.def*sm; hp += s.hp*sm; el = s.el; extra = s.extra;
+  }}
+  return {atk:Math.round(atk), def:Math.round(def), hp:Math.round(hp), el, extra, role:c.role};
+}
+
+//=================================================================
+// 画面管理
+//=================================================================
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id==="home") renderHome();
+  if(id==="dungeon") renderDungeon();
+  if(id==="gacha") renderGacha();
+  if(id==="team") renderTeam();
+  if(id==="grow") renderGrow();
+}
+document.querySelectorAll("[data-go]").forEach(b=> b.addEventListener("click",()=>show(b.dataset.go)));
+
+function toast(msg){
+  const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800);
+}
+function modal(html){ document.getElementById("modalBody").innerHTML=html; document.getElementById("overlay").classList.add("active"); }
+function closeModal(){ document.getElementById("overlay").classList.remove("active"); }
+
+function updateRes(){
+  document.getElementById("resCoin").textContent=G.coin;
+  document.getElementById("resGem").textContent=G.gem;
+  document.getElementById("resDepth").textContent=G.depth;
+  document.getElementById("gachaGem").textContent=G.gem;
+  document.getElementById("growCoin").textContent=G.coin;
+}
+
+//=================================================================
+// HOME
+//=================================================================
+function renderHome(){
+  updateRes();
+  const leader = charById(G.team[0]);
+  if(leader){
+    const st = statsOf(leader);
+    const av=document.getElementById("homeLeaderAv"); av.innerHTML="";
+    const big=makeAvatar(leader,96,true); av.appendChild(big);
+    document.getElementById("homeLeader").textContent = leader.name;
+    document.getElementById("homeLeaderInfo").innerHTML =
+      `<span class="rar ${leader.rar}" style="position:static">${leader.rar}</span> ${ROLES[leader.role].jp} Lv${leader.level}<br>
+       ATK ${st.atk} / DEF ${st.def} / HP ${st.hp}${st.el?` / 属性${ELEMS[st.el].jp}`:""}`;
+  }
+  document.getElementById("homeSquad").textContent = G.team.length;
+  document.getElementById("homeChars").textContent = G.chars.length;
+  document.getElementById("homeSpirits").textContent = G.spirits.length;
+  const fm = {circle:"円形陣形",defense:"防御陣形",assault:"突撃陣形"}[G.formation];
+  document.getElementById("homeForm").textContent = fm;
+  document.getElementById("homeDepth2").textContent = G.depth;
+}
+
+//=================================================================
+// DUNGEON SELECT
+//=================================================================
+function renderDungeon(){
+  const list = document.getElementById("dungeonList");
+  list.innerHTML = "<div class='sectitle'>通常ダンジョン</div>";
+  const wrap = document.createElement("div"); wrap.className="grid";
+  DUNGEONS.forEach(d=>{
+    const locked = d.depth > G.depth+0 ? false : false; // 全部開放（順番推奨）
+    const recommended = d.depth<=G.depth+1;
+    const div = document.createElement("div"); div.className="card";
+    div.innerHTML = `<div class="name">B${d.depth} ${d.n}</div>
+      <div class="meta">WAVE ${d.waves} ／ ボス：${d.boss}<br>属性：${ELEMS[d.el].jp}
+      ${G.cleared.includes(d.id)?'<br><span class="star">★クリア済</span>':''}</div>`;
+    div.onclick=()=>startBattle(d);
+    wrap.appendChild(div);
+  });
+  list.appendChild(wrap);
+
+  list.insertAdjacentHTML("beforeend","<div class='sectitle' style='margin-top:18px'>💠 宝物庫（高難易度）</div>");
+  const wrap2 = document.createElement("div"); wrap2.className="grid";
+  VAULTS.forEach(d=>{
+    const div = document.createElement("div"); div.className="card"; div.style.borderColor="#7a5a1a";
+    div.innerHTML = `<div class="name">${d.n}</div>
+      <div class="meta">特殊ルール：${d.desc}<br>ボス：${d.boss}／属性${ELEMS[d.el].jp}
+      ${G.cleared.includes(d.id)?'<br><span class="star">★制覇</span>':''}</div>`;
+    div.onclick=()=>startBattle(d);
+    wrap2.appendChild(div);
+  });
+  list.appendChild(wrap2);
+}
+
+//=================================================================
+// GACHA
+//=================================================================
+function rollRar(){
+  const r = Math.random()*100;
+  if(r<3) return "SSR"; if(r<15) return "SR"; if(r<50) return "R"; return "C";
+}
+function pull(rar){
+  let cand = CHAR_POOL.filter(c=>c.r===rar);
+  if(!cand.length) cand = CHAR_POOL.filter(c=>c.r==="C");
+  const tpl = cand[Math.floor(Math.random()*cand.length)];
+  const c = newChar(tpl); G.chars.push(c); return c;
+}
+function doGacha(times, cost){
+  if(G.gem < cost){ toast("ジェムが足りません"); return; }
+  G.gem -= cost;
+  const results=[];
+  let gotHigh=false;
+  for(let i=0;i<times;i++){
+    let rar = rollRar();
+    if(times===10 && i===9 && !gotHigh){ rar = (Math.random()<0.2)?"SR":"SR"; if(Math.random()<0.15)rar="SSR"; }
+    if(rar==="SR"||rar==="SSR") gotHigh=true;
+    results.push(pull(rar));
+  }
+  save(); updateRes();
+  const cards = results.map((c,i)=>`<div class="pull-card" data-i="${i}" style="border-color:${RAR[c.rar].c}">
+    <div class="rar ${c.rar}" style="position:static;font-size:14px">${c.rar}</div>
+    <div class="av-wrap"></div>
+    <div style="font-size:13px;font-weight:bold;margin:4px 0">${c.name}</div>
+    <div style="font-size:11px;opacity:.85">${ROLES[c.role].jp}</div></div>`).join("");
+  modal(`<h2>探検隊を発見！</h2><div class="gacha-result">${cards}</div>
+    <button class="btn" onclick="closeModal();renderGacha();">OK</button>`);
+  document.querySelectorAll("#modalBody .pull-card").forEach(el=>{
+    el.querySelector(".av-wrap").appendChild(makeAvatar(results[+el.dataset.i],62));
+  });
+}
+function renderGacha(){
+  updateRes();
+  const owned = document.getElementById("gachaOwned"); owned.innerHTML="";
+  G.chars.forEach(c=> owned.appendChild(charCard(c,false)));
+}
+document.getElementById("pull1").onclick=()=>doGacha(1,30);
+document.getElementById("pull10").onclick=()=>doGacha(10,270);
+
+function charCard(c, sel){
+  const div=document.createElement("div"); div.className="card"+(sel?" sel":"");
+  const st = statsOf(c);
+  const ln = ROLES[c.role].line;
+  const lnjp = {front:"前衛",mid:"中衛",back:"後衛"}[ln];
+  const tag = {front:"tag-front",mid:"tag-mid",back:"tag-back"}[ln];
+  const sp = c.spirit? spiritById(c.spirit):null;
+  div.innerHTML=`<span class="rar ${c.rar}">${c.rar}</span>
+    <div class="av-wrap"></div>
+    <div class="name">${c.name}</div>
+    <div class="meta"><span class="role-tag ${tag}">${lnjp}</span>${ROLES[c.role].jp} Lv${c.level}<br>
+    ATK${st.atk} DEF${st.def} HP${st.hp}<br>
+    精霊：${sp?`<span style="color:${ELEMS[sp.el].c}">${sp.name}</span>`:"なし"}</div>`;
+  div.querySelector(".av-wrap").appendChild(makeAvatar(c,64));
+  return div;
+}
+
+//=================================================================
+// TEAM
+//=================================================================
+let teamSelSlot = -1;
+function renderTeam(){
+  const fm = G.formation;
+  document.querySelectorAll("#formSeg button").forEach(b=> b.classList.toggle("on", b.dataset.form===fm));
+  document.getElementById("formDesc").textContent = {
+    circle:"円形陣形：リーダーを中心に均等配置。バランス型。",
+    defense:"防御陣形：前衛を厚く、後衛を守る。被ダメ減・足は遅い。",
+    assault:"突撃陣形：前方へ展開し攻撃的。火力増・打たれ弱い。"
+  }[fm];
+
+  const slots = document.getElementById("teamSlots"); slots.innerHTML="";
+  G.team.forEach((id,i)=>{
+    const c = charById(id); if(!c) return;
+    const st = statsOf(c); const ln = ROLES[c.role].line;
+    const lnjp={front:"前衛",mid:"中衛",back:"後衛"}[ln];
+    const tag={front:"tag-front",mid:"tag-mid",back:"tag-back"}[ln];
+    const sp = c.spirit?spiritById(c.spirit):null;
+    const div=document.createElement("div"); div.className="slot"+(teamSelSlot===i?" sel":"");
+    div.innerHTML=`<span class="pos ${tag}">${i===0?"隊長":lnjp}</span>
+      <div class="nm"><b>${c.name}</b> <span class="rar ${c.rar}" style="position:static;font-size:11px">${c.rar}</span>
+      <div class="sp">Lv${c.level} ATK${st.atk}/DEF${st.def}/HP${st.hp} 精霊:${sp?sp.name:"なし"}</div></div>`;
+    div.onclick=()=>{ teamSelSlot = (teamSelSlot===i?-1:i); renderTeam(); };
+    slots.appendChild(div);
+  });
+
+  const bench = document.getElementById("teamBench"); bench.innerHTML="";
+  G.chars.forEach(c=>{
+    const inTeam = G.team.includes(c.id);
+    const card = charCard(c,false);
+    if(inTeam) card.style.opacity="0.45";
+    card.onclick=()=>{
+      if(teamSelSlot<0){ toast("先に上のスロットを選択"); return; }
+      // 既に他スロットにいる場合は入れ替え
+      const existIdx = G.team.indexOf(c.id);
+      const cur = G.team[teamSelSlot];
+      if(existIdx>=0){ G.team[existIdx]=cur; }
+      G.team[teamSelSlot]=c.id;
+      G.team = G.team.filter(x=>x!=null);
+      save(); teamSelSlot=-1; renderTeam();
+      toast("配置を更新");
+    };
+    bench.appendChild(card);
+  });
+}
+document.querySelectorAll("#formSeg button").forEach(b=> b.onclick=()=>{ G.formation=b.dataset.form; save(); renderTeam(); });
+
+//=================================================================
+// GROW
+//=================================================================
+function renderGrow(){
+  updateRes();
+  document.getElementById("growCharList").innerHTML="";
+  G.chars.forEach(c=>{
+    const cost = 50*c.level;
+    const card = charCard(c,false);
+    const btn = document.createElement("button"); btn.className="btn gold"; btn.style.marginTop="8px"; btn.style.width="100%";
+    btn.style.fontSize="12px"; btn.style.padding="8px";
+    btn.textContent=`Lv UP 🪙${cost}`;
+    btn.onclick=(e)=>{ e.stopPropagation();
+      if(G.coin<cost){ toast("コイン不足"); return; }
+      G.coin-=cost; c.level++; save(); renderGrow(); toast(`${c.name} Lv${c.level}!`);
+    };
+    card.appendChild(btn);
+    document.getElementById("growCharList").appendChild(card);
+  });
+
+  const sl = document.getElementById("growSpiritList"); sl.innerHTML="";
+  if(!G.spirits.length){ sl.innerHTML="<div class='hint'>精霊はまだいない。ダンジョンでボスを討伐して入手しよう。</div>"; }
+  G.spirits.forEach(s=>{
+    const card=document.createElement("div"); card.className="card";
+    const equippedBy = G.chars.find(c=>c.spirit===s.id);
+    const evoCost = 120*(s.stage+1);
+    card.innerHTML=`<div class="av-wrap"></div>
+      <div class="name" style="color:${ELEMS[s.el].c}">${s.name}</div>
+      <div class="meta">属性${ELEMS[s.el].jp}／${SPIRIT_STAGES[s.stage]}<br>
+      +ATK${s.atk} +DEF${s.def} +HP${s.hp}<br>${s.extra}<br>
+      装備中:${equippedBy?equippedBy.name:"なし"}</div>`;
+    card.querySelector(".av-wrap").appendChild(makeSpiritAvatar(s,56));
+    const wrap=document.createElement("div"); wrap.style.display="flex"; wrap.style.gap="4px"; wrap.style.marginTop="8px";
+    const eq=document.createElement("button"); eq.className="btn"; eq.style.flex="1"; eq.style.fontSize="11px"; eq.style.padding="7px";
+    eq.textContent="装備"; eq.onclick=()=>chooseEquip(s);
+    const evo=document.createElement("button"); evo.className="btn gold"; evo.style.flex="1"; evo.style.fontSize="11px"; evo.style.padding="7px";
+    evo.textContent = s.stage<3?`進化🪙${evoCost}`:"最大";
+    evo.disabled = s.stage>=3;
+    evo.onclick=()=>{ if(G.coin<evoCost){toast("コイン不足");return;}
+      G.coin-=evoCost; s.stage++; s.atk=Math.round(s.atk*1.5); s.def=Math.round(s.def*1.5); s.hp=Math.round(s.hp*1.5);
+      s.name = s.baseName.replace("小精霊",SPIRIT_STAGES[s.stage]);
+      if(!s.name.includes(SPIRIT_STAGES[s.stage])) s.name = ELEMS[s.el].jp+"の"+SPIRIT_STAGES[s.stage];
+      save(); renderGrow(); toast("精霊が進化した！");
+    };
+    wrap.appendChild(eq); wrap.appendChild(evo); card.appendChild(wrap);
+    sl.appendChild(card);
+  });
+}
+function chooseEquip(s){
+  const opts = G.chars.map(c=>`<button class="btn sec" style="width:100%;margin-bottom:6px;font-size:13px"
+    onclick="equipSpirit(${s.id},${c.id})">${c.name}（${ROLES[c.role].jp} Lv${c.level}）${c.spirit?'※装備変更':''}</button>`).join("");
+  modal(`<h2>${s.name}を装備</h2><p>装備するキャラを選択（1キャラ1体）</p>
+    <div style="max-height:300px;overflow-y:auto">${opts}</div>
+    <button class="btn sec" onclick="closeModal()" style="margin-top:8px">キャンセル</button>`);
+}
+function equipSpirit(sid, cid){
+  // 他キャラが同精霊を装備していたら外す
+  G.chars.forEach(c=>{ if(c.spirit===sid) c.spirit=null; });
+  const c = charById(cid); c.spirit=sid; save(); closeModal(); renderGrow(); toast("精霊を装備した");
+}
+document.querySelectorAll("#growSeg button").forEach(b=> b.onclick=()=>{
+  document.querySelectorAll("#growSeg button").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+  document.getElementById("growChar").style.display = b.dataset.tab==="char"?"block":"none";
+  document.getElementById("growSpirit").style.display = b.dataset.tab==="spirit"?"block":"none";
+});
+
+//=================================================================
+// 戦闘エンジン
+//=================================================================
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let W=0,H=0;
+function resize(){ W=cv.width=innerWidth; H=cv.height=innerHeight; }
+addEventListener("resize",resize); resize();
+
+let B = null; // battle state
+let raf = null;
+
+function startBattle(d){
+  show("home"); // hide menus visually; we use canvas
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("battleHUD").classList.add("active");
+
+  // 編成→ユニット化
+  let teamIds = G.team.slice();
+  if(d.rule==="squadLimit") teamIds = teamIds.slice(0, d.ruleVal);
+  const allies = teamIds.map((id,i)=> makeUnit(charById(id), true, i, teamIds.length));
+
+  B = {
+    d, allies, enemies:[], bullets:[], effects:[],
+    wave:0, totalWaves:d.waves, command:"normal", time:0,
+    leader: allies[0], over:false, win:false, formation:G.formation,
+    rule:d.rule||null, ruleVal:d.ruleVal||0,
+    deadAllies:[], // ロスト判定用に倒れたallyを保持
+  };
+  document.getElementById("hudAllyMax").textContent = allies.length;
+  spawnWave();
+  hudCmd("通常");
+  if(raf) cancelAnimationFrame(raf);
+  lastT = performance.now();
+  loop();
+}
+
+function makeUnit(c, ally, idx, total){
+  const st = statsOf(c);
+  const role = ROLES[c.role];
+  // 配置
+  let x,y;
+  if(ally){
+    const a = (idx/total)*Math.PI*2;
+    x = W/2 + Math.cos(a)*80; y = H*0.72 + Math.sin(a)*60;
+  }
+  return {
+    ref:c, ally, name:c.name, role:c.role, line:role.line, color:role.color,
+    x, y, vx:0, vy:0,
+    hp: st.hp, maxHp: st.hp, atk: st.atk, def: st.def,
+    range: role.range, atkCd:0, atkSpd: role.atkSpd,
+    el: st.el, extra: st.extra, heal: role.heal, buff: role.buff, evade: role.evade||0,
+    ai: c.ai||{aggression:0.5,healPriority:0.3,targetBias:0.5,survival:0.5},
+    alive:true, isLeader: ally&&idx===0, radius: role.line==="front"?14:12,
+    target:null, dashCd:0, hitFlash:0, buffT:0,
+    phase: Math.random()*6.28, facing:1, blink:Math.random()*3,
+  };
+}
+
+function spawnWave(){
+  B.wave++;
+  document.getElementById("hudFloor").textContent = `B${B.d.depth} - WAVE ${B.wave}/${B.totalWaves}`;
+  const isBossWave = B.wave===B.totalWaves;
+  const bossRush = B.rule==="bossRush";
+  const enemies=[];
+  if(isBossWave || bossRush){
+    enemies.push(makeEnemy(B.d.boss, B.d.el, B.d.depth, true));
+    // ボスの取り巻き
+    const adds = Math.min(4, 1+Math.floor(B.d.depth/2));
+    for(let i=0;i<adds;i++) enemies.push(makeEnemy("従属精霊", B.d.el, B.d.depth, false));
+  }else{
+    const n = 3 + B.d.depth;
+    for(let i=0;i<n;i++) enemies.push(makeEnemy("暴走精霊", B.d.el, B.d.depth, false));
+  }
+  B.enemies = enemies;
+}
+
+function makeEnemy(name, el, depth, boss){
+  const hp = boss? 800+depth*400 : 120+depth*60;
+  return {
+    ally:false, name, el, boss,
+    x: W*(0.2+Math.random()*0.6), y: H*(0.12+Math.random()*0.18),
+    vx:0, vy:0, hp, maxHp:hp,
+    atk: boss? 18+depth*5 : 8+depth*3, def: boss?12+depth*3:4+depth*2,
+    range: boss?320:220, fireCd: Math.random()*1.5,
+    color: ELEMS[el].c, radius: boss?30:16, alive:true, hitFlash:0,
+    pattern: boss? (depth%3) : (Math.random()<0.5?"aim":"spread"),
+    moveT: Math.random()*3, tx:0, ty:0, phase:0,
+    wob: Math.random()*6.28, blink: Math.random()*3,
+  };
+}
+
+//------- 入力 -------
+const keys={};
+addEventListener("keydown",e=>{ keys[e.key.toLowerCase()]=true;
+  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())) e.preventDefault();
+  if(e.key===" ") doDash();
+});
+addEventListener("keyup",e=>{ keys[e.key.toLowerCase()]=false; });
+
+// joystick
+let joy={active:false, id:null, bx:0,by:0, dx:0,dy:0};
+const joyZone=document.getElementById("joyZone");
+const joyBase=document.getElementById("joyBase");
+const joyKnob=document.getElementById("joyKnob");
+function joyStart(x,y){ joy.active=true; joy.bx=x; joy.by=y; joy.dx=0; joy.dy=0;
+  joyBase.style.display="block"; joyBase.style.left=(x-60)+"px"; joyBase.style.top=(y-60)+"px";
+  joyKnob.style.left="60px"; joyKnob.style.top="60px";
+}
+function joyMove(x,y){ if(!joy.active)return;
+  let dx=x-joy.bx, dy=y-joy.by; const d=Math.hypot(dx,dy); const max=55;
+  if(d>max){ dx=dx/d*max; dy=dy/d*max; }
+  joy.dx=dx/max; joy.dy=dy/max;
+  joyKnob.style.left=(60+dx)+"px"; joyKnob.style.top=(60+dy)+"px";
+}
+function joyEnd(){ joy.active=false; joy.dx=0; joy.dy=0; joyBase.style.display="none"; }
+joyZone.addEventListener("touchstart",e=>{ const t=e.changedTouches[0]; joy.id=t.identifier; joyStart(t.clientX,t.clientY); e.preventDefault();},{passive:false});
+joyZone.addEventListener("touchmove",e=>{ for(const t of e.changedTouches){ if(t.identifier===joy.id) joyMove(t.clientX,t.clientY); } e.preventDefault();},{passive:false});
+joyZone.addEventListener("touchend",e=>{ for(const t of e.changedTouches){ if(t.identifier===joy.id) joyEnd(); }},{passive:false});
+joyZone.addEventListener("mousedown",e=>{ joyStart(e.clientX,e.clientY); });
+addEventListener("mousemove",e=>{ if(joy.active) joyMove(e.clientX,e.clientY); });
+addEventListener("mouseup",e=>{ if(joy.active) joyEnd(); });
+
+document.getElementById("btnDash").addEventListener("click",doDash);
+function doDash(){ if(!B||B.over) return; const L=B.leader; if(!L.alive||L.dashCd>0) return;
+  L.dashCd=1.2; let dx=inputVec().x, dy=inputVec().y; if(dx===0&&dy===0){dy=-1;}
+  const sp=380; L.vx=dx*sp; L.vy=dy*sp; L.dashT=0.18; L.invuln=0.3; spawnEffect(L.x,L.y,"#9fd0ff",18);
+}
+function inputVec(){
+  let x=0,y=0;
+  if(joy.active){ x=joy.dx; y=joy.dy; }
+  if(keys["arrowleft"]||keys["a"])x-=1; if(keys["arrowright"]||keys["d"])x+=1;
+  if(keys["arrowup"]||keys["w"])y-=1; if(keys["arrowdown"]||keys["s"])y+=1;
+  const d=Math.hypot(x,y); if(d>1){x/=d;y/=d;} return {x,y};
+}
+
+// commands
+document.querySelectorAll(".cmd-btn").forEach(b=> b.onclick=()=>{
+  if(!B||B.over)return; B.command=b.dataset.cmd;
+  const jp={gather:"集合",scatter:"散開",attack:"総攻撃",defense:"防御陣形",heal:"回復優先",retreat:"撤退"}[b.dataset.cmd];
+  hudCmd(jp); toast("指揮："+jp);
+});
+function hudCmd(t){ document.getElementById("hudCmd").textContent=t; }
+
+//------- ループ -------
+let lastT=0;
+function loop(){
+  raf=requestAnimationFrame(loop);
+  const now=performance.now(); let dt=(now-lastT)/1000; lastT=now;
+  if(dt>0.05)dt=0.05;
+  if(B&&!B.over){ update(dt); }
+  render();
+}
+
+function update(dt){
+  B.time+=dt;
+  const L=B.leader;
+
+  // リーダー操作
+  if(L.alive){
+    if(L.dashT>0){ L.dashT-=dt; }
+    else{
+      const v=inputVec(); const sp=180;
+      L.vx=v.x*sp; L.vy=v.y*sp;
+    }
+    if(L.invuln>0)L.invuln-=dt;
+    if(L.dashCd>0)L.dashCd-=dt;
+    L.x+=L.vx*dt; L.y+=L.vy*dt;
+    clampUnit(L);
+    // リーダーオートアタック
+    L.atkCd-=dt;
+    const tgt=nearestEnemy(L);
+    if(tgt && dist(L,tgt)<L.range && L.atkCd<=0){ fireFromUnit(L,tgt); L.atkCd=L.atkSpd; }
+  }
+
+  // 味方AI
+  for(const u of B.allies){
+    if(u===L||!u.alive) continue;
+    updateAlly(u,dt);
+  }
+  // 敵AI
+  for(const e of B.enemies){
+    if(!e.alive) continue;
+    updateEnemy(e,dt);
+  }
+  // 弾
+  updateBullets(dt);
+  // エフェクト
+  for(const f of B.effects){ f.t-=dt; f.r+=f.spd*dt; }
+  B.effects=B.effects.filter(f=>f.t>0);
+
+  // 状態反映
+  for(const u of [...B.allies,...B.enemies]){ if(u.hitFlash>0)u.hitFlash-=dt; }
+
+  // ウェーブ判定
+  if(B.enemies.every(e=>!e.alive)){
+    if(B.wave<B.totalWaves){ spawnWave(); }
+    else { endBattle(true); return; }
+  }
+  // 全滅判定
+  if(B.allies.every(u=>!u.alive)){ endBattle(false); return; }
+
+  updateHUD();
+}
+
+function clampUnit(u){ u.x=Math.max(u.radius,Math.min(W-u.radius,u.x)); u.y=Math.max(u.radius,Math.min(H-u.radius,u.y)); }
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+function nearestEnemy(u){ let best=null,bd=1e9; for(const e of B.enemies){ if(!e.alive)continue; const d=dist(u,e); if(d<bd){bd=d;best=e;} } return best; }
+function nearestEnemyTo(x,y){ let best=null,bd=1e9; for(const e of B.enemies){ if(!e.alive)continue; const d=Math.hypot(e.x-x,e.y-y); if(d<bd){bd=d;best=e;} } return best; }
+function lowestAlly(){ let best=null,bd=1e9; for(const u of B.allies){ if(!u.alive)continue; const r=u.hp/u.maxHp; if(r<bd){bd=r;best=u;} } return best; }
+
+function updateAlly(u,dt){
+  const L=B.leader;
+  // 隊形オフセット（リーダー基準）
+  const idx = B.allies.indexOf(u);
+  let formScale=1, atkBonus=1, defBonus=1;
+  if(B.formation==="defense"){ formScale=0.7; defBonus=1.25; }
+  if(B.formation==="assault"){ formScale=1.3; atkBonus=1.3; defBonus=0.85; }
+
+  // 指揮コマンドによる目標位置
+  let homeX,homeY;
+  const a=(idx/B.allies.length)*Math.PI*2;
+  if(B.command==="gather"){ homeX=L.x+Math.cos(a)*40; homeY=L.y+Math.sin(a)*40; }
+  else if(B.command==="scatter"){ homeX=L.x+Math.cos(a)*150*formScale; homeY=L.y+Math.sin(a)*150*formScale; }
+  else if(B.command==="retreat"){ homeX=L.x+Math.cos(a)*60; homeY=H-40; }
+  else { // normal/attack/defense/heal: 役割で距離
+    let dst = u.line==="front"?70 : u.line==="mid"?110 : 150;
+    dst*=formScale;
+    homeX=L.x+Math.cos(a)*dst; homeY=L.y+Math.sin(a)*dst;
+    if(B.formation==="assault"){ homeY -= 40; }
+    if(B.formation==="defense" && u.line==="front"){ homeY = L.y - 30; }
+  }
+
+  // ヒーラー挙動
+  let goal={x:homeX,y:homeY};
+  const tgt=nearestEnemy(u);
+  let healMode = (u.heal && (B.command==="heal" || Math.random()<0.0)) ;
+  if(u.heal){
+    const low=lowestAlly();
+    if(low && low.hp/low.maxHp < (B.command==="heal"?0.95:u.ai.healPriority+0.4)){
+      goal={x:low.x,y:low.y};
+      // 回復
+      u.healCd=(u.healCd||0)-dt;
+      if(dist(u,low)<u.range && u.healCd<=0 && B.rule!=="noHeal"){
+        const amt=Math.round(u.atk*1.6+8);
+        low.hp=Math.min(low.maxHp,low.hp+amt); u.healCd=1.4;
+        spawnEffect(low.x,low.y,"#5bffb0",16);
+      }
+    }
+  }
+
+  // 攻撃寄り：aggression と command=attack
+  let aggro = u.ai.aggression + (B.command==="attack"?0.4:0) - (B.command==="retreat"?0.6:0);
+  if(tgt && !u.heal){
+    if(aggro>0.5 && dist(u,tgt)>u.range*0.8){ goal={x:tgt.x,y:tgt.y}; }
+  }
+
+  // 生存意識：HP低いと退く
+  if(u.hp/u.maxHp < (1-u.ai.survival)*0.5+0.15 && B.command!=="attack"){
+    goal={x:L.x, y:L.y+40};
+  }
+
+  // 移動
+  const dx=goal.x-u.x, dy=goal.y-u.y, d=Math.hypot(dx,dy);
+  const sp=130*formScale*(u.evade?1.3:1);
+  if(d>6){ u.x+=dx/d*sp*dt; u.y+=dy/d*sp*dt; }
+  clampUnit(u);
+
+  // 攻撃
+  u.atkCd-=dt;
+  if(tgt && dist(u,tgt)<u.range && u.atkCd<=0 && !healMode){
+    fireFromUnit(u,tgt,atkBonus);
+    u.atkCd=u.atkSpd;
+  }
+  // タクティシャンのバフ（簡易：周囲味方のatkCd短縮効果＝ここでは光る演出のみ）
+  if(u.buff){ u.buffT=(u.buffT||0)-dt; if(u.buffT<=0){ u.buffT=2.5; spawnEffect(u.x,u.y,"#d18cff",30); } }
+  u._defBonus=defBonus;
+}
+
+function updateEnemy(e,dt){
+  // ゆるく動く
+  e.moveT-=dt;
+  if(e.moveT<=0){ e.moveT=1.5+Math.random()*2; e.tx=W*(0.15+Math.random()*0.7); e.ty=H*(0.1+Math.random()*0.3); }
+  const dx=e.tx-e.x, dy=e.ty-e.y, d=Math.hypot(dx,dy);
+  const sp=e.boss?40:60;
+  if(d>4){ e.x+=dx/d*sp*dt; e.y+=dy/d*sp*dt; }
+
+  // 攻撃（弾幕）
+  e.fireCd-=dt;
+  if(e.fireCd<=0){
+    const target = pickEnemyTarget();
+    if(target){
+      enemyFire(e,target);
+      e.fireCd = e.boss? 0.9 : 1.6+Math.random();
+    }
+  }
+}
+function pickEnemyTarget(){
+  // 主にリーダー狙い＋たまにランダム味方
+  const alive=B.allies.filter(u=>u.alive); if(!alive.length)return null;
+  if(B.leader.alive && Math.random()<0.5) return B.leader;
+  return alive[Math.floor(Math.random()*alive.length)];
+}
+
+//------- 弾 -------
+function fireFromUnit(u,tgt,atkBonus=1){
+  const ang=Math.atan2(tgt.y-u.y, tgt.x-u.x);
+  let dmg=u.atk*atkBonus;
+  let crit=false;
+  if(u.extra && u.extra.includes("クリティカル") && Math.random()<0.3){ dmg*=1.8; crit=true; }
+  const spd=u.evade?420:340;
+  B.bullets.push({x:u.x,y:u.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+    r:crit?6:4, ally:true, dmg, color:u.el?ELEMS[u.el].c:"#cfe", el:u.el, life:2,
+    burn: u.extra&&u.extra.includes("炎上")});
+}
+function enemyFire(e,target){
+  const baseAng=Math.atan2(target.y-e.y, target.x-e.x);
+  const dmg=e.atk;
+  const mk=(ang,spd)=>B.bullets.push({x:e.x,y:e.y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
+    r:e.boss?7:5, ally:false, dmg, color:e.color, life:4});
+  if(e.boss){
+    e.phase=(e.phase||0)+1;
+    if(e.pattern===0){ // リング弾
+      const n=18; for(let i=0;i<n;i++) mk(i/n*Math.PI*2 + e.phase*0.2, 150);
+    }else if(e.pattern===1){ // 3way狙撃ｘ連
+      for(let k=-2;k<=2;k++) mk(baseAng+k*0.18, 230);
+    }else{ // 渦巻き
+      const n=6; for(let i=0;i<n;i++) mk(e.phase*0.4 + i/n*Math.PI*2, 180);
+    }
+  }else{
+    if(e.pattern==="aim"){ for(let k=-1;k<=1;k++) mk(baseAng+k*0.14,200); }
+    else { const n=8; for(let i=0;i<n;i++) mk(i/n*Math.PI*2,140); }
+  }
+}
+function updateBullets(dt){
+  for(const b of B.bullets){
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if(b.ally){
+      for(const e of B.enemies){ if(!e.alive)continue;
+        if(Math.hypot(e.x-b.x,e.y-b.y) < e.radius+b.r){
+          const real=Math.max(1, b.dmg - e.def*0.3);
+          e.hp-=real; e.hitFlash=0.12; b.life=0;
+          if(b.burn){ e.hp-=b.dmg*0.15; }
+          spawnEffect(b.x,b.y,b.color,8);
+          if(e.hp<=0){ e.alive=false; spawnEffect(e.x,e.y,e.color,e.boss?60:26); }
+          break;
+        }
+      }
+    }else{
+      for(const u of B.allies){ if(!u.alive)continue;
+        if(u.invuln>0) continue;
+        if(Math.hypot(u.x-b.x,u.y-b.y) < u.radius+b.r){
+          if(u.evade && Math.random()<u.evade){ spawnEffect(u.x,u.y,"#ffd24a",12); b.life=0; break; }
+          let real=Math.max(1, b.dmg - u.def*0.4*(u._defBonus||1));
+          u.hp-=real; u.hitFlash=0.12; b.life=0;
+          spawnEffect(b.x,b.y,"#ff8",8);
+          if(u.hp<=0){ u.alive=false; spawnEffect(u.x,u.y,"#888",30);
+            if(!B.deadAllies.includes(u)) B.deadAllies.push(u);
+            if(u===B.leader){ toast("リーダー戦闘不能！"); }
+          }
+          break;
+        }
+      }
+    }
+  }
+  B.bullets=B.bullets.filter(b=> b.life>0 && b.x>-20&&b.x<W+20&&b.y>-20&&b.y<H+20);
+}
+function spawnEffect(x,y,color,r){ B.effects.push({x,y,color,r:4,maxR:r,t:0.3,spd:r*3}); }
+
+function updateHUD(){
+  document.getElementById("hudAlly").textContent=B.allies.filter(u=>u.alive).length;
+  document.getElementById("hudEnemy").textContent=B.enemies.filter(e=>e.alive).length;
+  const L=B.leader;
+  document.getElementById("hudLeaderHp").style.width=(L.alive?Math.max(0,L.hp/L.maxHp*100):0)+"%";
+}
+
+//------- 可愛いイラスト描画ヘルパー -------
+function shade(hex,p){
+  const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p));
+  return `rgb(${r},${g},${b})`;
+}
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function star(c,x,y,r,col){ c.fillStyle=col; c.beginPath();
+  for(let i=0;i<8;i++){ const a=i/8*Math.PI*2-Math.PI/2; const rr2=i%2?r*0.45:r; const px=x+Math.cos(a)*rr2,py=y+Math.sin(a)*rr2; i?c.lineTo(px,py):c.moveTo(px,py);} c.closePath(); c.fill(); }
+
+// チビキャラ（味方）を描く
+function paintChibi(c,cx,cy,R,o){
+  o=o||{}; const dir=o.dir||1; const col=o.color||"#8ab"; const skin="#ffe6cf";
+  const flash=o.flash||0; const blinking=o.blink;
+  c.save(); c.translate(cx,cy);
+  c.fillStyle="rgba(0,0,0,0.22)"; c.beginPath(); c.ellipse(0,R*1.35,R*0.9,R*0.28,0,0,Math.PI*2); c.fill();
+  c.fillStyle=shade(col,-15); rr(c,-R*0.62,R*0.32,R*1.24,R*0.95,R*0.42); c.fill();
+  c.fillStyle=skin; c.beginPath(); c.arc(-R*0.62,R*0.78,R*0.2,0,Math.PI*2); c.arc(R*0.62,R*0.78,R*0.2,0,Math.PI*2); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(0,-R*0.22,R*1.06,0,Math.PI*2); c.fill();
+  c.fillStyle=skin; c.beginPath(); c.arc(0,-R*0.12,R*0.9,0,Math.PI*2); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(0,-R*0.22,R*1.06,Math.PI*1.04,Math.PI*1.96); c.lineTo(R*0.5,-R*0.5); c.lineTo(0,-R*0.2); c.lineTo(-R*0.5,-R*0.5); c.closePath(); c.fill();
+  c.strokeStyle=col; c.lineWidth=R*0.12; c.beginPath(); c.moveTo(0,-R*1.2); c.quadraticCurveTo(R*0.25,-R*1.5,R*0.1,-R*1.6); c.stroke();
+  c.fillStyle="rgba(255,140,160,0.55)"; c.beginPath(); c.arc(-R*0.42,R*0.02,R*0.17,0,Math.PI*2); c.arc(R*0.42,R*0.02,R*0.17,0,Math.PI*2); c.fill();
+  const ex=R*0.36+dir*R*0.04, ey=-R*0.12;
+  if(blinking!==undefined && (blinking%3)<0.12){
+    c.strokeStyle="#3a2533"; c.lineWidth=R*0.08; c.lineCap="round";
+    c.beginPath(); c.moveTo(-ex-R*0.14,ey); c.lineTo(-ex+R*0.14,ey); c.moveTo(ex-R*0.14,ey); c.lineTo(ex+R*0.14,ey); c.stroke();
+  }else{
+    c.fillStyle="#3a2533";
+    c.beginPath(); c.ellipse(-ex,ey,R*0.15,R*0.22,0,0,Math.PI*2); c.ellipse(ex,ey,R*0.15,R*0.22,0,0,Math.PI*2); c.fill();
+    c.fillStyle="#fff"; c.beginPath(); c.arc(-ex+R*0.05,ey-R*0.08,R*0.06,0,Math.PI*2); c.arc(ex+R*0.05,ey-R*0.08,R*0.06,0,Math.PI*2); c.fill();
+  }
+  c.strokeStyle="#a35"; c.lineWidth=R*0.06; c.lineCap="round"; c.beginPath();
+  c.arc(dir*R*0.04,R*0.14,R*0.12,0.15*Math.PI,0.85*Math.PI); c.stroke();
+  if(o.el){ star(c,R*0.85,-R*0.95,R*0.28,ELEMS[o.el].c); }
+  if(o.leader){ c.fillStyle="#ffd24a"; c.beginPath();
+    c.moveTo(-R*0.5,-R*1.05); c.lineTo(-R*0.5,-R*1.4); c.lineTo(-R*0.2,-R*1.15);
+    c.lineTo(0,-R*1.5); c.lineTo(R*0.2,-R*1.15); c.lineTo(R*0.5,-R*1.4); c.lineTo(R*0.5,-R*1.05); c.closePath(); c.fill();
+  }
+  if(flash>0){ c.globalAlpha=Math.min(0.7,flash*4); c.fillStyle="#fff"; c.beginPath(); c.arc(0,-R*0.12,R*1.1,0,Math.PI*2); c.fill(); c.globalAlpha=1; }
+  c.restore();
+}
+
+// 可愛い精霊（敵）を描く
+function paintSpirit(c,cx,cy,R,col,t,boss,flash,blink){
+  c.save(); c.translate(cx,cy);
+  const wob=Math.sin(t*3)*0.06;
+  c.fillStyle="rgba(0,0,0,0.22)"; c.beginPath(); c.ellipse(0,R*1.15,R*0.85,R*0.25,0,0,Math.PI*2); c.fill();
+  c.save(); c.scale(1+wob,1-wob);
+  const grad=c.createRadialGradient(-R*0.3,-R*0.4,R*0.2,0,0,R*1.2);
+  grad.addColorStop(0,shade(col,60)); grad.addColorStop(1,col);
+  c.fillStyle=grad; c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fill();
+  c.beginPath(); c.moveTo(-R*0.5,R*0.7); c.quadraticCurveTo(0,R*1.5,R*0.5,R*0.7); c.closePath(); c.fill();
+  c.restore();
+  c.fillStyle=col; c.beginPath(); c.arc(-R*1.0,R*0.1,R*0.22,0,Math.PI*2); c.arc(R*1.0,R*0.1,R*0.22,0,Math.PI*2); c.fill();
+  c.fillStyle="rgba(255,255,255,0.35)"; c.beginPath(); c.ellipse(0,R*0.25,R*0.5,R*0.4,0,0,Math.PI*2); c.fill();
+  c.fillStyle="rgba(255,120,140,0.5)"; c.beginPath(); c.arc(-R*0.5,R*0.05,R*0.16,0,Math.PI*2); c.arc(R*0.5,R*0.05,R*0.16,0,Math.PI*2); c.fill();
+  if(blink!==undefined && (blink%3.3)<0.13){
+    c.strokeStyle="#2a2030"; c.lineWidth=R*0.09; c.lineCap="round";
+    c.beginPath(); c.moveTo(-R*0.42,-R*0.1); c.lineTo(-R*0.18,-R*0.1); c.moveTo(R*0.18,-R*0.1); c.lineTo(R*0.42,-R*0.1); c.stroke();
+  }else{
+    c.fillStyle="#2a2030";
+    c.beginPath(); c.ellipse(-R*0.3,-R*0.1,R*0.16,R*0.22,0,0,Math.PI*2); c.ellipse(R*0.3,-R*0.1,R*0.16,R*0.22,0,0,Math.PI*2); c.fill();
+    c.fillStyle="#fff"; c.beginPath(); c.arc(-R*0.24,-R*0.18,R*0.07,0,Math.PI*2); c.arc(R*0.36,-R*0.18,R*0.07,0,Math.PI*2); c.fill();
+  }
+  c.strokeStyle="#2a2030"; c.lineWidth=R*0.07; c.lineCap="round"; c.beginPath();
+  if(boss){ c.arc(0,R*0.18,R*0.18,1.1*Math.PI,1.9*Math.PI); }
+  else { c.arc(0,R*0.1,R*0.12,0.1*Math.PI,0.9*Math.PI); }
+  c.stroke();
+  if(boss){
+    c.fillStyle=shade(col,-50);
+    c.beginPath(); c.moveTo(-R*0.6,-R*0.8); c.lineTo(-R*0.85,-R*1.4); c.lineTo(-R*0.35,-R*1.0); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(R*0.6,-R*0.8); c.lineTo(R*0.85,-R*1.4); c.lineTo(R*0.35,-R*1.0); c.closePath(); c.fill();
+    c.fillStyle="#ffd24a"; c.beginPath();
+    c.moveTo(-R*0.4,-R*0.9); c.lineTo(-R*0.4,-R*1.25); c.lineTo(-R*0.13,-R*1.0);
+    c.lineTo(0,-R*1.35); c.lineTo(R*0.13,-R*1.0); c.lineTo(R*0.4,-R*1.25); c.lineTo(R*0.4,-R*0.9); c.closePath(); c.fill();
+  }
+  if(flash>0){ c.globalAlpha=Math.min(0.7,flash*4); c.fillStyle="#fff"; c.beginPath(); c.arc(0,0,R*1.05,0,Math.PI*2); c.fill(); c.globalAlpha=1; }
+  c.restore();
+}
+
+function makeAvatar(c,size,leader){
+  size=size||60; const cn=document.createElement("canvas"); cn.width=size; cn.height=size; cn.className="avatar";
+  const x=cn.getContext("2d"); const st=statsOf(c);
+  paintChibi(x,size/2,size*0.46,size*0.24,{color:ROLES[c.role].color,el:st.el,dir:1,leader:!!leader});
+  return cn;
+}
+function makeSpiritAvatar(s,size){
+  size=size||50; const cn=document.createElement("canvas"); cn.width=size; cn.height=size; cn.className="avatar";
+  const x=cn.getContext("2d");
+  paintSpirit(x,size/2,size*0.46,size*0.3,ELEMS[s.el].c,0,s.stage>=2,0,1.5);
+  return cn;
+}
+
+//------- 描画 -------
+function render(){
+  ctx.clearRect(0,0,W,H);
+  // 背景
+  const g=ctx.createRadialGradient(W/2,H*0.3,50,W/2,H*0.3,Math.max(W,H));
+  g.addColorStop(0,"#161b3a"); g.addColorStop(1,"#070912");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  if(!B) return;
+  // グリッド
+  ctx.strokeStyle="rgba(80,100,180,0.08)"; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // エフェクト
+  for(const f of B.effects){
+    ctx.globalAlpha=Math.max(0,f.t/0.3); ctx.strokeStyle=f.color; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+  }
+
+  // 敵
+  for(const e of B.enemies){ if(!e.alive)continue; drawEnemy(e); }
+  // 味方
+  for(const u of B.allies){ if(!u.alive)continue; drawUnit(u); }
+  // 弾
+  for(const b of B.bullets){
+    ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+    if(!b.ally){ ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=1; ctx.stroke(); }
+  }
+}
+function drawUnit(u){
+  const bob=Math.sin(B.time*5+u.phase)*1.6;
+  // 向き：近くの敵を向く
+  let dir=u.facing||1; const t=nearestEnemy(u);
+  if(t) dir=t.x<u.x?-1:1; else if(Math.abs(u.vx)>5) dir=u.vx<0?-1:1;
+  u.facing=dir;
+  if(u.isLeader){ // 足元リング
+    ctx.strokeStyle="rgba(255,210,74,0.7)"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(u.x,u.y+u.radius*1.4,u.radius*1.0,u.radius*0.35,0,0,Math.PI*2); ctx.stroke();
+  }
+  paintChibi(ctx,u.x,u.y-2+bob,u.radius,{color:u.color,el:u.el,dir,leader:u.isLeader,flash:u.hitFlash,blink:B.time+u.blink});
+  const w=u.radius*2, ratio=Math.max(0,u.hp/u.maxHp), by=u.y-u.radius*2.0+bob;
+  ctx.fillStyle="rgba(0,0,0,0.55)"; rr(ctx,u.x-w/2,by,w,4,2); ctx.fill();
+  ctx.fillStyle = ratio>0.4?"#5fe08a":"#ff6a6a"; rr(ctx,u.x-w/2,by,w*ratio,4,2); ctx.fill();
+}
+function drawEnemy(e){
+  const bob=Math.sin(B.time*2.4+e.wob)*3;
+  paintSpirit(ctx,e.x,e.y+bob,e.radius,e.color,B.time+e.wob,e.boss,e.hitFlash,B.time+e.blink);
+  const w=e.radius*2.2, ratio=Math.max(0,e.hp/e.maxHp), by=e.y-e.radius*1.7+bob;
+  ctx.fillStyle="rgba(0,0,0,0.6)"; rr(ctx,e.x-w/2,by,w,4,2); ctx.fill();
+  ctx.fillStyle="#ff6a6a"; rr(ctx,e.x-w/2,by,w*ratio,4,2); ctx.fill();
+  if(e.boss){ ctx.fillStyle="#fff"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+    ctx.strokeStyle="rgba(0,0,0,0.6)"; ctx.lineWidth=3; ctx.strokeText(e.name,e.x,by-6); ctx.fillText(e.name,e.x,by-6); ctx.textAlign="left"; }
+}
+
+//------- 戦闘終了 -------
+function endBattle(win){
+  B.over=true; B.win=win;
+  document.getElementById("battleHUD").classList.remove("active");
+  if(win){
+    const d=B.d;
+    const coinR = 80+d.depth*40, gemR = 15+d.depth*5;
+    G.coin+=coinR; G.gem+=gemR;
+    if(!G.cleared.includes(d.id)) G.cleared.push(d.id);
+    if(d.depth>=G.depth) G.depth=Math.min(8, d.depth+1);
+    // 精霊報酬
+    let spiritMsg="";
+    if(Math.random()<0.8 || d.boss){
+      const tpl = SPIRIT_POOL.find(s=>s.el===d.el) || SPIRIT_POOL[0];
+      const s=newSpirit(tpl); G.spirits.push(s);
+      spiritMsg=`<p>🔮 精霊「<span style="color:${ELEMS[s.el].c}">${s.name}</span>」を捕獲！<br><small>${s.extra}</small></p>`;
+    }
+    // ロスト処理
+    let lostMsg="";
+    const stillDead = B.deadAllies.filter(u=>!u.alive);
+    if(stillDead.length){
+      lostMsg=`<p style="color:#ffb">⚠ ${stillDead.length}人が戦闘不能のまま帰還。<br>コイン消費で全員救出した。</p>`;
+      G.coin=Math.max(0,G.coin-stillDead.length*20);
+    }
+    save();
+    modal(`<h2>🎉 ダンジョン制覇！</h2>
+      <p>${d.n} を踏破した。</p>
+      <p>🪙+${coinR}　💎+${gemR}</p>
+      ${spiritMsg}${lostMsg}
+      <button class="btn gold" onclick="closeModal();show('home');">ホームへ</button>`);
+  }else{
+    // 敗北：ロスト二択（簡易：コインで救出 or ロスト）
+    save();
+    modal(`<h2 style="color:#ff7a7a">💀 小隊全滅…</h2>
+      <p>${B.d.n} で敗れた。装備や育成を見直して再挑戦しよう。</p>
+      <button class="btn" onclick="closeModal();show('home');">ホームへ</button>`);
+  }
+  if(raf) cancelAnimationFrame(raf); raf=null;
+}
+
+//=================================================================
+// 起動
+//=================================================================
+load();
+renderHome();
+updateRes();
+// 初回ガイド
+if(!localStorage.getItem("fd0_seen")){
+  localStorage.setItem("fd0_seen","1");
+  modal(`<h2>フェアリーダンジョン0</h2>
+    <p style="text-align:left">プレイヤー1人＋AI仲間19人、最大20人小隊で戦う弾幕リアルタイムアクション。</p>
+    <p style="text-align:left">
+    ・<b>移動</b>：画面左下ドラッグ（PCはWASD/矢印）<br>
+    ・<b>回避DASH</b>：右下ボタン（PCはスペース）<br>
+    ・<b>指揮コマンド</b>：右下の6種で部隊に指示<br>
+    ・攻撃は<b>自動</b>。弾幕を避けつつ位置取りで戦う<br>
+    ・ボス討伐で<b>精霊</b>を入手→キャラに装備<br>
+    ・ガチャ・編成・陣形・強化でチームを育てよう</p>
+    <button class="btn gold" onclick="closeModal()">はじめる</button>`);
+}
+</script>
+</body>
+</html>
