@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>いびきを検知するためにマイクを使用します。録音はいびきが検知された時のみ保存されます。</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+    <key>CFBundleName</key>
+    <string>いびき検知</string>
+    <key>CFBundleDisplayName</key>
+    <string>いびき検知</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.kirinrin.SnoreDetector</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+</dict>
+</plist>
