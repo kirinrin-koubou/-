@@ -159,6 +159,23 @@
   .dangerBtn { padding: 12px 24px; background: linear-gradient(135deg, #c0392b, #8b1e1e); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
   .dangerBtn:hover { background: linear-gradient(135deg, #e74c3c, #c0392b); }
   .testSoundBtn { padding: 6px 14px; background: rgba(0,217,255,0.2); border: 1px solid #00d9ff; color: #fff; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px; }
+  /* ============================================================
+     スマホ操作UI - 画面サイズ対応レイアウト
+     vmin（縦横の小さい方の辺を基準）で全要素をスケール。
+     clamp(最小, 理想, 最大) で極端なサイズへの対応も行う。
+     ============================================================ */
+
+  /* CSS変数：1箇所変えると全体が連動して変わる */
+  :root {
+    --dcell:  clamp(32px, 10vmin, 52px);  /* Dパッド1マスのサイズ */
+    --vbtn:   clamp(38px, 11vmin, 56px);  /* アクションボタン径 */
+    --gap:    clamp(3px,  1vmin,  7px);   /* ボタン間ギャップ */
+    --edge:   clamp(4px,  1.5vmin, 14px); /* 画面端からの余白 */
+    --dfont:  clamp(13px, 4vmin,  22px);  /* Dパッド矢印フォント */
+    --bfont:  clamp(9px,  2.4vmin, 13px); /* ボタンラベルフォント */
+    --sfont:  clamp(7px,  1.8vmin, 10px); /* 選択技ボタン小フォント */
+  }
+
   /* スマホモード：コントロールをキャンバス上にオーバーレイ */
   #virtualPad {
     position: absolute; inset: 0;
@@ -173,38 +190,45 @@
   }
   #battleScreen.mobile-mode .controlsHint { display: none; }
 
-  /* Dパッド：左下に固定 */
+  /* Dパッド：左下に固定・サイズは dcell × 3 */
   #dpad {
     position: absolute;
-    bottom: 16px; left: 10px;
-    width: 144px; height: 144px;
+    bottom: var(--edge);
+    left: var(--edge);
+    width:  calc(var(--dcell) * 3);
+    height: calc(var(--dcell) * 3);
     pointer-events: all;
   }
   .dpad-up, .dpad-down, .dpad-left, .dpad-right {
-    position: absolute; width: 46px; height: 46px;
+    position: absolute;
+    width: var(--dcell); height: var(--dcell);
     background: rgba(255,255,255,0.13);
-    border-radius: 8px; font-size: 20px;
+    border-radius: 8px;
+    font-size: var(--dfont);
+    display: flex; align-items: center; justify-content: center;
   }
-  .dpad-up    { top: 0;    left: 49px; }
-  .dpad-down  { bottom: 0; left: 49px; }
-  .dpad-left  { left: 0;   top: 49px; }
-  .dpad-right { right: 0;  top: 49px; }
+  .dpad-up    { top: 0;                    left: var(--dcell); }
+  .dpad-down  { bottom: 0;                  left: var(--dcell); }
+  .dpad-left  { left: 0;   top: var(--dcell); }
+  .dpad-right { right: 0;  top: var(--dcell); }
 
   /* 右側ボタン群：右下に固定 */
   #vpad-center { display: none; }
   #vpad-right {
     position: absolute;
-    bottom: 12px; right: 8px;
+    bottom: var(--edge); right: var(--edge);
     display: flex; flex-direction: column;
-    gap: 6px; align-items: flex-end;
+    gap: var(--gap); align-items: flex-end;
     pointer-events: all;
+    /* 右側が Dパッドと重ならないよう最大幅を制限 */
+    max-width: calc(100% - var(--dcell) * 3 - var(--edge) * 4);
   }
-  .vpad-row { display: flex; flex-direction: row; gap: 6px; justify-content: flex-end; }
+  .vpad-row { display: flex; flex-direction: row; gap: var(--gap); justify-content: flex-end; }
 
   .vbtn {
-    width: 54px; height: 54px;
+    width: var(--vbtn); height: var(--vbtn);
     border-radius: 50%; border: 2px solid rgba(255,255,255,0.35);
-    color: #fff; font-weight: bold; font-size: 12px;
+    color: #fff; font-weight: bold; font-size: var(--bfont);
     cursor: pointer; display: flex; align-items: center; justify-content: center;
     touch-action: none; user-select: none; -webkit-user-select: none;
     background: rgba(255,255,255,0.12);
@@ -215,26 +239,58 @@
 
   .vbtn-jab    { background: rgba(33,150,243,0.4);  border-color: #2196f3; }
   .vbtn-smash  { background: rgba(244,67,54,0.4);   border-color: #f44336; }
-  .vbtn-trait  { background: rgba(156,39,176,0.4);  border-color: #9c27b0; font-size: 11px; }
-  .vbtn-shield { background: rgba(0,200,150,0.4);   border-color: #00c896; font-size: 20px; }
-  .vbtn-special{ background: rgba(255,152,0,0.4);   border-color: #ff9800; font-size: 11px; }
-  .vbtn-skill  { background: rgba(0,200,255,0.4);   border-color: #00e5ff; font-size: 10px; }
-  .vbtn-combo  { background: rgba(255,193,7,0.4);   border-color: #ffc107; font-size: 10px; font-weight: bold; }
+  .vbtn-trait  { background: rgba(156,39,176,0.4);  border-color: #9c27b0; }
+  .vbtn-shield { background: rgba(0,200,150,0.4);   border-color: #00c896; }
+  .vbtn-special{ background: rgba(255,152,0,0.4);   border-color: #ff9800; }
+  .vbtn-skill  { background: rgba(0,200,255,0.4);   border-color: #00e5ff; }
+  .vbtn-combo  { background: rgba(255,193,7,0.4);   border-color: #ffc107; }
 
-  /* 選択技ボタンは横長 */
-  #skillBtnRow .vbtn { width: 72px; border-radius: 8px; font-size: 9px; }
+  /* 選択技ボタン：横長で角丸 */
+  #skillBtnRow .vbtn {
+    width: calc(var(--vbtn) * 1.4);
+    border-radius: 8px;
+    font-size: var(--sfont);
+  }
 
-  /* 横向き（ランドスケープ）対応 */
-  @media (orientation: landscape) and (max-height: 500px) {
-    #dpad { bottom: 8px; left: 6px; width: 124px; height: 124px; }
-    .dpad-up, .dpad-down, .dpad-left, .dpad-right { width: 40px; height: 40px; font-size: 17px; }
-    .dpad-up    { top: 0;    left: 42px; }
-    .dpad-down  { bottom: 0; left: 42px; }
-    .dpad-left  { left: 0;   top: 42px; }
-    .dpad-right { right: 0;  top: 42px; }
-    #vpad-right { bottom: 6px; right: 6px; gap: 4px; }
-    .vbtn { width: 46px; height: 46px; font-size: 10px; }
-    #skillBtnRow .vbtn { width: 60px; font-size: 8px; }
+  /* ---- 極小スマホ（幅～340px 以下）: さらに縮める ---- */
+  @media (max-width: 340px) {
+    :root {
+      --dcell: 28px;
+      --vbtn:  34px;
+      --gap:   2px;
+      --dfont: 12px;
+      --bfont: 8px;
+    }
+  }
+
+  /* ---- タブレット（vmin > 600px）: 大きくしすぎない ---- */
+  @media (min-width: 768px) and (min-height: 600px) {
+    :root {
+      --dcell: 52px;
+      --vbtn:  58px;
+      --gap:   8px;
+      --dfont: 22px;
+      --bfont: 13px;
+    }
+  }
+
+  /* ---- 横向き（landscape）かつ高さが狭い端末 ---- */
+  @media (orientation: landscape) and (max-height: 420px) {
+    :root {
+      --dcell: clamp(28px, 9vh, 42px);
+      --vbtn:  clamp(32px, 10vh, 46px);
+      --gap:   clamp(2px, 0.8vh, 5px);
+      --edge:  clamp(3px, 1vh, 8px);
+      --dfont: clamp(12px, 3.5vh, 18px);
+      --bfont: clamp(8px,  2.2vh, 11px);
+      --sfont: clamp(6px,  1.6vh, 9px);
+    }
+  }
+
+  /* iPhone/Android ノッチ・ホームバー対応 */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    #dpad    { bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px)); }
+    #vpad-right { bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px)); }
   }
 
   .spinnerBtn { width: 38px; height: 24px; background: rgba(0,217,255,0.2); border: 1px solid #00d9ff; color: #fff; border-radius: 4px; cursor: pointer; font-size: 11px; line-height: 1; user-select: none; }
@@ -256,6 +312,7 @@
   .upgradeBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   #battleScreen { background: linear-gradient(180deg, #87ceeb 0%, #ffd89b 70%, #19547b 100%); }
+  #battleScreen.mobile-mode { position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: hidden; }
   #gameCanvas { display: block; }
   #battleUI { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: space-around; pointer-events: none; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5; }
   .playerInfo { background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 8px; text-align: center; min-width: 140px; }
