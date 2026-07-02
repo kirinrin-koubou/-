@@ -73,6 +73,11 @@
     box-shadow: 0 0 30px rgba(255,152,0,0.8);
     animation: popIn 0.5s, glow 1.5s infinite;
   }
+  .rarity-EV {
+    background: linear-gradient(135deg, #00bcd4, #3f51b5);
+    box-shadow: 0 0 30px rgba(0,188,212,0.8);
+    animation: popIn 0.5s, glow 1.5s infinite;
+  }
   .rarity-MS {
     background: linear-gradient(135deg, #e91e63, #ff6b6b, #ffd700);
     background-size: 200% 200%;
@@ -524,37 +529,37 @@
         <div id="dateSpinner" style="display:flex;justify-content:center;gap:6px;margin:14px 0 8px;flex-wrap:wrap;">
           <!-- 年 -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <button class="spinnerBtn" data-field="year" data-delta="-1">▲</button>
+            <button class="spinnerBtn" data-field="year" data-delta="1">▲</button>
             <div class="spinnerVal" id="spinYear" style="min-width:60px;">2026</div>
-            <button class="spinnerBtn" data-field="year" data-delta="1">▼</button>
+            <button class="spinnerBtn" data-field="year" data-delta="-1">▼</button>
             <div class="spinnerLabel">年</div>
           </div>
           <!-- 月 -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <button class="spinnerBtn" data-field="month" data-delta="-1">▲</button>
+            <button class="spinnerBtn" data-field="month" data-delta="1">▲</button>
             <div class="spinnerVal" id="spinMonth" style="min-width:42px;">1</div>
-            <button class="spinnerBtn" data-field="month" data-delta="1">▼</button>
+            <button class="spinnerBtn" data-field="month" data-delta="-1">▼</button>
             <div class="spinnerLabel">月</div>
           </div>
           <!-- 日 -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <button class="spinnerBtn" data-field="day" data-delta="-1">▲</button>
+            <button class="spinnerBtn" data-field="day" data-delta="1">▲</button>
             <div class="spinnerVal" id="spinDay" style="min-width:42px;">1</div>
-            <button class="spinnerBtn" data-field="day" data-delta="1">▼</button>
+            <button class="spinnerBtn" data-field="day" data-delta="-1">▼</button>
             <div class="spinnerLabel">日</div>
           </div>
           <!-- 時 -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <button class="spinnerBtn" data-field="hour" data-delta="-1">▲</button>
+            <button class="spinnerBtn" data-field="hour" data-delta="1">▲</button>
             <div class="spinnerVal" id="spinHour" style="min-width:42px;">0</div>
-            <button class="spinnerBtn" data-field="hour" data-delta="1">▼</button>
+            <button class="spinnerBtn" data-field="hour" data-delta="-1">▼</button>
             <div class="spinnerLabel">時</div>
           </div>
           <!-- 分 -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <button class="spinnerBtn" data-field="minute" data-delta="-1">▲</button>
+            <button class="spinnerBtn" data-field="minute" data-delta="1">▲</button>
             <div class="spinnerVal" id="spinMinute" style="min-width:42px;">0</div>
-            <button class="spinnerBtn" data-field="minute" data-delta="1">▼</button>
+            <button class="spinnerBtn" data-field="minute" data-delta="-1">▼</button>
             <div class="spinnerLabel">分</div>
           </div>
         </div>
@@ -1457,7 +1462,7 @@ const MISSIONS = [
   { id: 'get_r2', icon: '🔥', title: 'R習得②', desc: 'チェーンストライカーを習得', goal: 1, stat: 'owned_chainstriker', reward: { coins: 200, char: 'whipmaster' } },
   { id: 'get_r3', icon: '💪', title: 'R習得③', desc: 'アイアンレスラーを習得', goal: 1, stat: 'owned_ironwrestler', reward: { coins: 200, char: 'judomaster' } },
   { id: 'get_r4', icon: '💀', title: 'R習得④', desc: 'ヘックスウィッチを習得', goal: 1, stat: 'owned_hexwitch', reward: { coins: 200, char: 'soulreaper' } },
-  { id: 'get_r_all', icon: '🏅', title: 'R全習得', desc: 'R全スタイルを習得', goal: 12, stat: 'owned_r_count', reward: { coins: 800, char: 'nunchakufighter' } },
+  { id: 'get_r_all', icon: '🏅', title: 'R全習得', desc: 'R全スタイルを習得', goal: 10, stat: 'owned_r_count', reward: { coins: 800, char: 'nunchakufighter' } },
 
   { id: 'get_sr1', icon: '💎', title: 'SR習得①', desc: 'タイタングリップを習得', goal: 1, stat: 'owned_titangrip', reward: { coins: 400, char: 'windcatcher' } },
   { id: 'get_sr2', icon: '⛓', title: 'SR習得②', desc: 'サイスウォーカーを習得', goal: 1, stat: 'owned_scythewalker', reward: { coins: 400, char: 'nunchakufighter' } },
@@ -1467,7 +1472,7 @@ const MISSIONS = [
   { id: 'get_ssr1', icon: '🌟', title: 'SSR習得①', desc: 'ベアーナイトを習得', goal: 1, stat: 'owned_bearknight', reward: { coins: 800, char: 'ghostgrappler' } },
   { id: 'get_ssr2', icon: '⚡', title: 'SSR習得②', desc: 'サンダーチェインを習得', goal: 1, stat: 'owned_thunderchain', reward: { coins: 800, char: 'goldenchainlord' } },
   { id: 'get_ssr3', icon: '💥', title: 'SSR習得③', desc: 'ドゥームコーラーを習得', goal: 1, stat: 'owned_doomcaller', reward: { coins: 800, char: 'echomage' } },
-  { id: 'get_ssr_all', icon: '🏆', title: 'SSR全習得', desc: 'SSR全スタイルを習得', goal: 12, stat: 'owned_ssr_count', reward: { coins: 3000, char: 'doomcaller' } },
+  { id: 'get_ssr_all', icon: '🏆', title: 'SSR全習得', desc: 'SSR全スタイルを習得', goal: 13, stat: 'owned_ssr_count', reward: { coins: 3000, char: 'doomcaller' } },
 
   { id: 'get_ev_morning', icon: '☀️', title: '朝の習得', desc: 'モーニングソラーを習得', goal: 1, stat: 'owned_morning_solar', reward: { coins: 500 } },
   { id: 'get_ev_evening', icon: '🌆', title: '夜の習得', desc: 'イブニングスターを習得', goal: 1, stat: 'owned_evening_starlight', reward: { coins: 500 } },
@@ -1478,8 +1483,8 @@ const MISSIONS = [
   { id: 'get_ms_all', icon: '🎯', title: 'MS全習得', desc: 'MS全スタイルを習得', goal: 6, stat: 'owned_ms_count', reward: { coins: 3000, char: 'awakenedhero' } },
 
   { id: 'get_ev_jan', icon: '❄️', title: '1月の戦士', desc: '1月限定スタイルを習得', goal: 1, stat: 'owned_jan_iceknight', reward: { coins: 500, char: 'feb_loveheart' } },
-  { id: 'get_ev_feb', icon: '💕', title: '2月の戦士', desc: '2月限定スタイルを習得', goal: 1, stat: 'owned_feb_loveheart', reward: { coins: 500, char: 'mar_petalancer' } },
-  { id: 'get_ev_mar', icon: '🌸', title: '3月の戦士', desc: '3月限定スタイルを習得', goal: 1, stat: 'owned_mar_petalancer', reward: { coins: 500, char: 'apr_cherryblade' } },
+  { id: 'get_ev_feb', icon: '💕', title: '2月の戦士', desc: '2月限定スタイルを習得', goal: 1, stat: 'owned_feb_loveheart', reward: { coins: 500, char: 'mar_springdancer' } },
+  { id: 'get_ev_mar', icon: '🌸', title: '3月の戦士', desc: '3月限定スタイルを習得', goal: 1, stat: 'owned_mar_springdancer', reward: { coins: 500, char: 'apr_cherryblade' } },
   { id: 'get_ev_apr', icon: '🌺', title: '4月の戦士', desc: '4月限定スタイルを習得', goal: 1, stat: 'owned_apr_cherryblade', reward: { coins: 500, char: 'may_thunder' } },
   { id: 'get_ev_may', icon: '⚡', title: '5月の戦士', desc: '5月限定スタイルを習得', goal: 1, stat: 'owned_may_thunder', reward: { coins: 500, char: 'jun_rainmage' } },
   { id: 'get_ev_jun', icon: '🌧️', title: '6月の戦士', desc: '6月限定スタイルを習得', goal: 1, stat: 'owned_jun_rainmage', reward: { coins: 500, char: 'jul_pirate' } },
@@ -1499,9 +1504,9 @@ const COLLECTION_MISSIONS = [
   { id: 'col_own55', icon: '📕', title: '図鑑55種', desc: '55種の戦い方を習得', goal: 55, stat: 'owned_count', reward: { coins: 3000, char: 'goldenchainlord' } },
   { id: 'col_own_all', icon: '📚', title: '大図鑑完成', desc: '全スタイルを習得', goal: 61, stat: 'owned_count', reward: { coins: 10000, char: 'doomcaller' } },
   { id: 'col_n_comp', icon: '⚔', title: 'N全コンプ', desc: 'N全スタイル習得', goal: 2, stat: 'owned_n_count', reward: { coins: 200, char: 'flyfeather' } },
-  { id: 'col_r_comp', icon: '🔷', title: 'R全コンプ', desc: 'R全スタイル習得', goal: 12, stat: 'owned_r_count', reward: { coins: 1000, char: 'nunchakufighter' } },
+  { id: 'col_r_comp', icon: '🔷', title: 'R全コンプ', desc: 'R全スタイル習得', goal: 10, stat: 'owned_r_count', reward: { coins: 1000, char: 'nunchakufighter' } },
   { id: 'col_sr_comp', icon: '💜', title: 'SR全コンプ', desc: 'SR全スタイル習得', goal: 15, stat: 'owned_sr_count', reward: { coins: 2000, char: 'scythewalker' } },
-  { id: 'col_ssr_comp', icon: '🟠', title: 'SSR全コンプ', desc: 'SSR全スタイル習得', goal: 12, stat: 'owned_ssr_count', reward: { coins: 5000, char: 'echomage' } },
+  { id: 'col_ssr_comp', icon: '🟠', title: 'SSR全コンプ', desc: 'SSR全スタイル習得', goal: 13, stat: 'owned_ssr_count', reward: { coins: 5000, char: 'echomage' } },
   { id: 'col_ms_comp', icon: '🎯', title: 'MS全コンプ', desc: 'MS全スタイル習得', goal: 6, stat: 'owned_ms_count', reward: { coins: 3000, char: 'awakenedhero' } },
   { id: 'col_grab3', icon: '✊', title: 'つかみ系3種', desc: 'grabスタイルを3種習得', goal: 3, stat: 'owned_grab_count', reward: { coins: 500 } },
   { id: 'col_grab_all', icon: '💪', title: 'つかみ系コンプ', desc: 'grabスタイル全6種習得', goal: 6, stat: 'owned_grab_count', reward: { coins: 1500, char: 'titangrip' } },
@@ -1714,7 +1719,7 @@ function goToPractice() {
   document.getElementById('p2Name').textContent = '';
   gameRunning = true;
   window.battleFrame = 0;
-  loop();
+  startLoop();
 }
 
 function exitPractice() {
@@ -1961,14 +1966,18 @@ function setBattleBgm(bgm) {
   saveData();
   _updateThemBtns('battleBgmGrid', bgm);
 }
+function _updateThemBtns(gridId, bgm) {
+  document.querySelectorAll(`#${gridId} [data-bgm]`).forEach(b => b.classList.toggle('active', b.dataset.bgm === bgm));
+}
 function _stopBgm(node) {
-  try { if (node) node.stop(); } catch(e){}
+  try { if (node) { clearInterval(node._interval); node.disconnect(); } } catch(e){}
   return null;
 }
 function _playHomeBgm() {
   _homeBgmNode = _stopBgm(_homeBgmNode);
   const bgm = gameData.settings?.homeBgm || 'none';
   if (bgm === 'none' || !_audioCtx) return;
+  if (_audioCtx.state === 'suspended') { try { _audioCtx.resume(); } catch(e){} }
   _homeBgmNode = _makeBgmNode(bgm);
 }
 function _makeBgmNode(bgm) {
@@ -3074,7 +3083,7 @@ const CHAR_SKILL_POOL = {
   recklessbomber:['sm_recklesscharge','sm_overdrive','sm_earthquake','sm_spikewall','sm_fissure','sm_hyperbeam'],
   awakenedhero: ['sm_awakenpower','sm_dragonpunch','sm_crosschop','sm_focusenergy','sm_bulkup','sm_swordsdance'],
   ironwrestler:     ['sm_irondefense','sm_bulkup','sm_counter','sm_crosschop','sm_ironhead','sm_endure'],
-  judomaster:       ['sm_counter','sm_bulkup','sm_agility','sm_focusenergy','sm_leerAtk','sm_swordsdance'],
+  judomaster:       ['sm_counter','sm_bulkup','sm_agility','sm_focusenergy','sm_loweratk','sm_swordsdance'],
   titangrip:        ['sm_earthquake','sm_irondefense','sm_bulkup','sm_hyperbeam','sm_endure','sm_collosscrush'],
   windcatcher:      ['sm_agility','sm_extremespeed','sm_rapidspin','sm_counter','sm_wingattack','sm_voltswitch'],
   bearknight:       ['sm_bulkup','sm_swordsdance','sm_focusenergy','sm_recklesscharge','sm_endure','sm_crosschop'],
@@ -3093,7 +3102,7 @@ const CHAR_SKILL_POOL = {
   thunderchain:     ['sm_thunder','sm_voltswitch','sm_glare','sm_agility','sm_extremespeed','sm_focusenergy'],
   jan_iceknight:['sm_blizzard','sm_iceshot','sm_sheercold','sm_barrier','sm_irondefense','sm_recover'],
   feb_loveheart:['sm_attract','sm_moonblast','sm_calmmind','sm_recover','sm_lightscreen','sm_moonlight'],
-  mar_petalancer:['sm_leafblade','sm_synthesis','sm_spikewall','sm_leafstorm','sm_agility','sm_rapidspin'],
+  mar_springdancer:['sm_leafblade','sm_synthesis','sm_spikewall','sm_leafstorm','sm_agility','sm_rapidspin'],
   apr_cherryblade:['sm_cherrystrike','sm_leafblade','sm_swordsdance','sm_synthesis','sm_recover','sm_focusenergy'],
   may_thunder:  ['sm_thunderclap','sm_thunder','sm_voltswitch','sm_agility','sm_glare','sm_extremespeed'],
   jun_rainmage: ['sm_raindance','sm_hydropump','sm_aquajet','sm_blizzard','sm_toxic','sm_haze'],
@@ -3146,7 +3155,7 @@ const CHAR_SKILL_TYPE = {
   iceshaper:'water', bomberjack:'fire', chameleonx:'fairy',
   mimicmaster:'fairy', painter:'fairy', vampirelord:'dark',
   barrierbreaker:'fight', juggernautrex:'fight', shadowclone:'dark',
-  jan_iceknight:'water', feb_loveheart:'fairy', mar_petalancer:'nature',
+  jan_iceknight:'water', feb_loveheart:'fairy', mar_springdancer:'nature',
   apr_cherryblade:'nature', may_thunder:'fire', jun_rainmage:'water',
   jul_pirate:'water', aug_sun:'fire', sep_moon:'dark', oct_demon:'dark',
   nov_archer:'wing', dec_angel:'fairy', morning_solar:'fire',
@@ -3882,15 +3891,22 @@ function _getChallengeProgress(m) {
     for (const id in gameData.ownedChars) if (gameData.ownedChars[id].hasStar) cnt++;
     return Math.min(m.goal, cnt);
   }
-  if (m.stat === 'total_coins') return Math.min(m.goal, s.total_coins || gameData.coins);
+  if (m.stat === 'total_coins') return Math.min(m.goal, Math.max(s.total_coins || 0, gameData.coins));
   return Math.min(m.goal, s[m.stat] || 0);
+}
+
+// コイン獲得は必ずここを通す（「大富豪」等の累計獲得ミッション用に総獲得数も記録）
+function addCoins(n) {
+  gameData.coins += n;
+  if (!gameData.stats) gameData.stats = {};
+  gameData.stats.total_coins = (gameData.stats.total_coins || 0) + n;
 }
 
 async function claimCollectionMission(missionId) {
   if (!gameData.collectionStatus) gameData.collectionStatus = {};
   const m = COLLECTION_MISSIONS.find(x => x.id === missionId);
   if (!m || gameData.collectionStatus[missionId] !== 'completed') return;
-  if (m.reward.coins) gameData.coins += m.reward.coins;
+  if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char && !gameData.ownedChars[m.reward.char]) {
     gameData.ownedChars[m.reward.char] = { level:1, dupes:0 };
     showToast(`🎴 ${CHARACTER_DB[m.reward.char]?.name || m.reward.char} を習得！`);
@@ -3903,7 +3919,7 @@ async function claimChallengeMission(missionId) {
   if (!gameData.challengeStatus) gameData.challengeStatus = {};
   const m = CHALLENGE_MISSIONS.find(x => x.id === missionId);
   if (!m || gameData.challengeStatus[missionId] !== 'completed') return;
-  if (m.reward.coins) gameData.coins += m.reward.coins;
+  if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char && !gameData.ownedChars[m.reward.char]) {
     gameData.ownedChars[m.reward.char] = { level:1, dupes:0 };
     showToast(`🎴 ${CHARACTER_DB[m.reward.char]?.name || m.reward.char} を習得！`);
@@ -3917,7 +3933,7 @@ async function claimDailyMission(missionId) {
   const m = DAILY_MISSIONS.find(x => x.id === missionId);
   if (!m) return;
   if (gameData.dailyStatus[missionId] !== 'completed') return;
-  if (m.reward.coins) gameData.coins += m.reward.coins;
+  if (m.reward.coins) addCoins(m.reward.coins);
   gameData.dailyStatus[missionId] = 'claimed';
   await saveData();
   renderMissionList();
@@ -3927,7 +3943,7 @@ async function claimMonthlyMission(missionId) {
   const m = MONTHLY_MISSIONS.find(x => x.id === missionId);
   if (!m) return;
   if (gameData.monthlyStatus[missionId] !== 'completed') return;
-  if (m.reward.coins) gameData.coins += m.reward.coins;
+  if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char) {
     if (!gameData.ownedChars[m.reward.char]) {
       gameData.ownedChars[m.reward.char] = { level: 1, dupes: 0 };
@@ -3948,7 +3964,7 @@ async function claimMission(missionId) {
   // 報酬付与
   let msg = '';
   if (m.reward.coins) {
-    gameData.coins += m.reward.coins;
+    addCoins(m.reward.coins);
     msg += `🪙 ${m.reward.coins}コイン獲得！`;
   }
   if (m.reward.char) {
@@ -4764,7 +4780,8 @@ class Fighter {
       }
     }
 
-    if (this.isPlayer) {
+    {
+      // 自分が所有者の闇のオーラを相手に適用（CPU側が付与したオーラも処理する）
       const opp4 = this.isPlayer ? cpu : player;
       if (opp4 && opp4._darkAura && opp4._darkAura.owner === this) {
         if (opp4.respawnTimer > 0) {
@@ -5295,7 +5312,7 @@ class Fighter {
         // ダッシュして近づいてから発動
         if (dist > 60) {
           this.x += (dx/dist) * Math.min(dist - 40, 120);
-          this.y += (dy/dist) * Math.min(Math.abs(dy), 40) * Math.sign(dy);
+          this.y += (dy/dist) * Math.min(Math.abs(dy), 40);
           this.facing = dx > 0 ? 1 : -1;
           // 接近エフェクト
           for (let k = 0; k < 5; k++) {
@@ -5350,24 +5367,9 @@ class Fighter {
 
     // --- 攻撃技 ---
     if (m.power > 0 && opp && opp.respawnTimer === 0) {
-      if (range === 'zone' || sid === 'sm_earthquake' || sid === 'sm_fissure') {
-        opp.takeHit(this, { damage: m.power * atkMul * 1.05, kb: m.smash * atkMul * 0.82, type:'smash' });
-      } else {
-        opp.takeHit(this, { damage: m.power * atkMul * 1.05, kb: m.smash * atkMul * 0.82, type:'smash' });
-      }
+      opp.takeHit(this, { damage: m.power * atkMul * 1.05, kb: m.smash * atkMul * 0.82, type:'smash' });
       if (m.heal) this.damage = Math.max(0, this.damage - m.heal * (atkMul > 1 ? 1.2 : 1));
-      if (m.debuff === 'paralyze') opp._slowTimer = Math.max(opp._slowTimer||0, 300);
-      if (m.debuff === 'poison')   opp._burnTimer = Math.max(opp._burnTimer||0, 300);
-      if (m.debuff === 'defdown' || m.debuff === 'defdown15') {
-        opp._activeBoosts = opp._activeBoosts || {};
-        opp._activeBoosts.def = m.debuff === 'defdown' ? 0.7 : 0.85;
-        opp._activeBoosts.defTimer = 300;
-      }
-      if (m.debuff === 'atkdown' || m.debuff === 'atkdown20') {
-        opp._activeBoosts = opp._activeBoosts || {};
-        opp._activeBoosts.atk = 0.8;
-        opp._activeBoosts.atkTimer = 300;
-      }
+      // 状態異常は下の共通「状態異常技」ブロックで一括適用（二重適用防止）
       addShake(8);
       playSound('smash');
     }
@@ -5457,7 +5459,8 @@ class Fighter {
       const _opp = this.isPlayer ? cpu : player;
       if (_opp && _opp.respawnTimer === 0) {
         const doIceWave = (hitNum) => {
-          if (!_opp || _opp.respawnTimer > 0) return;
+          // setTimeout経由で呼ばれるため、試合終了/相手交代後は発動しない
+          if (!gameRunning || !_opp || (_opp !== player && _opp !== cpu) || _opp.respawnTimer > 0) return;
           _opp.takeHit(this, { damage: 8 * this.stats.atk, kb: 4 * this.stats.atk, type:'jab' });
           _opp.frozenTimer = Math.max(_opp.frozenTimer||0, 20);
           // 足元から氷の波エフェクト
@@ -6095,6 +6098,9 @@ class Fighter {
         addShake(22); playSound('smash');
         this.activateSpecialBuff();
         this._thunderCloud = null; this.specialPhase = 0;
+      } else if (this.specialPhaseTimer >= 10) {
+        // 1フレーム目に相手がシールド中/リスポーン中だと命中判定を逃す→タイムアウトで必ず終了（フリーズ防止）
+        this._thunderCloud = null; this.specialPhase = 0;
       }
     }
   }
@@ -6242,6 +6248,9 @@ class Fighter {
         this._solar = null;
         this.activateSpecialBuff();
         this.specialPhase = 0;
+      } else if (this.specialPhaseTimer >= 10) {
+        // 1フレーム目に相手がリスポーン中だと命中判定を逃す→タイムアウトで必ず終了（フリーズ防止）
+        this._solar = null; this.specialPhase = 0;
       }
     }
   }
@@ -6458,6 +6467,11 @@ class Fighter {
           }
           effects.push({ type:'text', x:opp.x, y:opp.y-opp.h-20,
             text:'ストック奪取!', color:'#fff59d', size:18, life:80, maxLife:80, vy:-0.5 });
+          if (opp.stocks <= 0) {
+            // 最後のストックを奪ったら即座に決着（0ストックのまま戦闘が続くのを防ぐ）
+            opp.stocks = 1;
+            opp.die();
+          }
         }
         this.damage = 0;
         effects.push({ type:'text', x:this.x, y:this.y-this.h-20,
@@ -8143,7 +8157,7 @@ class Fighter {
 
     if (dy < -40 && this.onGround) {
       const jumpChance = aggressive ? 0.08 : 0.04;
-      if (Math.random() < jumpChance) { this.vy = -12; this.jumpsLeft--; }
+      if (Math.random() < jumpChance && this.jumpsLeft > 0) { this.vy = -12; this.jumpsLeft--; }
     }
     if (!this.onGround && inJabRange && opponentInFront && this.attackCooldown === 0) {
       this.doAttack('jab'); this.timeSinceAttack = 0;
@@ -8287,12 +8301,16 @@ class Fighter {
       const ax = this.x + this.facing * 34;
       this.attackBox = { x: ax - 20, y: this.y - 44, w: 40, h: 32, damage: 8 * atkMul, kb: 5 * atkMul, type: 'jab' };
     } else if (type === 'jab3') {
-      // Z連打3段目：アッパー（吹っ飛ばし大）
+      // Z連打3段目：アッパー（吹っ飛ばし大）＋キャラ別倍率・演出
       const speedBonus = this.hasTrait('rapid') ? 0.6 : 1.0;
       this.attackTimer = Math.floor(18 * speedBonus);
       this.attackCooldown = Math.floor(28 * speedBonus);
       const ax = this.x + this.facing * 36;
-      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 12 * atkMul, kb: 8 * atkMul, type: 'smash' };
+      const m = (this.charData.moves || {}).jab3 || {};
+      const dMul = (m.dmgMul || 1.0);
+      const kMul = (m.kbMul || 1.0);
+      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 12 * atkMul * dMul, kb: 8 * atkMul * kMul, type: 'smash' };
+      this.spawnMoveFx(m.effect, 'jab3');
     } else if (type === 'smash') {
       this.attackTimer = 22;
       this.attackCooldown = 45;
@@ -8347,17 +8365,6 @@ class Fighter {
       addShake(15);
       this.spawnMoveFx(m.effect, 'special');
       playSound('smash');
-    } else if (type === 'jab3') {
-      // jab3にもキャラ別演出を追加
-      const speedBonus = this.hasTrait('rapid') ? 0.6 : 1.0;
-      this.attackTimer = Math.floor(18 * speedBonus);
-      this.attackCooldown = Math.floor(28 * speedBonus);
-      const ax = this.x + this.facing * 36;
-      const m = (this.charData.moves || {}).jab3 || {};
-      const dMul = (m.dmgMul || 1.0);
-      const kMul = (m.kbMul || 1.0);
-      this.attackBox = { x: ax - 22, y: this.y - 56, w: 44, h: 48, damage: 9 * atkMul * dMul, kb: 6 * atkMul * kMul, type: 'smash' };
-      this.spawnMoveFx(m.effect, 'jab3');
     }
 
     // 無謀：攻撃のたびに自分も少しダメージ（スマッシュは多め）
@@ -8434,6 +8441,17 @@ class Fighter {
 
   takeHit(attacker, hitbox) {
     if (this.invincible > 0) return;
+
+    // 🔄 カウンター / 🪞 ミラーコート：次の一撃を無効化して反撃
+    if ((this._counterReady || this._mirrorReady) && attacker && attacker.respawnTimer === 0) {
+      const isMirror = this._mirrorReady;
+      this._counterReady = false; this._mirrorReady = false; // 先にクリア（相互反射の無限ループ防止）
+      effects.push({ type:'text', x:this.x, y:this.y-this.h-15,
+        text: isMirror ? '🪞 はねかえした!' : '🔄 カウンター!', color:'#ffd54f', size:14, life:50, maxLife:50, vy:-0.5 });
+      addShake(10); playSound('smash');
+      attacker.takeHit(this, { damage: hitbox.damage * 1.5, kb: Math.max(hitbox.kb || 0, 6) * 1.2, type:'smash' });
+      return;
+    }
 
     if (this.hasTrait('morning_reflect') && !hitbox.piercing) {
       // attacker側の得意技バフ・skillBuffTimerによる追加効果をブロック
@@ -8604,6 +8622,13 @@ class Fighter {
         }
       }
     }
+    // 💪 こらえる：次の一撃のふっとびを大幅軽減して耐える
+    if (this._endure) {
+      this._endure = false;
+      knockback = Math.min(knockback, 5);
+      effects.push({ type:'text', x:this.x, y:this.y-this.h-15,
+        text:'💪 こらえた!', color:'#ffd54f', size:14, life:50, maxLife:50, vy:-0.5 });
+    }
     const angle = hitbox.type === 'smash' ? -0.5 : -0.3;
     const attackerFacing = attacker ? attacker.facing : (this.x < (player ? player.x : 0) ? -1 : 1);
     this.vx = attackerFacing * knockback * Math.cos(angle);
@@ -8628,6 +8653,16 @@ class Fighter {
   }
 
   die() {
+    // 💀 みちづれ：撃墜されたら相手も撃墜（自分の敗北判定より先に処理）
+    if (this._destinybond) {
+      this._destinybond = false; // 先にクリア（相互道連れの無限ループ防止）
+      const dbOpp = this.isPlayer ? cpu : player;
+      if (dbOpp && dbOpp.respawnTimer === 0) {
+        effects.push({ type:'text', x:dbOpp.x, y:dbOpp.y-dbOpp.h-15,
+          text:'💀 みちづれ!', color:'#9c27b0', size:14, life:60, maxLife:60, vy:-0.5 });
+        dbOpp.die();
+      }
+    }
     this.stocks--;
     spawnExplosion(Math.max(20, Math.min(W-20, this.x)), Math.max(20, Math.min(H-20, this.y)));
     playSound('ko');
@@ -8709,6 +8744,20 @@ class Fighter {
     this.skillHitCooldown = 0;
     this.skillAuraTick = 0;
     this._sealTimer = 0;
+    // 状態異常もリセット（前のストックのやけど等を持ち越さない）
+    this._burnTimer = 0;
+    this._slowTimer = 0;
+    this._confuseTimer = 0;
+    this._charmTimer = 0;
+    this._tauntTimer = 0;
+    this._blindTimer = 0;
+    this._heatSickness = 0;
+    // 必殺技の作業用オブジェクト（死亡時に残ると次回の必殺技の初期化がスキップされる）
+    this._thunderCloud = null;
+    this._sakuraSword = null;
+    this._moonSword = null;
+    this._rainCloud = null;
+    this._solar = null;
     // 闇オーラ・三日月（リスポーン時に消去）
     this._darkAura = null;
     this._midnightMoons = null;
@@ -10030,6 +10079,8 @@ function updateGeometricObjects() {
             const nextOwner = o.owner;
             const nextDmg = o.damage * (2/3), nextKb = o.kb * (2/3);
             setTimeout(() => {
+              // 試合終了/再開後は前試合のカボチャを持ち込まない
+              if (!gameRunning || (nextOwner !== player && nextOwner !== cpu)) return;
               geometricObjects.push({
                 type: 'pumpkin', x: tgt.x + (Math.random()-0.5)*60,
                 y: tgt.y - tgt.h - 120, // 上から落下
@@ -10100,6 +10151,8 @@ function updateGeometricObjects() {
             const nextOwner = o.owner;
             const nextDmg = o.damage * (2/3), nextKb = o.kb * (2/3);
             setTimeout(() => {
+              // 試合終了/再開後は前試合のカボチャを持ち込まない
+              if (!gameRunning || (nextOwner !== player && nextOwner !== cpu)) return;
               geometricObjects.push({
                 type: 'pumpkin',
                 x: tgt.x + (Math.random()-0.5)*80,
@@ -10994,7 +11047,8 @@ function vSpecial() {
 function vSpecialEnd() {
   keys['z'] = false;
   keys['x'] = false;
-  keys['ArrowDown'] = false;
+  // 十字キー下を別の指で押している場合はクリアしない
+  if (!Object.values(_touchKeyMap).includes('ArrowDown')) keys['ArrowDown'] = false;
 }
 function vSkill() {
   // 得意技：プレイヤーのdoSkillMoveを直接呼ぶ
@@ -11034,87 +11088,77 @@ const _touchKeyMap = {};
 function _initVpad() {
   const pad = document.getElementById('virtualPad');
   if (!pad) return;
+  const VBTN_SELECTOR = '[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]';
 
-  function _pressBtn(btn) {
-    if (!btn) return;
-    if (btn.dataset.vspecial) {
-      _touchKeyMap['mouse'] = '__special__';
-      vSpecial();
-    } else if (btn.dataset.vskill) {
-      _touchKeyMap['mouse'] = '__skill__';
-      vSkill();
-    } else if (btn.dataset.vcombo) {
-      _touchKeyMap['mouse'] = '__combo__';
-      vCombo();
-    } else if (btn.dataset.vskillslot !== undefined) {
-      const slot = parseInt(btn.dataset.vskillslot);
-      vSkillSlot(slot);
-    } else {
-      const key = btn.dataset.vkey;
-      _touchKeyMap['mouse'] = key;
-      vkDown(key);
-    }
-    btn.style.background = 'rgba(255,255,255,0.4)';
+  // ボタン要素→仮想キー名
+  function _btnKey(btn) {
+    if (btn.dataset.vspecial) return '__special__';
+    if (btn.dataset.vskill) return '__skill__';
+    if (btn.dataset.vcombo) return '__combo__';
+    if (btn.dataset.vskillslot !== undefined) return '__skillslot_' + btn.dataset.vskillslot;
+    return btn.dataset.vkey;
   }
-  function _releaseBtn() {
-    const key = _touchKeyMap['mouse'];
+  function _pressVKey(key) {
+    if (!key) return;
+    if (key === '__special__') vSpecial();
+    else if (key === '__skill__') vSkill();
+    else if (key === '__combo__') vCombo();
+    else if (key.startsWith('__skillslot_')) vSkillSlot(parseInt(key.replace('__skillslot_','')));
+    else vkDown(key);
+  }
+  // 参照カウント式リリース：同じキーを別の指がまだ押していれば離さない
+  function _releaseVKey(key) {
+    if (!key) return;
+    if (Object.values(_touchKeyMap).includes(key)) return;
     if (key === '__special__') vSpecialEnd();
     else if (key === '__skill__') vSkillEnd();
     else if (key === '__combo__') vComboEnd();
-    else if (key) vkUp(key);
-    delete _touchKeyMap['mouse'];
-    pad.querySelectorAll('[data-vkey],[data-vspecial],[data-vskill]').forEach(b => b.style.background = '');
+    else if (!key.startsWith('__skillslot_')) vkUp(key);
+  }
+  // 押されているキー集合からハイライトを再計算（指が滑ってもハイライトが残らない）
+  function _syncBtnHighlights() {
+    const held = new Set(Object.values(_touchKeyMap));
+    pad.querySelectorAll(VBTN_SELECTOR).forEach(b => {
+      b.style.background = held.has(_btnKey(b)) ? 'rgba(255,255,255,0.4)' : '';
+    });
   }
 
   pad.addEventListener('mousedown', (e) => {
-    const btn = e.target.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
-    _pressBtn(btn);
-  });
-  window.addEventListener('mouseup', _releaseBtn);
-
-  function _handleTouchPress(touch) {
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (!el) return;
-    const btn = el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
+    const btn = e.target.closest(VBTN_SELECTOR);
     if (!btn) return;
-    if (btn.dataset.vspecial) {
-      _touchKeyMap[touch.identifier] = '__special__';
-      vSpecial();
-    } else if (btn.dataset.vskill) {
-      _touchKeyMap[touch.identifier] = '__skill__';
-      vSkill();
-    } else if (btn.dataset.vcombo) {
-      _touchKeyMap[touch.identifier] = '__combo__';
-      vCombo();
-    } else if (btn.dataset.vskillslot !== undefined) {
-      _touchKeyMap[touch.identifier] = '__skillslot_' + btn.dataset.vskillslot;
-      vSkillSlot(parseInt(btn.dataset.vskillslot));
-    } else {
-      const key = btn.dataset.vkey;
-      _touchKeyMap[touch.identifier] = key;
-      vkDown(key);
-    }
-    btn.style.background = 'rgba(255,255,255,0.4)';
-  }
+    const key = _btnKey(btn);
+    _touchKeyMap['mouse'] = key;
+    _pressVKey(key);
+    _syncBtnHighlights();
+  });
+  window.addEventListener('mouseup', () => {
+    const key = _touchKeyMap['mouse'];
+    delete _touchKeyMap['mouse'];
+    _releaseVKey(key);
+    _syncBtnHighlights();
+  });
 
   pad.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    for (const touch of e.changedTouches) _handleTouchPress(touch);
+    for (const touch of e.changedTouches) {
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const btn = el && el.closest(VBTN_SELECTOR);
+      if (!btn) continue;
+      const key = _btnKey(btn);
+      _touchKeyMap[touch.identifier] = key;
+      _pressVKey(key);
+    }
+    _syncBtnHighlights();
   }, { passive: false });
 
   const _endTouch = (e) => {
     e.preventDefault();
     for (const touch of e.changedTouches) {
       const key = _touchKeyMap[touch.identifier];
-      if (key === '__special__') vSpecialEnd();
-      else if (key === '__skill__') vSkillEnd();
-      else if (key === '__combo__') vComboEnd();
-      else if (key && !key.startsWith('__skillslot_')) vkUp(key);
       delete _touchKeyMap[touch.identifier];
-      const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const btn = el && el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
-      if (btn) btn.style.background = '';
+      _releaseVKey(key);
     }
+    _syncBtnHighlights();
   };
   pad.addEventListener('touchend',    _endTouch, { passive: false });
   pad.addEventListener('touchcancel', _endTouch, { passive: false });
@@ -11123,29 +11167,17 @@ function _initVpad() {
     e.preventDefault();
     for (const touch of e.changedTouches) {
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const btn = el && el.closest('[data-vkey],[data-vspecial],[data-vskill],[data-vcombo],[data-vskillslot]');
+      const btn = el && el.closest(VBTN_SELECTOR);
       const prevKey = _touchKeyMap[touch.identifier];
-      let newKey = null;
-      if (btn) {
-        if (btn.dataset.vspecial) newKey = '__special__';
-        else if (btn.dataset.vskill) newKey = '__skill__';
-        else if (btn.dataset.vcombo) newKey = '__combo__';
-        else if (btn.dataset.vskillslot !== undefined) newKey = '__skillslot_' + btn.dataset.vskillslot;
-        else newKey = btn.dataset.vkey;
-      }
+      const newKey = btn ? _btnKey(btn) : null;
       if (newKey !== prevKey) {
-        if (prevKey === '__special__') vSpecialEnd();
-        else if (prevKey === '__skill__') vSkillEnd();
-        else if (prevKey === '__combo__') vComboEnd();
-        else if (prevKey && !prevKey.startsWith('__skillslot_')) vkUp(prevKey);
-        if (newKey === '__special__') vSpecial();
-        else if (newKey === '__skill__') vSkill();
-        else if (newKey === '__combo__') vCombo();
-        else if (newKey && newKey.startsWith('__skillslot_')) vSkillSlot(parseInt(newKey.replace('__skillslot_','')));
-        else if (newKey) vkDown(newKey);
-        _touchKeyMap[touch.identifier] = newKey;
+        if (newKey == null) delete _touchKeyMap[touch.identifier];
+        else _touchKeyMap[touch.identifier] = newKey;
+        _releaseVKey(prevKey);
+        _pressVKey(newKey);
       }
     }
+    _syncBtnHighlights();
   }, { passive: false });
 }
 
@@ -11195,6 +11227,8 @@ function getAudioCtx() {
 function playSound(type) {
   const ctx = getAudioCtx();
   if (!ctx) return;
+  // 自動再生ポリシーでsuspendedのままだと全SEが無音になるため復帰させる
+  if (ctx.state === 'suspended') { try { ctx.resume(); } catch(e){} }
   const volume = (gameData.settings?.volume ?? 50) / 100;
   if (volume <= 0) return;
   const now = ctx.currentTime;
@@ -11307,6 +11341,7 @@ function startBattle() {
   resetCamera();
   let p1x = W * 0.3, p2x = W * 0.7;
   let startY = 420;
+  let p2StartY = null; // 山ステージのみ個別のY座標を使う
   if (currentStage && currentStage.centerSpawn) {
     p1x = W * 0.4; p2x = W * 0.6;
     startY = H - 60;
@@ -11324,18 +11359,8 @@ function startBattle() {
       return bestY - 40; // 地面の少し上にスポーン
     };
     startY = getGroundY(p1x); // p1xの地面Y
-    const p2StartY = getGroundY(p2x);
-    player = new Fighter(p1x, startY, gameData.selectedChar, true);
-    const cpuPool = Object.keys(CHARACTER_DB).filter(id => {
-      const t = CHARACTER_DB[id].traits || [];
-      return !t.includes('mission_only') && !t.includes('event_only');
-    });
-    const cpuId = cpuPool[Math.floor(Math.random() * cpuPool.length)];
-    cpu = new Fighter(p2x, p2StartY, cpuId, false);
-    document.getElementById('p2Name').textContent = `CPU: ${CHARACTER_DB[cpuId].name}`;
-    gameRunning = true;
-    loop();
-    return;
+    p2StartY = getGroundY(p2x);
+    // 以降は通常のモード別セットアップに合流（タワー/訓練の相手・選択技を正しく反映）
   } else if (currentStage) {
     const main = currentStage.platforms.find(p => p.main);
     if (main) startY = main.y - 40;
@@ -11367,7 +11392,7 @@ function startBattle() {
       })();
     }
   }
-  cpu = new Fighter(p2x, startY, cpuId, false);
+  cpu = new Fighter(p2x, p2StartY != null ? p2StartY : startY, cpuId, false);
   // 訓練モード：CPUレベルを自動設定
   if (currentBattleMode === 'training' && gameData.settings?._trainingCpuLevel) {
     cpu.level = gameData.settings._trainingCpuLevel;
@@ -11402,12 +11427,13 @@ function startBattle() {
   gameRunning = true;
   window.battleFrame = 0; // バトル開始からのフレーム数
   setTimeout(updateMobileSkillBtns, 100);
-  loop();
+  startLoop();
 }
 
 function restartBattle() { startBattle(); }
 
 async function battleEnd(result) {
+  if (!gameRunning) return; // 同一フレームでの二重KO等による二重実行を防ぐ（報酬・連勝の二重加算防止）
   gameRunning = false;
   // 訓練選択画面が残っていたら必ず隠す
   _hideTrainingSelect();
@@ -11465,7 +11491,7 @@ async function battleEnd(result) {
     }
   }
 
-  gameData.coins += reward;
+  addCoins(reward);
 
   // ミッション統計更新
   gameData.stats.battles = (gameData.stats.battles || 0) + 1;
@@ -12376,9 +12402,15 @@ function damageColor(d) {
   return '#f44336';
 }
 
+let _rafId = null;
+function startLoop() {
+  // 既存のループを止めてから開始（連打等による2重ループ＝2倍速化を防ぐ）
+  if (_rafId != null) { cancelAnimationFrame(_rafId); _rafId = null; }
+  loop();
+}
 function loop() {
-  if (!gameRunning) return;
-  requestAnimationFrame(loop);
+  if (!gameRunning) { _rafId = null; return; }
+  _rafId = requestAnimationFrame(loop);
   window.battleFrame = (window.battleFrame || 0) + 1;
   try {
   ctx.clearRect(0, 0, W, H);
