@@ -1432,15 +1432,17 @@ const CHARACTER_DB = {
 // データ・コードは残したまま、ガチャ/一覧/訓練/タワー/ミッション等の全てから除外される。
 // キャラを復帰させたい場合はこの配列にIDを追加するだけでよい。
 const ACTIVE_CHARS = new Set([
+  // ---- 通常キャラ 21体 ----
   // N
   'redfighter', 'blueknight',
   // R
-  'greenninja', 'yellowmage', 'flyfeather', 'swappy', 'judomaster',
+  'greenninja', 'yellowmage', 'flyfeather', 'swappy', 'judomaster', 'chainstriker',
   // SR
   'pinkangel', 'ironguard', 'thunderbolt', 'iceshaper', 'chameleonx', 'windcatcher',
+  'purplelord', 'bomberjack',
   // SSR
-  'barrierbreaker', 'shadowdemon', 'colossus',
-  // EV（月限定イベント）
+  'barrierbreaker', 'shadowdemon', 'colossus', 'goldking', 'echomage',
+  // ---- 期間限定イベントキャラ 4体 ----
   'jan_iceknight', 'apr_cherryblade', 'aug_sun', 'oct_demon',
 ]);
 function isCharActive(id) { return ACTIVE_CHARS.has(id); }
