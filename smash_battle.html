@@ -1426,6 +1426,25 @@ const CHARACTER_DB = {
       { name: '超電磁チェーン嵐', effect: 'lightning_burst', kbMul: 2.0, dmgMul: 1.4 }),
   },
 };
+
+// ★内定キャラ（ホワイトリスト）
+// ここに載っているキャラだけがゲームに登場する。載っていないキャラは
+// データ・コードは残したまま、ガチャ/一覧/訓練/タワー/ミッション等の全てから除外される。
+// キャラを復帰させたい場合はこの配列にIDを追加するだけでよい。
+const ACTIVE_CHARS = new Set([
+  // N
+  'redfighter', 'blueknight',
+  // R
+  'greenninja', 'yellowmage', 'flyfeather', 'swappy', 'judomaster',
+  // SR
+  'pinkangel', 'ironguard', 'thunderbolt', 'iceshaper', 'chameleonx', 'windcatcher',
+  // SSR
+  'barrierbreaker', 'shadowdemon', 'colossus',
+  // EV（月限定イベント）
+  'jan_iceknight', 'apr_cherryblade', 'aug_sun', 'oct_demon',
+]);
+function isCharActive(id) { return ACTIVE_CHARS.has(id); }
+
 const RARITY_RATES = { N: 0.55, R: 0.30, SR: 0.12, SSR: 0.03 };
 const RARITY_COLOR = { N: '#9e9e9e', R: '#2196f3', SR: '#9c27b0', SSR: '#ff9800', MS: '#e91e63', EV: '#00bcd4' };
 
@@ -1586,6 +1605,54 @@ const MONTHLY_MISSIONS = [
   { id: 'monthly_11', monthFor: 11, icon: '🍁', title: '11月の試練', desc: '今月35回必殺技を使う', goal: 35, stat: 'monthly_specials', reward: { coins: 2000, char: 'nov_archer' } },
   { id: 'monthly_12', monthFor: 12, icon: '🎄', title: '12月の試練', desc: '今月15回パーフェクト勝利', goal: 15, stat: 'monthly_perfect', reward: { coins: 3000, char: 'dec_angel' } },
 ];
+
+// ★リストラ対応: ミッションを現役キャラ構成に合わせて調整する（起動時に1回呼ぶ）
+// ・報酬キャラや対象キャラがリストラ済みのミッションは _hidden を立てて非表示に
+// ・「全習得」系のゴールは現役キャラ数に合わせて縮小
+function _applyRosterToMissions() {
+  const active = Object.keys(CHARACTER_DB).filter(isCharActive);
+  const has = (id, t) => (CHARACTER_DB[id].traits || []).includes(t);
+  const rarityMax = (r) => active.filter(id => {
+    const c = CHARACTER_DB[id];
+    return c.rarity === r && !has(id, 'mission_only') && !c.timeWindow && !c.monthOnly;
+  }).length;
+  const maxByStat = {
+    owned_count: active.length,
+    owned_n_count: rarityMax('N'),
+    owned_r_count: rarityMax('R'),
+    owned_sr_count: rarityMax('SR'),
+    owned_ssr_count: rarityMax('SSR'),
+    owned_ms_count: active.filter(id => has(id, 'mission_only')).length,
+    owned_ev_time_count: active.filter(id => CHARACTER_DB[id].timeWindow).length,
+    owned_ev_month_count: active.filter(id => CHARACTER_DB[id].monthOnly).length,
+    owned_grab_count: ['ironwrestler','judomaster','titangrip','windcatcher','bearknight','ghostgrappler'].filter(isCharActive).length,
+    owned_curse_count: ['hexwitch','soulreaper','voodoodoll','cursedpaladin','echomage','doomcaller'].filter(isCharActive).length,
+    owned_chain_count: ['chainstriker','whipmaster','nunchakufighter','scythewalker','goldenchainlord','thunderchain'].filter(isCharActive).length,
+    owned_ranged_count: active.filter(id => has(id, 'ranged')).length,
+    owned_heavy_count: active.filter(id => has(id, 'heavy')).length,
+    owned_speed_count: active.filter(id => has(id, 'phase_dash')).length,
+    owned_ninja_count: ['greenninja','shadowdemon','shadowclone'].filter(isCharActive).length,
+    owned_knight_count: ['blueknight','jan_iceknight','bearknight'].filter(isCharActive).length,
+    owned_magic_count: ['yellowmage','crystalmage','echomage'].filter(isCharActive).length,
+    owned_aura_count: active.filter(id => has(id, 'spirit_aura')).length,
+    owned_fire_count: active.filter(id => getCharSkillType(id) === 'fire').length,
+    owned_dark_count: active.filter(id => getCharSkillType(id) === 'dark').length,
+    owned_water_count: active.filter(id => getCharSkillType(id) === 'water').length,
+    owned_fight_count: active.filter(id => getCharSkillType(id) === 'fight').length,
+  };
+  for (const arr of [MISSIONS, COLLECTION_MISSIONS, CHALLENGE_MISSIONS, DAILY_MISSIONS, MONTHLY_MISSIONS]) {
+    for (const m of arr) {
+      if (m.reward && m.reward.char && !isCharActive(m.reward.char)) { m._hidden = true; continue; }
+      const om = /^owned_(.+)$/.exec(m.stat || '');
+      if (om && CHARACTER_DB[om[1]] && !isCharActive(om[1])) { m._hidden = true; continue; }
+      const max = maxByStat[m.stat];
+      if (max !== undefined) {
+        if (max <= 0) { m._hidden = true; continue; }
+        if (m.goal > max) m.goal = max;
+      }
+    }
+  }
+}
 
 // 現在の月キーを返す（YYYY-MM）
 function getMonthKey() {
@@ -2090,7 +2157,7 @@ function goToSettings() {
     💥 撃墜数: ${s.kos || 0} / ✨ パーフェクト勝利: ${s.perfect_wins || 0}<br>
     🎰 ガチャ回数: ${s.gacha_pulls || 0} / 🌟 SSR入手数: ${s.ssr_obtained || 0}<br>
     ⬆ 強化回数: ${s.upgrades || 0} / 💫 最大Lv: ${s.max_level || 1}<br>
-    🎴 所持キャラ数: ${Object.keys(gameData.ownedChars || {}).length} / ${Object.keys(CHARACTER_DB).length}
+    🎴 所持キャラ数: ${Object.keys(gameData.ownedChars || {}).filter(isCharActive).length} / ${Object.keys(CHARACTER_DB).filter(isCharActive).length}
   `;
   document.getElementById('statsDisplay').innerHTML = statsHtml;
 }
@@ -2282,7 +2349,7 @@ function getEnemyPower(charId) {
 
 // 敵候補（自分以外）
 const TOWER_FLOOR_CHARS = () =>
-  Object.keys(CHARACTER_DB).filter(id => id !== gameData.selectedChar);
+  Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && id !== gameData.selectedChar);
 
 // フロアに応じた敵選出（階が高いほど強敵出現率UP）
 function getTowerEnemyStrength(floor) {
@@ -2788,6 +2855,7 @@ function _renderTrainingGrid() {
   let seasonalIsOwned = false;
 
   for (const [id, c] of Object.entries(CHARACTER_DB)) {
+    if (!isCharActive(id)) continue;
     const traits = c.traits || [];
     const isOwned = !!owned[id];
     if (c.monthOnly) {
@@ -2805,7 +2873,7 @@ function _renderTrainingGrid() {
   }
   if (!seasonalCharId) {
     for (let m = 1; m <= 12; m++) {
-      const f = Object.keys(CHARACTER_DB).find(id => owned[id] && CHARACTER_DB[id].monthOnly === m);
+      const f = Object.keys(CHARACTER_DB).find(id => isCharActive(id) && owned[id] && CHARACTER_DB[id].monthOnly === m);
       if (f) { seasonalCharId = f; seasonalIsOwned = true; break; }
     }
   }
@@ -3282,7 +3350,7 @@ function rollOnce() {
   if (tw !== 'daytime' && Math.random() < 0.05) {
     const timeChars = Object.keys(CHARACTER_DB).filter(id => {
       const c = CHARACTER_DB[id];
-      return c.timeWindow === tw;
+      return isCharActive(id) && c.timeWindow === tw;
     });
     if (timeChars.length > 0) {
       return timeChars[Math.floor(Math.random() * timeChars.length)];
@@ -3298,7 +3366,7 @@ function rollOnce() {
   const candidates = Object.keys(CHARACTER_DB).filter(id => {
     const c = CHARACTER_DB[id];
     const t = c.traits || [];
-    return c.rarity === rarity && !t.includes('mission_only') && !t.includes('event_only');
+    return isCharActive(id) && c.rarity === rarity && !t.includes('mission_only') && !t.includes('event_only');
   });
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
@@ -3358,6 +3426,7 @@ function renderGuaranteeButtons() {
   const rarityOrder = { SSR: 0, SR: 1, R: 2, N: 3 };
   const candidates = Object.keys(CHARACTER_DB)
     .filter(id => {
+      if (!isCharActive(id)) return false;
       const c = CHARACTER_DB[id];
       const t = c.traits || [];
       if (t.includes('mission_only')) return false;
@@ -3507,7 +3576,7 @@ function renderCharacterList() {
 
   // N→R→SR→SSR→EV(時間帯)→MS→EV(月間) の順にソート
   const RARITY_ORDER = { N:0, R:1, SR:2, SSR:3, EV:4, MS:5 };
-  const allIds = Object.keys(CHARACTER_DB).sort((a, b) => {
+  const allIds = Object.keys(CHARACTER_DB).filter(isCharActive).sort((a, b) => {
     const ca = CHARACTER_DB[a], cb = CHARACTER_DB[b];
     // まずグループ分け
     const groupA = _charSortGroup(ca);
@@ -3658,11 +3727,11 @@ function checkDailyMissionProgress() {
 
 function checkMissionProgress() {
   const owned = gameData.ownedChars;
-  gameData.stats.owned_count = Object.keys(owned).length;
+  gameData.stats.owned_count = Object.keys(owned).filter(isCharActive).length;
   let nCount=0, rCount=0, srCount=0, ssrCount=0, msCount=0, evTimeCount=0, evMonthCount=0;
   for (const id in owned) {
     const c = CHARACTER_DB[id];
-    if (!c) continue;
+    if (!c || !isCharActive(id)) continue;
     const traits = c.traits || [];
     if (traits.includes('mission_only')) { msCount++; continue; }
     if (c.timeWindow) { evTimeCount++; continue; }
@@ -3680,7 +3749,7 @@ function checkMissionProgress() {
   gameData.stats.owned_ev_time_count = evTimeCount;
   gameData.stats.owned_ev_month_count = evMonthCount;
   for (const id of Object.keys(CHARACTER_DB)) {
-    gameData.stats[`owned_${id}`] = owned[id] ? 1 : 0;
+    gameData.stats[`owned_${id}`] = (owned[id] && isCharActive(id)) ? 1 : 0;
   }
   let maxLv = 1;
   for (const id in owned) {
@@ -3688,20 +3757,20 @@ function checkMissionProgress() {
   }
   gameData.stats.max_level = maxLv;
 
-  const grabStyles = ['ironwrestler','judomaster','titangrip','windcatcher','bearknight','ghostgrappler'];
-  const curseStyles = ['hexwitch','soulreaper','voodoodoll','cursedpaladin','echomage','doomcaller'];
-  const chainStyles = ['chainstriker','whipmaster','nunchakufighter','scythewalker','goldenchainlord','thunderchain'];
-  const rangedStyles = Object.keys(CHARACTER_DB).filter(id => (CHARACTER_DB[id].traits||[]).includes('ranged'));
-  const heavyStyles = Object.keys(CHARACTER_DB).filter(id => (CHARACTER_DB[id].traits||[]).includes('heavy'));
-  const speedStyles = Object.keys(CHARACTER_DB).filter(id => (CHARACTER_DB[id].traits||[]).includes('phase_dash'));
-  const ninjaStyles = ['greenninja','shadowdemon','shadowclone'];
-  const knightStyles = ['blueknight','jan_iceknight','bearknight'];
-  const magicStyles = ['yellowmage','crystalmage','echomage'];
-  const auraStyles = Object.keys(CHARACTER_DB).filter(id => (CHARACTER_DB[id].traits||[]).includes('spirit_aura'));
-  const fireTypes = Object.keys(CHARACTER_DB).filter(id => getCharSkillType(id) === 'fire');
-  const darkTypes = Object.keys(CHARACTER_DB).filter(id => getCharSkillType(id) === 'dark');
-  const waterTypes = Object.keys(CHARACTER_DB).filter(id => getCharSkillType(id) === 'water');
-  const fightTypes = Object.keys(CHARACTER_DB).filter(id => getCharSkillType(id) === 'fight');
+  const grabStyles = ['ironwrestler','judomaster','titangrip','windcatcher','bearknight','ghostgrappler'].filter(isCharActive);
+  const curseStyles = ['hexwitch','soulreaper','voodoodoll','cursedpaladin','echomage','doomcaller'].filter(isCharActive);
+  const chainStyles = ['chainstriker','whipmaster','nunchakufighter','scythewalker','goldenchainlord','thunderchain'].filter(isCharActive);
+  const rangedStyles = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && (CHARACTER_DB[id].traits||[]).includes('ranged'));
+  const heavyStyles = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && (CHARACTER_DB[id].traits||[]).includes('heavy'));
+  const speedStyles = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && (CHARACTER_DB[id].traits||[]).includes('phase_dash'));
+  const ninjaStyles = ['greenninja','shadowdemon','shadowclone'].filter(isCharActive);
+  const knightStyles = ['blueknight','jan_iceknight','bearknight'].filter(isCharActive);
+  const magicStyles = ['yellowmage','crystalmage','echomage'].filter(isCharActive);
+  const auraStyles = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && (CHARACTER_DB[id].traits||[]).includes('spirit_aura'));
+  const fireTypes = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && getCharSkillType(id) === 'fire');
+  const darkTypes = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && getCharSkillType(id) === 'dark');
+  const waterTypes = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && getCharSkillType(id) === 'water');
+  const fightTypes = Object.keys(CHARACTER_DB).filter(id => isCharActive(id) && getCharSkillType(id) === 'fight');
 
   gameData.stats.owned_grab_count = grabStyles.filter(id => owned[id]).length;
   gameData.stats.owned_curse_count = curseStyles.filter(id => owned[id]).length;
@@ -3750,7 +3819,7 @@ function updateMissionBadge() {
   if (!badge) return;
   let count = 0;
   for (const m of MISSIONS) {
-    if (gameData.missionStatus[m.id] === 'completed') count++;
+    if (!m._hidden && gameData.missionStatus[m.id] === 'completed') count++;
   }
   if (count > 0) {
     badge.textContent = count;
@@ -3838,6 +3907,7 @@ function _makeMissionCard(m, status, progress, color, claimFn) {
 function _renderMissionSection(list, missions, statusObj, claimFn, color) {
   const sorted = _sortMissions(missions, statusObj);
   for (const m of sorted) {
+    if (m._hidden) continue;
     const status = statusObj[m.id] || 'in_progress';
     const progress = _getMissionProgressGeneric(m, statusObj);
     list.appendChild(_makeMissionCard(m, status, progress, color, claimFn));
@@ -3846,7 +3916,7 @@ function _renderMissionSection(list, missions, statusObj, claimFn, color) {
 
 function _renderMonthlySection(list) {
   const currentMonth = getCurrentMonth();
-  const monthlyMission = MONTHLY_MISSIONS.find(m => m.monthFor === currentMonth);
+  const monthlyMission = MONTHLY_MISSIONS.find(m => m.monthFor === currentMonth && !m._hidden);
   const header = document.createElement('div');
   header.style.cssText = 'padding:8px 12px;background:linear-gradient(90deg,#7b1fa2,#4a148c);color:#fff;font-weight:bold;border-radius:8px;margin-bottom:8px;font-size:13px;';
   header.textContent = `🗓 ${currentMonth}月の月間ミッション`;
@@ -3905,7 +3975,7 @@ function addCoins(n) {
 async function claimCollectionMission(missionId) {
   if (!gameData.collectionStatus) gameData.collectionStatus = {};
   const m = COLLECTION_MISSIONS.find(x => x.id === missionId);
-  if (!m || gameData.collectionStatus[missionId] !== 'completed') return;
+  if (!m || m._hidden || gameData.collectionStatus[missionId] !== 'completed') return;
   if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char && !gameData.ownedChars[m.reward.char]) {
     gameData.ownedChars[m.reward.char] = { level:1, dupes:0 };
@@ -3918,7 +3988,7 @@ async function claimCollectionMission(missionId) {
 async function claimChallengeMission(missionId) {
   if (!gameData.challengeStatus) gameData.challengeStatus = {};
   const m = CHALLENGE_MISSIONS.find(x => x.id === missionId);
-  if (!m || gameData.challengeStatus[missionId] !== 'completed') return;
+  if (!m || m._hidden || gameData.challengeStatus[missionId] !== 'completed') return;
   if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char && !gameData.ownedChars[m.reward.char]) {
     gameData.ownedChars[m.reward.char] = { level:1, dupes:0 };
@@ -3931,7 +4001,7 @@ async function claimChallengeMission(missionId) {
 // デイリーミッションの報酬受領
 async function claimDailyMission(missionId) {
   const m = DAILY_MISSIONS.find(x => x.id === missionId);
-  if (!m) return;
+  if (!m || m._hidden) return;
   if (gameData.dailyStatus[missionId] !== 'completed') return;
   if (m.reward.coins) addCoins(m.reward.coins);
   gameData.dailyStatus[missionId] = 'claimed';
@@ -3941,7 +4011,7 @@ async function claimDailyMission(missionId) {
 
 async function claimMonthlyMission(missionId) {
   const m = MONTHLY_MISSIONS.find(x => x.id === missionId);
-  if (!m) return;
+  if (!m || m._hidden) return;
   if (gameData.monthlyStatus[missionId] !== 'completed') return;
   if (m.reward.coins) addCoins(m.reward.coins);
   if (m.reward.char) {
@@ -3958,7 +4028,7 @@ async function claimMonthlyMission(missionId) {
 
 async function claimMission(missionId) {
   const m = MISSIONS.find(x => x.id === missionId);
-  if (!m) return;
+  if (!m || m._hidden) return;
   if (gameData.missionStatus[missionId] !== 'completed') return;
 
   // 報酬付与
@@ -11378,7 +11448,7 @@ function startBattle() {
       cpuId = towerCpuCharId || (() => {
         const pool = Object.keys(CHARACTER_DB).filter(id => {
           const t = CHARACTER_DB[id].traits || [];
-          return !t.includes('mission_only') && !t.includes('event_only');
+          return isCharActive(id) && !t.includes('mission_only') && !t.includes('event_only');
         });
         return pool[Math.floor(Math.random() * pool.length)];
       })();
@@ -11386,7 +11456,7 @@ function startBattle() {
       cpuId = towerCpuCharId || (() => {
         const pool = Object.keys(CHARACTER_DB).filter(id => {
           const t = CHARACTER_DB[id].traits || [];
-          return !t.includes('mission_only') && !t.includes('event_only');
+          return isCharActive(id) && !t.includes('mission_only') && !t.includes('event_only');
         });
         return pool[Math.floor(Math.random() * pool.length)];
       })();
@@ -12503,6 +12573,13 @@ function loop() {
   if (!gameData.ownedChars[gameData.selectedChar]) {
     gameData.selectedChar = Object.keys(gameData.ownedChars)[0];
   }
+  // ★リストラ対応: 選択中キャラがリストラ済みなら現役キャラに切り替え（所持データ自体は残す）
+  if (!isCharActive(gameData.selectedChar)) {
+    const fallback = Object.keys(gameData.ownedChars).find(isCharActive) || 'redfighter';
+    if (!gameData.ownedChars[fallback]) gameData.ownedChars[fallback] = { level: 1, dupes: 0 };
+    gameData.selectedChar = fallback;
+  }
+  _applyRosterToMissions();
   if (!gameData.stats) gameData.stats = { wins:0, battles:0, kos:0, perfect_wins:0, gacha_pulls:0, ssr_obtained:0, upgrades:0, max_level:1, owned_count:1 };
   if (!gameData.missionStatus) gameData.missionStatus = {};
   const defaultStats = { wins:0, battles:0, kos:0, perfect_wins:0, gacha_pulls:0, ssr_obtained:0, upgrades:0, max_level:1, owned_count:1 };
