@@ -353,7 +353,8 @@
           <div><span class="icon">🎯</span>訓練</div>
           <div class="desc">戦闘訓練で✨称号 / 修行で選択技をセット</div>
         </button>
-        <button class="tabButton" style="opacity:0.5;cursor:not-allowed;" onclick="alert('ストーリーモードは準備中です')">
+        <!-- ストーリー機能は非表示化（コードは残置。復活時は display:none を外す） -->
+        <button class="tabButton" style="display:none;opacity:0.5;cursor:not-allowed;" onclick="alert('ストーリーモードは準備中です')">
           <div><span class="icon">📖</span>ストーリー <span style="font-size:10px;background:#555;padding:1px 5px;border-radius:4px;">準備中</span></div>
           <div class="desc">近日公開予定</div>
         </button>
@@ -369,7 +370,8 @@
           <div><span class="icon">⚙</span>戦闘方法を変更・強化<br>ステージ選択</div>
           <div class="desc">戦闘スタイル選択・コインで強化</div>
         </button>
-        <button class="tabButton" onclick="goToPractice()">
+        <!-- 練習機能は非表示化（コードは残置。復活時は display:none を外す） -->
+        <button class="tabButton" style="display:none;" onclick="goToPractice()">
           <div><span class="icon">🏋️</span>練習</div>
           <div class="desc">敵なしステージで自由に動きを確認</div>
         </button>
