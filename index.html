@@ -416,7 +416,8 @@
     <div id="settingsContent">
       <h2 id="settingsTitle">⚙ 設定</h2>
 
-      <div class="settingItem">
+      <!-- 言語設定は廃止（日本語固定・コードは残置） -->
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel"><span id="settingLangLabel">🌐 言語 / Language</span></div>
         <div class="settingDesc" id="settingLangDesc">ゲームの表示言語を選択 / Select display language</div>
         <div style="display:flex;gap:10px;margin-top:8px;">
@@ -434,7 +435,8 @@
         </div>
       </div>
 
-      <div class="settingItem">
+      <!-- 効果音音量は70%固定（設定UIは廃止・コードは残置） -->
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel">
           <span>🔊 効果音の音量</span>
           <span><span class="settingValue" id="volumeValue">50</span>%
@@ -445,8 +447,8 @@
         <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="updateVolume(this.value)">
       </div>
 
-      <!-- BGM設定 -->
-      <div class="settingItem">
+      <!-- BGM設定（ホーム=エピック / 戦闘=激しい 固定。設定UIは廃止・コードは残置） -->
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel"><span>🎵 ホーム画面BGM</span></div>
         <div class="settingDesc">ホーム画面で流れる音楽を選択</div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;" id="homeBgmGrid">
@@ -456,7 +458,7 @@
           <button class="bgmBtn" data-bgm="calm" onclick="setHomeBgm('calm')">🌿 穏やか</button>
         </div>
       </div>
-      <div class="settingItem">
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel"><span>⚔ 戦闘中BGM</span></div>
         <div class="settingDesc">バトル中に流れる音楽を選択</div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px;" id="battleBgmGrid">
@@ -1760,7 +1762,12 @@ function showScreen(id) {
 function _hideTrainingSelect() {
   // trainingSelectScreenはscreenクラスなのでshowScreen()で自動管理される
 }
-function goToHome() { _hideTrainingSelect(); showScreen('homeScreen'); updateHomeDisplay(); }
+function goToHome() {
+  _hideTrainingSelect(); showScreen('homeScreen'); updateHomeDisplay();
+  // ホームに戻ったら戦闘BGMを止めてホームBGM（エピック固定）を再生
+  _stopBattleBgm();
+  if (!_homeBgmNode) _playHomeBgm();
+}
 
 function goToPractice() {
   practiceMode = true;
@@ -2049,9 +2056,17 @@ function _playHomeBgm() {
   const bgm = gameData.settings?.homeBgm || 'none';
   if (bgm === 'none' || !_audioCtx) return;
   if (_audioCtx.state === 'suspended') { try { _audioCtx.resume(); } catch(e){} }
-  _homeBgmNode = _makeBgmNode(bgm);
+  _homeBgmNode = _makeBgmNode(bgm, 'home');
 }
-function _makeBgmNode(bgm) {
+function _playBattleBgm() {
+  _battleBgmNode = _stopBgm(_battleBgmNode);
+  const bgm = gameData.settings?.battleBgm || 'none';
+  if (bgm === 'none' || !_audioCtx) return;
+  if (_audioCtx.state === 'suspended') { try { _audioCtx.resume(); } catch(e){} }
+  _battleBgmNode = _makeBgmNode(bgm, 'battle');
+}
+function _stopBattleBgm() { _battleBgmNode = _stopBgm(_battleBgmNode); }
+function _makeBgmNode(bgm, which) {
   if (!_audioCtx) return null;
   // 簡易ループ音楽生成（オシレータベース）
   const master = _audioCtx.createGain();
@@ -2087,7 +2102,8 @@ function _makeBgmNode(bgm) {
   scheduleLoop(); scheduleLoop(); scheduleLoop(); // 3ループ分先行予約
   // 自動ループ
   const interval = setInterval(() => {
-    if (_homeBgmNode !== master) { clearInterval(interval); return; }
+    const current = which === 'battle' ? _battleBgmNode : _homeBgmNode;
+    if (current !== master) { clearInterval(interval); return; }
     scheduleLoop();
   }, totalDur * 1000 - 200);
   master._interval = interval;
@@ -11501,6 +11517,9 @@ function startBattle() {
   gameRunning = true;
   window.battleFrame = 0; // バトル開始からのフレーム数
   setTimeout(updateMobileSkillBtns, 100);
+  // 戦闘BGM（激しい固定）に切り替え
+  _homeBgmNode = _stopBgm(_homeBgmNode);
+  _playBattleBgm();
   startLoop();
 }
 
@@ -11509,6 +11528,7 @@ function restartBattle() { startBattle(); }
 async function battleEnd(result) {
   if (!gameRunning) return; // 同一フレームでの二重KO等による二重実行を防ぐ（報酬・連勝の二重加算防止）
   gameRunning = false;
+  _stopBattleBgm();
   // 訓練選択画面が残っていたら必ず隠す
   _hideTrainingSelect();
 
@@ -12589,13 +12609,24 @@ function loop() {
   const defaultStats = { wins:0, battles:0, kos:0, perfect_wins:0, gacha_pulls:0, ssr_obtained:0, upgrades:0, max_level:1, owned_count:1 };
   for (const k in defaultStats) { if (gameData.stats[k] === undefined) gameData.stats[k] = defaultStats[k]; }
   if (!gameData.settings) gameData.settings = { volume: 50, cpuLevel: 1 };
-  if (gameData.settings.volume === undefined) gameData.settings.volume = 50;
   if (gameData.settings.cpuLevel === undefined) gameData.settings.cpuLevel = 1;
+  // ★固定設定（設定UIは廃止済み）: 言語=日本語 / 効果音70% / ホームBGM=エピック / 戦闘BGM=激しい
+  gameData.settings.language = 'ja';
+  gameData.settings.volume = 70;
+  gameData.settings.homeBgm = 'epic';
+  gameData.settings.battleBgm = 'intense';
   checkMissionProgress();
   await saveData();
   applyControlMode(gameData.settings?.controlMode || 'keyboard');
   applyLanguage(getLang());
   goToHome();
+  // 自動再生ポリシー対応: 最初の操作でオーディオを有効化してBGMを開始
+  const _resumeBgmOnGesture = () => {
+    if (_audioCtx && _audioCtx.state === 'suspended') { try { _audioCtx.resume(); } catch(e){} }
+    if (!gameRunning && !_homeBgmNode) _playHomeBgm();
+  };
+  window.addEventListener('pointerdown', _resumeBgmOnGesture, { once: true });
+  window.addEventListener('keydown', _resumeBgmOnGesture, { once: true });
 })();
 </script>
 </body>
