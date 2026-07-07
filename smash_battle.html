@@ -3314,10 +3314,10 @@ const CPU_SKIP_CHANCE = 0.3;
 
 function getCpuStats(id) {
   const c = CHARACTER_DB[id];
-  // CPUレベルはプレイヤーの選択キャラのレベル未満に制限（最低1）
+  // CPUレベルはプレイヤーの選択キャラのレベル+1未満（=同レベルまで）に制限
   const playerLv = gameData.ownedChars?.[gameData.selectedChar]?.level || 1;
   let cpuLv = gameData.settings?.cpuLevel ?? 1;
-  cpuLv = Math.max(1, Math.min(cpuLv, playerLv - 1));
+  cpuLv = Math.max(1, Math.min(cpuLv, playerLv));
   const lvBonus = 1 + (cpuLv - 1) * 0.08;
   let atk = c.baseAtk * lvBonus, spd = c.baseSpd * lvBonus, def = c.baseDef * lvBonus;
   const traits = c.traits || [];
