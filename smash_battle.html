@@ -2374,10 +2374,18 @@ const TOWER_FLOOR_CHARS = () =>
 // フロアに応じた敵選出（階が高いほど強敵出現率UP）
 function getTowerEnemyStrength(floor) {
   const chars = TOWER_FLOOR_CHARS();
+  // ★難易度調整: プレイヤーの選択キャラより強い敵は出さない
+  const myPower = getEnemyPower(gameData.selectedChar);
+  let pool = chars.filter(id => getEnemyPower(id) <= myPower);
+  if (pool.length === 0) {
+    // 該当なし（最弱キャラ使用時など）は全体の弱い方半分から選ぶ
+    const weakFirst = [...chars].sort((a, b) => getEnemyPower(a) - getEnemyPower(b));
+    pool = weakFirst.slice(0, Math.max(1, Math.floor(weakFirst.length / 2)));
+  }
   // 強さでソート
-  const sorted = [...chars].sort((a, b) => getEnemyPower(b) - getEnemyPower(a));
-  // 階に応じて強いキャラの比率を上げる
-  const strongPct = Math.min(0.9, floor * 0.05); // 最大90%
+  const sorted = [...pool].sort((a, b) => getEnemyPower(b) - getEnemyPower(a));
+  // 階に応じて強いキャラの比率を上げる（★従来の半分に緩和）
+  const strongPct = Math.min(0.45, floor * 0.025);
   const roll = Math.random();
   if (roll < strongPct) {
     // 上位30%から選出
@@ -3299,16 +3307,25 @@ function getSpecialStyle(charId) {
 // バリア風カラーパレット（5色）：必殺技で使う淡い半透明色
 const BARRIER_PALETTE = ['#7ec4ff', '#9d7eff', '#7effd4', '#ffe27e', '#ff9ed4'];
 
+// ★難易度調整: CPU全体を弱体化する係数（atk=与ダメ / def=打たれ強さ / spd=移動速度）
+const CPU_STAT_MUL = { atk: 0.7, spd: 0.9, def: 0.85 };
+// ★難易度調整: CPUが判断をサボるフレームの割合（反応速度・攻撃頻度が下がる）
+const CPU_SKIP_CHANCE = 0.3;
+
 function getCpuStats(id) {
   const c = CHARACTER_DB[id];
-  // 設定のCPUレベルでステータス補正（Lv1=1.0, Lv10=1.72）
-  const cpuLv = gameData.settings?.cpuLevel ?? 1;
+  // CPUレベルはプレイヤーの選択キャラのレベル未満に制限（最低1）
+  const playerLv = gameData.ownedChars?.[gameData.selectedChar]?.level || 1;
+  let cpuLv = gameData.settings?.cpuLevel ?? 1;
+  cpuLv = Math.max(1, Math.min(cpuLv, playerLv - 1));
   const lvBonus = 1 + (cpuLv - 1) * 0.08;
   let atk = c.baseAtk * lvBonus, spd = c.baseSpd * lvBonus, def = c.baseDef * lvBonus;
   const traits = c.traits || [];
   if (traits.includes('glass_cannon')) { atk *= 1.5; def *= 0.7; }
   if (traits.includes('no_jump')) { atk *= 1.25; def *= 1.15; }
   if (traits.includes('giant')) { atk *= 1.15; def *= 1.15; }
+  // 全体難易度引き下げ
+  atk *= CPU_STAT_MUL.atk; spd *= CPU_STAT_MUL.spd; def *= CPU_STAT_MUL.def;
   return { atk, spd, def };
 }
 
@@ -7880,6 +7897,8 @@ class Fighter {
   handleAI(opponent) {
     this.timeSinceAttack++;
     if (this.aggressionTimer > 0) this.aggressionTimer--;
+    // ★難易度調整: 一定割合のフレームで行動しない（反応が鈍り、攻撃頻度も下がる）
+    if (Math.random() < CPU_SKIP_CHANCE) return;
     const dx = opponent.x - this.x;
     const dy = opponent.y - this.y;
     const dist = Math.abs(dx);
@@ -11486,7 +11505,7 @@ function startBattle() {
   // 訓練モード：CPUレベルを自動設定
   if (currentBattleMode === 'training' && gameData.settings?._trainingCpuLevel) {
     cpu.level = gameData.settings._trainingCpuLevel;
-    cpu.stats = getCharStats(cpuId); // ステータス再計算は難しいのでレベル情報としてのみ記録
+    cpu.stats = getCpuStats(cpuId); // 難易度調整（弱体化係数・レベル上限）を訓練モードにも適用
     // CPUのaiLevelを訓練レベルで上書き
     cpu.aiLevel = gameData.settings._trainingCpuLevel;
   }
