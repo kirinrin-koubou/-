@@ -468,8 +468,8 @@
           <button class="bgmBtn" data-bgm="electronic" onclick="setBattleBgm('electronic')">🎹 電子音</button>
         </div>
       </div>
-      <!-- ホーム画面テーマ（背景＋ボタン一体） -->
-      <div class="settingItem">
+      <!-- ホーム画面テーマ（ノーマル固定・設定UIは非表示。コードは残置） -->
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel"><span>🎨 ホーム画面テーマ</span></div>
         <div class="settingDesc">背景の模様・イラストとボタンデザインをまとめて変更</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;" id="homeThemeGrid">
@@ -512,7 +512,8 @@
         </div>
       </div>
 
-      <div class="settingItem">
+      <!-- CPUレベルはLv7固定（設定UIは非表示。コードは残置） -->
+      <div class="settingItem" style="display:none;">
         <div class="settingLabel">
           <span>🤖 CPUのレベル</span>
           <span>Lv.<span class="settingValue" id="cpuLevelValue">1</span></span>
@@ -12663,11 +12664,13 @@ function loop() {
   for (const k in defaultStats) { if (gameData.stats[k] === undefined) gameData.stats[k] = defaultStats[k]; }
   if (!gameData.settings) gameData.settings = { volume: 50, cpuLevel: 1 };
   if (gameData.settings.cpuLevel === undefined) gameData.settings.cpuLevel = 1;
-  // ★固定設定（設定UIは廃止済み）: 言語=日本語 / 効果音70% / ホームBGM=エピック / 戦闘BGM=激しい
+  // ★固定設定（設定UIは廃止済み）: 言語=日本語 / 効果音70% / BGMなし / テーマ=ノーマル / CPU=Lv7
   gameData.settings.language = 'ja';
   gameData.settings.volume = 70;
-  gameData.settings.homeBgm = 'epic';
-  gameData.settings.battleBgm = 'intense';
+  gameData.settings.homeBgm = 'none';
+  gameData.settings.battleBgm = 'none';
+  gameData.settings.homeTheme = 'normal';
+  gameData.settings.cpuLevel = 7;
   checkMissionProgress();
   await saveData();
   applyControlMode(gameData.settings?.controlMode || 'keyboard');
