@@ -522,6 +522,15 @@
       </div>
 
       <div class="settingItem">
+        <div class="settingLabel"><span>⚖ 敵の強さ自動調整</span></div>
+        <div class="settingDesc">ON: 自分のレベル・キャラの強さに合った敵だけが出る / OFF: 制限なし（強敵も出る）</div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button id="enemyMatchOn" onclick="setEnemyMatch(true)" style="flex:1;padding:10px;border-radius:8px;border:2px solid #00e5ff;background:rgba(0,229,255,0.2);color:#fff;cursor:pointer;font-weight:bold;">✅ ON（おすすめ）</button>
+          <button id="enemyMatchOff" onclick="setEnemyMatch(false)" style="flex:1;padding:10px;border-radius:8px;border:2px solid #555;background:rgba(0,0,0,0.3);color:#fff;cursor:pointer;font-weight:bold;">⚔ OFF（制限なし）</button>
+        </div>
+      </div>
+
+      <div class="settingItem">
         <div class="settingLabel">
           <span>📅 日付変更</span>
           <label style="display:flex;align-items:center;gap:6px;font-size:14px;">
@@ -2113,6 +2122,7 @@ function _makeBgmNode(bgm, which) {
 function applyAllSettings() {
   _applyThemeColor();
   applyHomeTheme();
+  applyEnemyMatchButtons();
   // BGMボタン状態
   const s = gameData.settings || {};
   document.querySelectorAll('#homeBgmGrid [data-bgm]').forEach(b => b.classList.toggle('active', b.dataset.bgm === (s.homeBgm||'none')));
@@ -2194,6 +2204,27 @@ async function updateCpuLevel(val) {
   gameData.settings.cpuLevel = parseInt(val);
   document.getElementById('cpuLevelValue').textContent = val;
   await saveData();
+}
+
+// ⚖ 敵の強さ自動調整（ON=自分のレベル・キャラ強さに合った敵のみ / OFF=制限なし）
+function isEnemyMatchOn() {
+  return gameData.settings?.matchEnemyStrength !== false; // 未設定はON
+}
+function setEnemyMatch(on) {
+  if (!gameData.settings) gameData.settings = {};
+  gameData.settings.matchEnemyStrength = !!on;
+  applyEnemyMatchButtons();
+  saveData();
+}
+function applyEnemyMatchButtons() {
+  const on = isEnemyMatchOn();
+  const bOn = document.getElementById('enemyMatchOn');
+  const bOff = document.getElementById('enemyMatchOff');
+  if (!bOn || !bOff) return;
+  bOn.style.borderColor = on ? '#00e5ff' : '#555';
+  bOn.style.background = on ? 'rgba(0,229,255,0.2)' : 'rgba(0,0,0,0.3)';
+  bOff.style.borderColor = !on ? '#00e5ff' : '#555';
+  bOff.style.background = !on ? 'rgba(0,229,255,0.2)' : 'rgba(0,0,0,0.3)';
 }
 
 // 「日付を変更する」のON/OFF切替
@@ -2374,13 +2405,16 @@ const TOWER_FLOOR_CHARS = () =>
 // フロアに応じた敵選出（階が高いほど強敵出現率UP）
 function getTowerEnemyStrength(floor) {
   const chars = TOWER_FLOOR_CHARS();
-  // ★難易度調整: プレイヤーの選択キャラより強い敵は出さない
-  const myPower = getEnemyPower(gameData.selectedChar);
-  let pool = chars.filter(id => getEnemyPower(id) <= myPower);
-  if (pool.length === 0) {
-    // 該当なし（最弱キャラ使用時など）は全体の弱い方半分から選ぶ
-    const weakFirst = [...chars].sort((a, b) => getEnemyPower(a) - getEnemyPower(b));
-    pool = weakFirst.slice(0, Math.max(1, Math.floor(weakFirst.length / 2)));
+  // ★難易度調整（自動調整ON時のみ）: プレイヤーの選択キャラより強い敵は出さない
+  let pool = chars;
+  if (isEnemyMatchOn()) {
+    const myPower = getEnemyPower(gameData.selectedChar);
+    pool = chars.filter(id => getEnemyPower(id) <= myPower);
+    if (pool.length === 0) {
+      // 該当なし（最弱キャラ使用時など）は全体の弱い方半分から選ぶ
+      const weakFirst = [...chars].sort((a, b) => getEnemyPower(a) - getEnemyPower(b));
+      pool = weakFirst.slice(0, Math.max(1, Math.floor(weakFirst.length / 2)));
+    }
   }
   // 強さでソート
   const sorted = [...pool].sort((a, b) => getEnemyPower(b) - getEnemyPower(a));
@@ -3314,10 +3348,10 @@ const CPU_SKIP_CHANCE = 0.3;
 
 function getCpuStats(id) {
   const c = CHARACTER_DB[id];
-  // CPUレベルはプレイヤーの選択キャラのレベル+1未満（=同レベルまで）に制限
+  // 自動調整ON時: CPUレベルはプレイヤーの選択キャラのレベル+1未満（=同レベルまで）に制限
   const playerLv = gameData.ownedChars?.[gameData.selectedChar]?.level || 1;
   let cpuLv = gameData.settings?.cpuLevel ?? 1;
-  cpuLv = Math.max(1, Math.min(cpuLv, playerLv));
+  if (isEnemyMatchOn()) cpuLv = Math.max(1, Math.min(cpuLv, playerLv));
   const lvBonus = 1 + (cpuLv - 1) * 0.08;
   let atk = c.baseAtk * lvBonus, spd = c.baseSpd * lvBonus, def = c.baseDef * lvBonus;
   const traits = c.traits || [];
