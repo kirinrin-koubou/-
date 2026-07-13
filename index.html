@@ -3342,17 +3342,23 @@ function getSpecialStyle(charId) {
 // バリア風カラーパレット（5色）：必殺技で使う淡い半透明色
 const BARRIER_PALETTE = ['#7ec4ff', '#9d7eff', '#7effd4', '#ffe27e', '#ff9ed4'];
 
-// ★難易度調整: CPU全体を弱体化する係数（atk=与ダメ / def=打たれ強さ / spd=移動速度）
-const CPU_STAT_MUL = { atk: 0.7, spd: 0.9, def: 0.85 };
-// ★難易度調整: CPUが判断をサボるフレームの割合（反応速度・攻撃頻度が下がる）
-const CPU_SKIP_CHANCE = 0.3;
+// ★CPUの強さ: 最大10のうちの7で固定（レベルとは別の「手強さ」）
+//   - 攻撃力係数 = 強さ/10
+//   - AIのサボり率 = (10-強さ)/10（反応速度・攻撃頻度に影響）
+const CPU_STRENGTH = 7;
+const CPU_STAT_MUL = { atk: CPU_STRENGTH / 10, spd: 0.9, def: 0.85 };
+const CPU_SKIP_CHANCE = (10 - CPU_STRENGTH) / 10;
 
 function getCpuStats(id) {
   const c = CHARACTER_DB[id];
-  // 自動調整ON時: CPUレベルはプレイヤーの選択キャラのレベル+1未満（=同レベルまで）に制限
+  // CPUのレベル: 自動調整ON時は「自分と同じ〜自分+2」からバトルごとにランダム
   const playerLv = gameData.ownedChars?.[gameData.selectedChar]?.level || 1;
-  let cpuLv = gameData.settings?.cpuLevel ?? 1;
-  if (isEnemyMatchOn()) cpuLv = Math.max(1, Math.min(cpuLv, playerLv));
+  let cpuLv;
+  if (isEnemyMatchOn()) {
+    cpuLv = playerLv + Math.floor(Math.random() * 3); // +0〜+2
+  } else {
+    cpuLv = gameData.settings?.cpuLevel ?? 7; // OFF時は固定レベル
+  }
   const lvBonus = 1 + (cpuLv - 1) * 0.08;
   let atk = c.baseAtk * lvBonus, spd = c.baseSpd * lvBonus, def = c.baseDef * lvBonus;
   const traits = c.traits || [];
