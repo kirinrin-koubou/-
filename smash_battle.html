@@ -588,7 +588,8 @@
         <div id="statsDisplay" style="font-size:12px;line-height:1.8;"></div>
       </div>
 
-      <div class="settingItem" style="border-color:rgba(231,76,60,0.4);">
+      <!-- 保存機能廃止に伴い非表示（リロードで常に初期状態になるため） -->
+      <div class="settingItem" style="display:none;border-color:rgba(231,76,60,0.4);">
         <div class="settingLabel"><span>🗑 データの初期化</span></div>
         <div class="settingDesc">所持キャラ・コイン・ミッション進捗・統計をすべてリセットして最初からやり直します。元に戻せません！</div>
         <button class="dangerBtn" onclick="confirmReset()">データを初期化する</button>
@@ -1743,7 +1744,11 @@ function checkDailyReset() {
   }
 }
 
+// ★保存機能は廃止（コードは残置）。trueに戻すと保存・読み込みが復活する
+const SAVE_ENABLED = false;
+
 async function loadData() {
+  if (!SAVE_ENABLED) { setTimeout(() => applyAllSettings(), 100); return; }
   try {
     if (typeof window.storage !== 'undefined' && window.storage.get) {
       const r = await window.storage.get('smashBattleData');
@@ -1756,6 +1761,7 @@ async function loadData() {
   setTimeout(() => applyAllSettings(), 100);
 }
 async function saveData() {
+  if (!SAVE_ENABLED) return;
   try {
     if (typeof window.storage !== 'undefined' && window.storage.set) {
       await window.storage.set('smashBattleData', JSON.stringify(gameData));
